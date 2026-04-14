@@ -29,6 +29,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const TIPOS_CANONICOS = {
+  // Termos técnicos (sem acento)
   'botropico':    'Botrópico',
   'crotalico':    'Crotálico',
   'elapidico':    'Elapídico',
@@ -37,6 +38,27 @@ const TIPOS_CANONICOS = {
   'loxoscelico':  'Loxoscélico',
   'foneutrico':   'Foneutrico',
   'lonomico':     'Lonômico',
+  // Aliases pelo nome do animal (para usuários comuns)
+  'bothrops':         'Botrópico',
+  'jararaca':         'Botrópico',
+  'cobra':            'Botrópico',
+  'cascavel':         'Crotálico',
+  'crotalus':         'Crotálico',
+  'coral':            'Elapídico',
+  'micrurus':         'Elapídico',
+  'surucucu':         'Laquético',
+  'lachesis':         'Laquético',
+  'escorpiao':        'Escorpiônico',
+  'escorpion':        'Escorpiônico',
+  'tityus':           'Escorpiônico',
+  'aranha':           'Loxoscélico',
+  'aranha marrom':    'Loxoscélico',
+  'loxosceles':       'Loxoscélico',
+  'armadeira':        'Foneutrico',
+  'aranha armadeira': 'Foneutrico',
+  'phoneutria':       'Foneutrico',
+  'lagarta':          'Lonômico',
+  'lonomia':          'Lonômico',
 };
 
 function stripAccents(s) {
@@ -169,8 +191,9 @@ async function listHospitais(req, res, url) {
   if (atendimentoRaw) {
     const canonical = normalizeTipo(atendimentoRaw);
     if (!canonical) {
+      const canonicos = [...new Set(Object.values(TIPOS_CANONICOS))].join(', ');
       return error(res, 400,
-        `Atendimento inválido. Valores aceitos: ${Object.values(TIPOS_CANONICOS).join(', ')}`);
+        `Atendimento inválido: '${atendimentoRaw}'. Valores aceitos: ${canonicos}`);
     }
     // PostgREST: filtro em array usando operador cs (contains)
     params.atendimentos = `cs.{"${canonical}"}`;
@@ -224,8 +247,9 @@ async function listHospitaisProximos(req, res, url) {
   if (atendimentoRaw) {
     atendimentoCanonical = normalizeTipo(atendimentoRaw);
     if (!atendimentoCanonical) {
+      const canonicos = [...new Set(Object.values(TIPOS_CANONICOS))].join(', ');
       return error(res, 400,
-        `Atendimento inválido. Valores aceitos: ${Object.values(TIPOS_CANONICOS).join(', ')}`);
+        `Atendimento inválido: '${atendimentoRaw}'. Valores aceitos: ${canonicos}`);
     }
   }
 

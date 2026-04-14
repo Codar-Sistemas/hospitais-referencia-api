@@ -21,6 +21,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 30
     outputs:
       tem_pendentes: ${{ steps.check.outputs.tem_pendentes }}
@@ -66,6 +67,7 @@ jobs:
     needs: sync
     if: needs.sync.outputs.tem_pendentes == 'true' && github.event.inputs.skip_geocode != 'true'
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4

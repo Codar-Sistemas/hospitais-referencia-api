@@ -2,7 +2,7 @@ name: sync-hospitais
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # diário 06:00 UTC = 03:00 Brasília
+    - cron: '0 3 * * *'   # diário 03:00 UTC = 00:00 Brasília
   workflow_dispatch:
     inputs:
       uf:

@@ -1,0 +1,13 @@
+{
+  "name": "hospitais-referencia-api",
+  "version": "1.0.0",
+  "description": "API pública de hospitais de referência para acidentes por animais peçonhentos (Ministério da Saúde)",
+  "main": "api/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "license": "MIT"
+}

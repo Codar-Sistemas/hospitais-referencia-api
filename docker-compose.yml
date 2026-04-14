@@ -1,0 +1,74 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres 16 com earthdistance habilitado
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: hospitais-referencia-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hospitais-referencia
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Scripts SQL executados automaticamente na primeira inicialização
+      # (na ordem alfabética). Prefixos 001_ e 002_ garantem a ordem correta.
+      - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./sql/002_geocoding.sql:/docker-entrypoint-initdb.d/002_geocoding.sql:ro
+      - ./sql/local_999_roles.sql:/docker-entrypoint-initdb.d/999_roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hospitais-referencia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # PostgREST: expõe o Postgres como REST API (mesma engine do Supabase)
+  # ---------------------------------------------------------------------------
+  postgrest:
+    image: postgrest/postgrest:v12.2.0
+    container_name: hospitais-referencia-postgrest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:authpass@db:5432/hospitais-referencia
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      # JWT secret dummy para simular o Supabase localmente.
+      # Em dev, simplesmente passamos 'apikey' com um token válido.
+      PGRST_JWT_SECRET: "dev-local-jwt-secret-32-chars-minimum-value-ok"
+      PGRST_OPENAPI_MODE: follow-privileges
+    ports:
+      - "3001:3000"
+
+  # ---------------------------------------------------------------------------
+  # API Node (sua camada com validação, /proximos, CORS, cache etc.)
+  # ---------------------------------------------------------------------------
+  api:
+    image: node:20-alpine
+    container_name: hospitais-referencia-api
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      - postgrest
+    environment:
+      SUPABASE_URL: http://postgrest:3000
+      # Token JWT assinado com o segredo PGRST_JWT_SECRET acima, role=anon.
+      # Para gerar outro, rode: python scripts/local_jwt.py <role>
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.NFTKfrTgubu4fM4lIiYLSpn-XNF61nsPdPFxhpwKQWg
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./api:/app/api:ro
+      - ./package.json:/app/package.json:ro
+      - ./scripts/local_server.js:/app/server.js:ro
+    command: node /app/server.js
+
+volumes:
+  pgdata:

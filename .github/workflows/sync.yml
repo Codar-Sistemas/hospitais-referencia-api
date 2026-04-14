@@ -1,0 +1,82 @@
+name: sync-hospitais
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # diário 06:00 UTC = 03:00 Brasília
+  workflow_dispatch:
+    inputs:
+      uf:
+        description: 'UF específica (vazio = todas)'
+        required: false
+        default: ''
+      force:
+        description: 'Forçar reprocessamento'
+        required: false
+        default: 'false'
+      skip_geocode:
+        description: 'Pular etapa de geocoding'
+        required: false
+        default: 'false'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      tem_pendentes: ${{ steps.check.outputs.tem_pendentes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Sync PDFs para o banco
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS="sync"
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
+          if [ -n "${{ github.event.inputs.uf }}" ]; then ARGS="$ARGS ${{ github.event.inputs.uf }}"; fi
+          python -m scripts.sync $ARGS
+
+      - id: check
+        name: Ver se ha hospitais pendentes de geocode
+        if: github.event.inputs.skip_geocode != 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          COUNT=$(curl -sf \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Prefer: count=exact" \
+            -I "$SUPABASE_URL/rest/v1/hospitais?geocode_status=eq.pendente&limit=1" \
+            | grep -i content-range | awk -F'/' '{print $2}' | tr -d '\r' || echo "0")
+          echo "Pendentes: $COUNT"
+          if [ "${COUNT:-0}" -gt 0 ]; then
+            echo "tem_pendentes=true" >> $GITHUB_OUTPUT
+          else
+            echo "tem_pendentes=false" >> $GITHUB_OUTPUT
+          fi
+
+  geocode:
+    needs: sync
+    if: needs.sync.outputs.tem_pendentes == 'true' && github.event.inputs.skip_geocode != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Geocodificar pendentes
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m scripts.sync geocode --limit 5000

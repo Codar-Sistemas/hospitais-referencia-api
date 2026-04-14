@@ -1,0 +1,13 @@
+.env
+.env.local
+.vercel
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.pdf
+*.json
+!package.json
+!vercel.json
+.DS_Store

@@ -27,6 +27,7 @@
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 const TIPOS_CANONICOS = {
   // Termos técnicos (sem acento)
@@ -105,18 +106,50 @@ async function sbRpc(fn, body) {
   return r.json();
 }
 
-// Consulta CEP via BrasilAPI — retorna {cidade, uf, lat, lng}
+// Grava no cep_cache usando service key (ignora RLS)
+async function cacheCep(data) {
+  if (!SUPABASE_SERVICE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/cep_cache`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates',
+      },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // falha silenciosa — o cache é best-effort
+  }
+}
+
+// Consulta CEP: primeiro no cache local (Supabase), depois na BrasilAPI
 async function consultarCep(cepRaw) {
   const cep = (cepRaw || '').replace(/\D/g, '');
   if (cep.length !== 8) return null;
+
+  // 1. Tenta o cache
+  try {
+    const cached = await sb('cep_cache', { select: '*', cep: `eq.${cep}`, limit: '1' });
+    if (cached && cached.length > 0) {
+      const c = cached[0];
+      return { cep, cidade: c.cidade, uf: c.uf, bairro: c.bairro, logradouro: c.logradouro, lat: c.lat, lng: c.lng };
+    }
+  } catch {
+    // cache indisponível — segue para BrasilAPI
+  }
+
+  // 2. Chama BrasilAPI e salva no cache
   try {
     const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`, {
-      headers: { 'User-Agent': 'hospitais-referencia-api/1.0' },
+      headers: { 'User-Agent': 'hospitais-referencia-api/1.0 (+https://github.com/Codar-Sistemas/hospitais-referencia-api)' },
     });
     if (!r.ok) return null;
     const data = await r.json();
     const coords = (data.location && data.location.coordinates) || {};
-    return {
+    const result = {
       cep,
       cidade: data.city || null,
       uf: data.state || null,
@@ -125,6 +158,9 @@ async function consultarCep(cepRaw) {
       lat: coords.latitude ? parseFloat(coords.latitude) : null,
       lng: coords.longitude ? parseFloat(coords.longitude) : null,
     };
+    // Salva no cache de forma assíncrona (não bloqueia a resposta)
+    cacheCep({ cep: result.cep, cidade: result.cidade, uf: result.uf, bairro: result.bairro, logradouro: result.logradouro, lat: result.lat, lng: result.lng });
+    return result;
   } catch {
     return null;
   }

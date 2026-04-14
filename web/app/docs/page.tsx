@@ -92,9 +92,21 @@ export default function Docs() {
         <p className="text-slate-500 text-sm mb-4">
           API pública e gratuita. Sem autenticação. CORS liberado.
         </p>
-        <div className="bg-slate-900 text-slate-100 rounded-xl px-5 py-3 font-mono text-sm flex items-center gap-3">
+        <div className="bg-slate-900 text-slate-100 rounded-xl px-5 py-3 font-mono text-sm flex items-center gap-3 mb-3">
           <span className="text-slate-400 text-xs uppercase tracking-wide">Base URL</span>
           <span className="text-emerald-400">{BASE}</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: 'Rate limit', value: '15 req / min por IP' },
+            { label: 'Autenticação', value: 'Nenhuma' },
+            { label: 'CORS', value: 'Liberado (*)' },
+            { label: 'Formato', value: 'JSON' },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full">
+              <span className="font-semibold text-slate-800">{label}:</span> {value}
+            </div>
+          ))}
         </div>
       </div>
 

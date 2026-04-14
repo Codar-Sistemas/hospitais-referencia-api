@@ -167,7 +167,7 @@ async function listHospitais(req, res, url) {
   const p = url.searchParams;
 
   const uf = (p.get('uf') || '').toUpperCase() || null;
-  const municipio = p.get('municipio');
+  const municipio = p.get('municipio') || p.get('cidade') || null;
   const atendimentoRaw = p.get('atendimento');
   const q = p.get('q');
   const limit = Math.min(parseInt(p.get('limit') || '100', 10), 500);

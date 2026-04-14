@@ -153,7 +153,7 @@ export default function Home() {
                 </>
               )}
               {modo === 'cidade' && (
-                <>
+                <div className="col-span-full grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Cidade *</label>
                     <input
@@ -168,7 +168,14 @@ export default function Home() {
                       {ESTADOS.map((e) => <option key={e.uf} value={e.uf}>{e.nome}</option>)}
                     </select>
                   </div>
-                </>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Animal (opcional)</label>
+                    <select value={animal} onChange={(e) => setAnimal(e.target.value)} className={inputClass}>
+                      <option value="">Todos os tipos</option>
+                      {ANIMAIS.map((a) => <option key={a.valor} value={a.valor}>{a.emoji} {a.label}</option>)}
+                    </select>
+                  </div>
+                </div>
               )}
             </div>
 

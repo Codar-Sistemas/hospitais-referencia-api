@@ -393,6 +393,15 @@ module.exports = async (req, res) => {
         nome: 'hospitais-referencia-api',
         versao: '1.1',
         fonte: 'Ministério da Saúde - gov.br/saude',
+        docs: 'https://hospitais-referencia-web.vercel.app/docs',
+        repositorio: 'https://github.com/Codar-Sistemas/hospitais-referencia-api',
+        aviso_uso: [
+          'Esta é uma API pública, gratuita e mantida de forma voluntária.',
+          'Use com responsabilidade: o volume de consultas deve refletir o uso real de um usuário.',
+          'Não faça requisições em loop ou varreduras automatizadas.',
+          'Em caso de alto volume, considere cachear as respostas na sua aplicação.',
+          'Dependências gratuitas: Supabase, Vercel, BrasilAPI, Nominatim/OpenStreetMap.',
+        ],
         endpoints: [
           'GET /v1/estados',
           'GET /v1/estados/:uf',

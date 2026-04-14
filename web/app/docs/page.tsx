@@ -98,6 +98,40 @@ export default function Docs() {
         </div>
       </div>
 
+      {/* Fair use notice */}
+      <div className="mb-8 bg-blue-50 border border-blue-200 rounded-2xl p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-semibold text-blue-900 text-sm mb-1">Use com responsabilidade</h3>
+            <p className="text-blue-800 text-xs leading-relaxed mb-3">
+              Esta API é pública, gratuita e mantida de forma voluntária. Ela depende de serviços gratuitos —
+              {' '}<strong>Supabase, Vercel, BrasilAPI e Nominatim/OpenStreetMap</strong> — que têm limites de uso.
+              Por favor, contribua para que ela continue disponível para todos.
+            </p>
+            <ul className="space-y-1.5">
+              {[
+                'Não faça requisições em loop ou varreduras automatizadas de dados.',
+                'Cache as respostas na sua aplicação — os dados são atualizados uma vez por dia.',
+                'O volume de consultas deve refletir o uso real de um usuário humano.',
+                'Em caso de uso intenso, considere hospedar sua própria instância (open source).',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2 text-xs text-blue-800">
+                  <svg className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Animal types */}
       <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-5">
         <h3 className="font-semibold text-amber-900 mb-1 text-sm">Tipos de atendimento</h3>

@@ -179,7 +179,7 @@ async function listHospitais(req, res, url) {
   }
 
   const params = {
-    select: 'id,uf,municipio,unidade,endereco,telefones,cnes,atendimentos',
+    select: 'id,uf,municipio,unidade,endereco,telefones,cnes,atendimentos,lat,lng',
     order: 'municipio.asc,unidade.asc',
     limit: String(limit),
     offset: String(offset),

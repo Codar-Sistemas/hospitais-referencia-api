@@ -48,14 +48,22 @@ export default function RootLayout({
               </a>{" "}
               · Atualização automática diária
             </p>
-            <a
-              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-slate-600 transition-colors"
-            >
-              GitHub ↗
-            </a>
+            <div className="flex items-center gap-4">
+              <a
+                href="/termos"
+                className="hover:text-slate-600 transition-colors"
+              >
+                Termos de uso
+              </a>
+              <a
+                href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-slate-600 transition-colors"
+              >
+                GitHub ↗
+              </a>
+            </div>
           </div>
         </footer>
       </body>

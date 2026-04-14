@@ -1,122 +1,351 @@
-# hospitais-referencia-api
+# 🏥 Hospitais de Referência — API & Frontend
 
-API pública e gratuita com os **hospitais de referência para acidentes
-por animais peçonhentos no Brasil**, extraídos dos PDFs oficiais do
-Ministério da Saúde (`gov.br/saude`).
+> API pública e gratuita com os **hospitais de referência para acidentes por animais peçonhentos no Brasil**, extraídos dos PDFs oficiais do Ministério da Saúde e servidos em JSON estruturado.
 
-- Atualização automática diária (GitHub Actions detecta mudanças nos PDFs)
-- Dados normalizados: filtros por UF, município, tipo de atendimento
-- CORS liberado, cache no edge, sem autenticação
-- Custo: **R$ 0** no plano gratuito de Supabase + Vercel + GitHub Actions
+[![Sync diário](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml)
+![Custo](https://img.shields.io/badge/custo-R%240%2Fmês-brightgreen)
+![Licença dados](https://img.shields.io/badge/dados-Ministério%20da%20Saúde-blue)
+![Rate limit](https://img.shields.io/badge/rate%20limit-15%20req%2Fmin-orange)
 
-## Fonte dos dados
+---
 
-Ministério da Saúde — Lista oficial de hospitais com soros antiofídicos
-e antiveneno, organizada por estado:
-<https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia>
+> ⚠️ **Em caso de emergência, ligue para o SAMU: 192.** Esta API é uma ferramenta de referência — as informações podem estar desatualizadas em relação à realidade no momento do atendimento.
 
-Cada estado publica um PDF com a data "Atualizado em DD/MM/AAAA HHhMM"
-(horário de Brasília). O sistema compara essa data (e o SHA256 do PDF)
-com o último sync para decidir se precisa reprocessar.
+---
 
-### Variações de formato observadas entre estados
+## O que é
 
-Durante o desenvolvimento identificamos algumas variações na publicação
-oficial que o sync trata:
+Este projeto agrega, normaliza e publica em formato de API REST os dados oficiais dos **hospitais habilitados a tratar acidentes com animais peçonhentos** (cobras, escorpiões, aranhas, lagartas etc.) no Brasil. Os dados vêm de PDFs publicados pelo Ministério da Saúde, atualizados automaticamente todo dia.
 
-- **URL do arquivo**: a maioria dos estados publica como `.pdf` direto no
-  href, mas alguns (ex: MG) usam o padrão Plone `/@@download/file`. O
-  scraper detecta ambos.
-- **Pernambuco publica XLSX** em vez de PDF. Não é suportado ainda — o
-  sync marca `status='nao_suportado'` nessa UF e segue. Adicionar suporte
-  a XLSX fica como TODO (extensão pontual).
-- **Variante de atendimento "Botrópico-Crotálico"** (observada em MG,
-  hospital de Uberaba): tratada como composto, expande para os dois
-  tipos individuais mantendo o texto original em `atendimentos_raw`.
-- **Layouts ligeiramente diferentes**: o número de colunas internas do
-  PDF varia entre estados. O parser usa as linhas verticais desenhadas
-  no PDF (não posições fixas) como fronteiras, o que se adapta a essa
-  variação.
+**Interfaces disponíveis:**
+- **API REST** — para integração em sistemas, apps e pesquisa
+- **Frontend web** — busca por estado, município, CEP ou coordenadas, com mapa interativo
+- **Visão profissional** — tabela técnica com CNES, grade completa de soros e busca avançada
 
-## Arquitetura
+---
 
+## Arquitetura geral
+
+```mermaid
+graph TB
+    subgraph "Fonte de dados"
+        MS["🏛️ Ministério da Saúde<br/>gov.br/saude<br/>PDFs por estado"]
+    end
+
+    subgraph "Atualização automática"
+        GHA["⚙️ GitHub Actions<br/>Cron 03:00 UTC / dia"]
+        SYNC["🐍 scripts/sync.py<br/>Detecta mudança de data<br/>e SHA256 do PDF"]
+        PARSER["📄 scripts/parser.py<br/>pdfplumber + word coords<br/>Robusto a células mescladas"]
+        GEO["📍 scripts/geocode.py<br/>Nominatim + BrasilAPI<br/>Cache em Supabase"]
+    end
+
+    subgraph "Banco de dados"
+        SB[("🗄️ Supabase<br/>PostgreSQL 15<br/>+ PostgREST")]
+    end
+
+    subgraph "API"
+        VR["⚡ Vercel Serverless<br/>api/index.js (Node.js)<br/>Valida · Normaliza · Pagina"]
+        RL["🔒 Upstash Redis<br/>Rate limit 15 req/min"]
+    end
+
+    subgraph "Interfaces"
+        WEB["🌐 Frontend Next.js<br/>Busca · Mapa · Grade técnica"]
+        DEV["👨‍💻 Desenvolvedores<br/>curl / fetch / SDK"]
+    end
+
+    MS -->|"scraping diário"| GHA
+    GHA --> SYNC
+    SYNC --> PARSER
+    PARSER -->|"upsert hospitais"| SB
+    SYNC -->|"se há pendentes"| GEO
+    GEO -->|"lat/lng geocodificados"| SB
+
+    SB -->|"REST (PostgREST)"| VR
+    VR <-->|"pipeline INCR+EXPIRE"| RL
+    VR --> WEB
+    VR --> DEV
 ```
- ┌─────────────────────┐     ┌──────────────┐     ┌──────────┐
- │  GitHub Actions     │────▶│   Supabase   │◀────│  Vercel  │◀── usuários
- │  cron diário 06UTC  │     │  (Postgres)  │     │ (serverless)│
- │  scripts/sync.py    │     │              │     │  api/index.js│
- └─────────────────────┘     └──────────────┘     └──────────┘
-         │
-         ▼
-  gov.br/saude (PDFs oficiais)
+
+---
+
+## Fluxo de sincronização (diário)
+
+```mermaid
+sequenceDiagram
+    participant GHA as GitHub Actions
+    participant GOV as gov.br/saude
+    participant SB as Supabase
+    participant NOM as Nominatim
+
+    GHA->>GOV: GET /hospitais-de-referencia/:uf
+    GOV-->>GHA: HTML com data e link do PDF
+
+    GHA->>SB: SELECT atualizado_em, pdf_hash FROM estados WHERE uf=?
+
+    alt PDF não mudou (data e hash iguais)
+        GHA-->>GHA: Pula UF
+    else PDF novo ou alterado
+        GHA->>GOV: GET <pdf_url>
+        GOV-->>GHA: PDF binário
+        GHA->>GHA: pdfplumber → extrai tabela de hospitais
+        GHA->>SB: UPSERT hospitais (por CNES ou unidade+municipio)
+        GHA->>SB: UPDATE estados SET pdf_hash, atualizado_em, total_hospitais
+    end
+
+    Note over GHA,NOM: Job geocode roda em seguida se há pendentes
+    GHA->>SB: SELECT hospitais WHERE geocode_status='pendente'
+    loop Para cada hospital pendente
+        GHA->>NOM: GET /search?q=<endereço formatado>
+        NOM-->>GHA: lat, lng
+        GHA->>SB: UPDATE hospitais SET lat, lng, geocode_status='ok'
+    end
 ```
 
-- **Sync (Python)**: baixa páginas, detecta mudanças, parseia PDFs com
-  `pdfplumber` (word-level coordinates — robusto a células mescladas)
-  e faz upsert no Supabase.
-- **Supabase**: Postgres gerenciado com RLS. A tabela `hospitais` tem
-  índice GIN em `atendimentos[]` e full-text em `unidade+endereço`.
-- **API (Node.js na Vercel)**: proxy leve sobre o PostgREST do Supabase,
-  com normalização de parâmetros, validação e cache HTTP.
+---
+
+## Fluxo de uma requisição à API
+
+```mermaid
+sequenceDiagram
+    participant CLI as Cliente
+    participant VR as Vercel (api/index.js)
+    participant UPS as Upstash Redis
+    participant SB as Supabase REST
+
+    CLI->>VR: GET /v1/hospitais?uf=SP&atendimento=crotalico
+
+    VR->>UPS: PIPELINE [INCR rl:<ip>:<janela>, EXPIRE rl:<ip>:<janela> 60]
+    UPS-->>VR: count=3
+
+    alt count > 15 (rate limit atingido)
+        VR-->>CLI: 429 Too Many Requests<br/>X-RateLimit-Remaining: 0
+    else dentro do limite
+        VR->>VR: Normaliza parâmetros<br/>(acentos, case, aliases de atendimento)
+        VR->>SB: GET /rest/v1/hospitais?uf=eq.SP&atendimentos=cs.{"Crotálico"}
+        SB-->>VR: JSON array de hospitais
+        VR-->>CLI: 200 OK (JSON)<br/>X-RateLimit-Remaining: 12
+    end
+```
+
+---
+
+## Modelo de dados
+
+```mermaid
+erDiagram
+    ESTADOS {
+        char(2)     uf PK
+        text        nome
+        text        pagina_url
+        text        pdf_url
+        text        formato
+        timestamptz atualizado_em
+        timestamptz sincronizado_em
+        text        pdf_hash
+        int         total_hospitais
+        text        status
+        text        ultimo_erro
+    }
+
+    HOSPITAIS {
+        serial      id PK
+        char(2)     uf FK
+        text        municipio
+        text        municipio_norm
+        text        unidade
+        text        endereco
+        text        telefones
+        text        cnes
+        text[]      atendimentos
+        text        atendimentos_raw
+        float8      lat
+        float8      lng
+        text        geocode_status
+        timestamptz criado_em
+        timestamptz atualizado_em
+    }
+
+    CEP_CACHE {
+        text        cep PK
+        float8      lat
+        float8      lng
+        jsonb       dados
+        timestamptz criado_em
+    }
+
+    ESTADOS ||--o{ HOSPITAIS : "tem"
+```
+
+> **Nota sobre `municipio_norm`**: campo derivado com remoção de acentos e minúsculas, usado para busca accent-insensitive (ex.: `"jundiai"` encontra `"Jundiaí"`).
+
+---
 
 ## Endpoints
 
-Base: `https://SEU-DOMINIO.vercel.app`
+**Base URL:** `https://hospitais-referencia-web.vercel.app`
 
-### Consulta de metadados
-| Endpoint | Descrição |
+| | |
 |---|---|
-| `GET /v1/estados` | Lista as 27 UFs com data de atualização e total de hospitais |
-| `GET /v1/estados/:uf` | Detalhes de uma UF |
+| **Rate limit** | 15 req / min por IP |
+| **Autenticação** | Nenhuma |
+| **CORS** | Liberado (`*`) |
+| **Formato** | JSON (`Content-Type: application/json`) |
 
-### Busca de hospitais
-| Endpoint | Descrição |
-|---|---|
-| `GET /v1/hospitais?uf=SP` | Lista hospitais de SP |
-| `GET /v1/hospitais?uf=SP&atendimento=crotalico` | Filtra por tipo de soro |
-| `GET /v1/hospitais?municipio=Campinas` | Filtra por município |
-| `GET /v1/hospitais?q=santa+casa&uf=SP` | Full-text em unidade/endereço |
-| `GET /v1/hospitais/:id` | Hospital por ID |
+---
 
-### Busca por proximidade (NOVO)
-| Endpoint | Descrição |
-|---|---|
-| `GET /v1/hospitais/proximos?cep=13280000&raio=50000` | Por CEP, raio em metros (default 50km, máx 200km) |
-| `GET /v1/hospitais/proximos?lat=-23.5&lng=-46.6` | Por coordenadas diretas |
-| `GET /v1/hospitais/proximos?cidade=Campinas&uf=SP` | Por nome de cidade (fallback sem distância) |
+### Estados
 
-Filtros combináveis: `&atendimento=crotalico&limit=20&uf=SP`.
+#### `GET /v1/estados`
 
-Tipos de atendimento aceitos (case/accent-insensitive):
-`botropico`, `crotalico`, `elapidico`, `laquetico`, `escorpionico`,
-`loxoscelico`, `foneutrico`, `lonomico`.
+Lista as 27 UFs com data de atualização e total de hospitais.
 
-### Exemplos
-
-**1. Hospital mais próximo com soro antilaquético, dado um CEP:**
 ```bash
-curl "https://SEU-DOMINIO.vercel.app/v1/hospitais/proximos?cep=18618970&atendimento=laquetico&limit=5"
+curl https://hospitais-referencia-web.vercel.app/v1/estados
 ```
 
+```json
+[
+  {
+    "uf": "SP",
+    "nome": "São Paulo",
+    "atualizado_em": "2025-03-10T00:00:00Z",
+    "sincronizado_em": "2025-03-11T03:12:00Z",
+    "total_hospitais": 87,
+    "status": "ok"
+  }
+]
+```
+
+#### `GET /v1/estados/:uf`
+
+Detalhes de uma UF específica.
+
+```bash
+curl https://hospitais-referencia-web.vercel.app/v1/estados/SP
+```
+
+---
+
+### Hospitais
+
+#### `GET /v1/hospitais`
+
+Busca de hospitais com filtros combinados.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `uf` | string | Sigla do estado (ex: `SP`) |
+| `municipio` | string | Nome do município (accent-insensitive, parcial) |
+| `atendimento` | string | Tipo de soro — ver tabela abaixo |
+| `q` | string | Full-text em unidade + endereço |
+| `limit` | int | Máx 500, padrão 100 |
+| `offset` | int | Paginação |
+
+**Tipos de atendimento aceitos** (case e accent-insensitive):
+
+| Parâmetro | Animal / Soro |
+|---|---|
+| `botropico` | Jararaca, urutu e espécies do gênero *Bothrops* |
+| `crotalico` | Cascavel (*Crotalus*) |
+| `elapidico` | Coral-verdadeira (*Micrurus*) |
+| `laquetico` | Surucucu (*Lachesis*) |
+| `escorpionico` | Escorpiões (*Tityus*) |
+| `loxoscelico` | Aranha marrom (*Loxosceles*) |
+| `foneutrico` | Aranha armadeira (*Phoneutria*) |
+| `lonomico` | Lagarta-de-fogo (*Lonomia*) |
+
+```bash
+# Hospitais com soro antibotrópico em SP
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais?uf=SP&atendimento=botropico"
+
+# Busca por município (aceita sem acento)
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais?municipio=jundiai"
+
+# Full-text em nome do hospital
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais?q=santa+casa&uf=SP"
+
+# Paginação
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais?uf=MG&limit=20&offset=40"
+```
+
+**Resposta:**
+```json
+[
+  {
+    "id": 42,
+    "uf": "SP",
+    "municipio": "Botucatu",
+    "unidade": "Hospital das Clínicas da Faculdade de Medicina de Botucatu",
+    "endereco": "Avenida Prof. Mario Rubens Guimarães Montenegro, s/n - UNESP",
+    "telefones": "(14) 3811-6129",
+    "cnes": "2078187",
+    "atendimentos": ["Botrópico", "Crotálico", "Elapídico", "Laquético", "Escorpiônico", "Loxoscélico"],
+    "lat": -22.894,
+    "lng": -48.443
+  }
+]
+```
+
+#### `GET /v1/hospitais/:id`
+
+Hospital específico por ID numérico.
+
+```bash
+curl https://hospitais-referencia-web.vercel.app/v1/hospitais/42
+```
+
+---
+
+### Busca por proximidade
+
+#### `GET /v1/hospitais/proximos`
+
+Retorna hospitais ordenados por distância a partir de um ponto de origem.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `cep` | string | CEP brasileiro (8 dígitos, com ou sem hífen) |
+| `lat` + `lng` | float | Coordenadas geográficas diretamente |
+| `cidade` + `uf` | string | Fallback por nome de cidade (sem distância) |
+| `raio` | int | Raio de busca em metros (padrão: 50.000, máx: 200.000) |
+| `atendimento` | string | Filtro por tipo de soro |
+| `limit` | int | Máx 200, padrão 50 |
+
+```bash
+# Por CEP — retorna com distância calculada
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais/proximos?cep=18618970&raio=50000&atendimento=laquetico"
+
+# Por coordenadas — ex: centro de São Paulo
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais/proximos?lat=-23.55&lng=-46.63&raio=100000"
+
+# Por nome de cidade (fallback sem distância)
+curl "https://hospitais-referencia-web.vercel.app/v1/hospitais/proximos?cidade=Campinas&uf=SP"
+```
+
+**Resposta:**
 ```json
 {
   "origem": {
     "lat": -22.889,
     "lng": -48.445,
     "fonte": "cep",
-    "cep": { "cep": "18618970", "cidade": "Botucatu", "uf": "SP", ... }
+    "cep": {
+      "cep": "18618970",
+      "cidade": "Botucatu",
+      "uf": "SP"
+    }
   },
   "raio_m": 50000,
-  "total_retornados": 1,
+  "total_retornados": 3,
   "hospitais": [
     {
       "id": 42,
       "municipio": "Botucatu",
-      "unidade": "Hospital da Clínicas da Faculdade de Medicina de Botucatu",
-      "endereco": "Avenida Prof. Mario Rubens Guimarães Montenegro, s/n - UNESP Botucatu",
+      "unidade": "Hospital das Clínicas da Faculdade de Medicina de Botucatu",
       "telefones": "(14) 3811-6129",
-      "atendimentos": ["Botrópico","Crotálico","Elapídico","Laquético", ...],
-      "lat": -22.894, "lng": -48.443,
+      "atendimentos": ["Botrópico", "Crotálico", "Laquético"],
+      "lat": -22.894,
+      "lng": -48.443,
       "distancia_m": 612.4,
       "distancia_km": 0.6
     }
@@ -124,36 +353,94 @@ curl "https://SEU-DOMINIO.vercel.app/v1/hospitais/proximos?cep=18618970&atendime
 }
 ```
 
-**2. Hospitais com soro botrópico até 100 km das coordenadas do usuário:**
-```bash
-curl "https://SEU-DOMINIO.vercel.app/v1/hospitais/proximos?lat=-23.55&lng=-46.63&raio=100000&atendimento=botropico"
+> **CEP cacheado**: a primeira consulta por CEP chama a BrasilAPI para resolver as coordenadas. O resultado é salvo no Supabase (`cep_cache`) — requisições subsequentes ao mesmo CEP são servidas do cache sem nenhuma chamada externa.
+
+---
+
+## Rate limiting
+
+```mermaid
+graph LR
+    REQ["Requisição"] --> CHECK{"Upstash Redis<br/>INCR rl:ip:janela"}
+    CHECK -->|"≤ 15"| OK["✅ Responde normalmente<br/>X-RateLimit-Remaining: N"]
+    CHECK -->|"> 15"| BLOCK["🚫 429 Too Many Requests<br/>X-RateLimit-Remaining: 0"]
+    CHECK -->|"Redis indisponível"| PASSTHROUGH["✅ Fail-open<br/>(não bloqueia)"]
 ```
 
-**3. Fallback por cidade quando não há coordenadas:**
-```bash
-curl "https://SEU-DOMINIO.vercel.app/v1/hospitais/proximos?cidade=Campinas&uf=SP"
+- Janela deslizante de **60 segundos** por IP
+- **15 requisições por minuto** — suficiente para uso humano, impede varreduras automatizadas
+- Headers de controle em toda resposta:
+  - `X-RateLimit-Limit: 15`
+  - `X-RateLimit-Remaining: N`
+  - `X-RateLimit-Reset: <epoch>`
+
+Se você é um desenvolvedor construindo uma aplicação que precisará de mais volume, considere manter um cache local dos dados ou [abrir uma issue](../../issues) para conversarmos sobre seu caso de uso.
+
+---
+
+## Estrutura do projeto
+
 ```
+hospitais-referencia-api/
+│
+├── api/
+│   └── index.js              # Serverless handler Vercel (todos os endpoints)
+│                             # Rate limit, normalização, proxy para Supabase
+│
+├── scripts/
+│   ├── sync.py               # Scraper gov.br + upsert Supabase + detecção de mudança
+│   ├── parser.py             # Extração de PDF (pdfplumber, word-level coordinates)
+│   ├── geocode.py            # Nominatim + BrasilAPI, cache em cep_cache
+│   └── local_jwt.py          # Gera tokens JWT para dev local
+│
+├── sql/
+│   ├── 001_schema.sql        # Tabelas, índices, RLS, seed dos 27 estados
+│   └── 002_geocoding.sql     # Extensões earthdistance, lat/lng, RPC hospitais_proximos
+│
+├── web/                      # Frontend Next.js 16 + Tailwind
+│   ├── app/
+│   │   ├── page.tsx          # Busca pública (animal, CEP, cidade) + mapa
+│   │   ├── profissionais/    # Visão técnica: CNES, grade de soros
+│   │   └── docs/             # Documentação interativa da API
+│   ├── components/
+│   │   ├── HospitalCard.tsx  # Card com badges de atendimento
+│   │   ├── HospitalMap.tsx   # Mapa Leaflet com marcadores
+│   │   └── Navbar.tsx        # Navegação + badge SAMU 192
+│   └── lib/
+│       └── api.ts            # Cliente tipado para a API
+│
+├── tests/
+│   ├── test_parser.py        # Smoke test do parser contra PDF real
+│   ├── test_atendimentos.py  # Casos unitários de normalize_atendimentos
+│   └── test_geocode.py       # Limpeza de endereço, cache, CEP inválido
+│
+├── .github/workflows/
+│   └── sync.yml              # Cron 03:00 UTC: job sync → job geocode (condicional)
+│
+├── docker-compose.yml        # Stack local: Postgres + PostgREST + API Node
+├── vercel.json               # Roteamento: /v1/* → api/index.js
+├── requirements.txt          # Dependências Python
+└── .env.example              # Variáveis necessárias para produção
+```
+
+---
 
 ## Setup
 
-### Rodando 100% localmente (sem Supabase / sem Vercel)
+### Rodando localmente com Docker
 
-Para desenvolvimento ou uso offline, o projeto inclui um `docker-compose.yml`
-que sobe a stack inteira em containers:
-
-- **Postgres 16** com extensões `cube`/`earthdistance` habilitadas
-- **PostgREST** — mesma engine REST que o Supabase usa por baixo
-- **API Node** — o mesmo `api/index.js` que roda na Vercel
+A stack inteira — banco, REST e API — sobe em containers. Sem conta em nenhum serviço externo.
 
 ```bash
+# Sobe Postgres 16 + PostgREST + API Node
 docker compose up -d
 
-# verifica:
-curl http://localhost:3000/v1/estados       # API Node (handler Vercel)
-curl http://localhost:3001/estados          # PostgREST cru (admin/debug)
+# Testa
+curl http://localhost:3000/v1/estados       # via API Node
+curl http://localhost:3001/estados          # PostgREST direto (debug)
 ```
 
-Para popular o banco local rodando os scripts Python:
+Para popular o banco:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -163,130 +450,127 @@ cp .env.local.example .env.local
 export $(cat .env.local | xargs)
 
 python -m scripts.sync SP            # sync de um estado
-python -m scripts.sync geocode SP    # geocoding
+python -m scripts.sync geocode SP    # geocoding desse estado
 ```
 
-Detalhes:
-- O `docker-compose.yml` aplica as 3 migrations (`001_schema.sql`,
-  `002_geocoding.sql`, `local_999_roles.sql`) automaticamente na primeira
-  inicialização via `/docker-entrypoint-initdb.d`.
-- `local_999_roles.sql` cria as roles `anon`, `authenticated`,
-  `service_role` e `authenticator` que no Supabase gerenciado já existem
-  nativamente.
-- Os tokens JWT do `.env.local.example` são pré-assinados com o segredo
-  de dev. Para gerar outros (por exemplo se mudar `PGRST_JWT_SECRET`),
-  use `python scripts/local_jwt.py <role>`.
-- Para começar do zero: `docker compose down -v` apaga o volume Postgres.
-
 ### Deploy em produção (Supabase + Vercel)
+
+```mermaid
+graph LR
+    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001_schema.sql<br/>002_geocoding.sql"]
+    B --> C["3️⃣ Copiar credenciais<br/>SUPABASE_URL<br/>SUPABASE_ANON_KEY<br/>SUPABASE_SERVICE_KEY"]
+    C --> D["4️⃣ Sync inicial<br/>python -m scripts.sync"]
+    D --> E["5️⃣ Geocoding<br/>python -m scripts.sync geocode"]
+    E --> F["6️⃣ Deploy Vercel<br/>vercel --prod"]
+    F --> G["7️⃣ Secrets GitHub<br/>SUPABASE_URL<br/>SUPABASE_SERVICE_KEY"]
+    G --> H["✅ Cron automático<br/>ativo"]
+```
 
 #### 1. Supabase
 
 1. Crie um projeto em <https://supabase.com> (plano Free).
-2. No SQL Editor, execute os dois scripts em ordem:
-   - `sql/001_schema.sql` — tabelas, seed dos 27 estados, RLS
-   - `sql/002_geocoding.sql` — extensões `earthdistance`, coordenadas, RPC de proximidade
-3. Em *Project Settings → API*, copie:
-   - `Project URL` → `SUPABASE_URL`
-   - `anon` public key → `SUPABASE_ANON_KEY`
-   - `service_role` secret key → `SUPABASE_SERVICE_KEY`
+2. No SQL Editor, execute em ordem:
+   - `sql/001_schema.sql`
+   - `sql/002_geocoding.sql`
+3. Em *Project Settings → API*, copie as três chaves.
 
-### 2. Primeira sincronização (local)
+#### 2. Primeira sincronização
 
 ```bash
-git clone SEU_REPO hospitais-referencia-api
-cd hospitais-referencia-api
-
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
 cp .env.example .env
-# preencha SUPABASE_URL e SUPABASE_SERVICE_KEY
+# Preencha SUPABASE_URL e SUPABASE_SERVICE_KEY
 
 export $(cat .env | xargs)
 
-# 1) sincroniza os PDFs para o banco (rápido: ~5 min)
-python -m scripts.sync SP            # testa com um estado primeiro
-python -m scripts.sync               # todos os estados
-
-# 2) geocodifica hospitais pendentes (lento: ~1s por hospital)
-python -m scripts.sync geocode SP
-python -m scripts.sync geocode       # todos
+python -m scripts.sync SP        # teste com um estado
+python -m scripts.sync           # todos os 27 estados (~5 min)
+python -m scripts.sync geocode   # geocodifica hospitais (~1s/hospital)
 ```
 
-### 3. Deploy da API na Vercel
+#### 3. Deploy da API
 
 ```bash
 npm i -g vercel
-vercel                          # faz login e linka o projeto
 vercel env add SUPABASE_URL production
 vercel env add SUPABASE_ANON_KEY production
-vercel --prod                   # publica
+vercel env add SUPABASE_SERVICE_KEY production
+vercel env add UPSTASH_REDIS_REST_URL production
+vercel env add UPSTASH_REDIS_REST_TOKEN production
+vercel --prod
 ```
 
-### 4. Cron automático (GitHub Actions)
+#### 4. Cron automático (GitHub Actions)
 
-No seu repositório, vá em *Settings → Secrets and variables → Actions*
-e adicione:
+Em *Settings → Secrets and variables → Actions*, adicione:
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY`
+| Secret | Descrição |
+|---|---|
+| `SUPABASE_URL` | URL do projeto Supabase |
+| `SUPABASE_SERVICE_KEY` | service_role key (escreve no banco) |
 
-O workflow em `.github/workflows/sync.yml` roda diariamente às 06:00 UTC.
-Você também pode disparar manualmente em *Actions → sync-hospitais → Run workflow*.
+O workflow `.github/workflows/sync.yml` roda às **03:00 UTC** (~00:00 horário de Brasília).  
+Você também pode disparar manualmente em *Actions → sync-hospitais → Run workflow* com opções:
+- `uf`: processar apenas um estado
+- `force`: ignorar verificação de mudança e reprocessar mesmo assim
+- `skip_geocode`: pular etapa de geocoding
+
+---
+
+## Variações de formato entre estados
+
+O sync lida automaticamente com inconsistências nas publicações do Ministério da Saúde:
+
+| Variação | Como é tratada |
+|---|---|
+| URL do PDF como `.pdf` direto | Detectado pelo scraper (padrão) |
+| URL no formato Plone `/@@download/file` (ex: MG) | Detectado pelo scraper |
+| **Pernambuco publica XLSX** em vez de PDF | `status='nao_suportado'` — segue sem erro |
+| `"Botrópico-Crotálico"` composto (ex: MG) | Expandido para ambos individualmente |
+| Número de colunas diferente entre estados | Parser usa linhas verticais do PDF, não posições fixas |
+
+---
 
 ## Custos e limites do free tier
 
-| Serviço | Limite | Uso estimado |
+| Serviço | Limite gratuito | Uso estimado |
 |---|---|---|
-| Supabase (Postgres) | 500 MB DB, 5 GB egress/mês | ~3 MB DB, minúsculo egress |
-| Vercel (Hobby) | 100 GB bandwidth/mês, 100k invocations/dia | conforme tráfego |
-| GitHub Actions | 2.000 min/mês (repo público: ilimitado) | ~5 min/dia |
+| **Supabase** | 500 MB banco, 5 GB egress/mês | ~3 MB banco |
+| **Vercel Hobby** | 100 GB bandwidth/mês, 100k invocações/dia | Conforme tráfego |
+| **GitHub Actions** | Ilimitado em repos públicos | ~5 min/dia |
+| **Upstash Redis** | 10.000 req/dia no Free | ~req de rate limit |
 
-Tudo cabe com folga. O único gotcha do Supabase Free: projetos pausam
-após 1 semana inativos — como rodamos sync diário, nunca pausa.
+Custo total: **R$ 0/mês**. O único risco no Supabase Free é pausar após 7 dias sem atividade — o sync diário garante que isso nunca aconteça.
 
-## Estrutura do projeto
+---
 
+## Fonte dos dados e disclaimer legal
+
+Os dados pertencem ao **Ministério da Saúde do Brasil** e são publicados em:  
+<https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia>
+
+Este projeto apenas redistribui em formato estruturado e de fácil acesso. Nenhum dado é inventado ou modificado — apenas normalizado (maiúsculas, acentos, tipagem de array).
+
+**⚠️ Esta API é uma ferramenta de referência. Em caso de acidente com animal peçonhento, ligue para o SAMU (192) imediatamente e procure o hospital mais próximo. As informações aqui podem estar desatualizadas.**
+
+---
+
+## Contribuindo
+
+Contribuições são bem-vindas! Veja como:
+
+1. **Issues**: abra uma issue descrevendo o bug ou sugestão
+2. **Pull Requests**: todos os PRs precisam de aprovação antes do merge
+3. **Dados incorretos**: se encontrar um hospital com dados errados, abra uma issue — pode ser um problema no PDF original do Ministério da Saúde
+
+### Rodando os testes
+
+```bash
+pip install -r requirements.txt
+pytest tests/ -v
 ```
-hospitais-referencia-api/
-├── api/
-│   └── index.js              # API Vercel (Node) — todos os endpoints
-├── scripts/
-│   ├── __init__.py
-│   ├── parser.py             # extração de PDF (pdfplumber + word coords)
-│   ├── geocode.py            # Nominatim + BrasilAPI com rate limit + cache
-│   └── sync.py               # scraper gov.br + upsert Supabase + geocoding
-├── sql/
-│   ├── 001_schema.sql        # tabelas, RLS, seed dos 27 estados
-│   └── 002_geocoding.sql     # earthdistance, lat/lng, RPC hospitais_proximos
-├── tests/
-│   ├── test_parser.py        # smoke test do parser contra PDF real
-│   ├── test_atendimentos.py  # casos unitários de normalize_atendimentos
-│   └── test_geocode.py       # limpeza de endereço, cache, CEP inválido
-├── .github/workflows/
-│   └── sync.yml              # cron diário com 2 jobs: sync + geocode
-├── package.json
-├── requirements.txt
-├── vercel.json
-├── .env.example
-└── README.md
-```
+
+---
 
 ## Sobre integração com BrasilAPI
 
-Este projeto foi desenhado para ser **compatível em filosofia** com a
-BrasilAPI (<https://brasilapi.com.br>) — agrega e normaliza dados
-públicos governamentais brasileiros. Depois de rodar por alguns meses e
-comprovar estabilidade, faz sentido propor a inclusão como um endpoint
-oficial da BrasilAPI via PR em <https://github.com/BrasilAPI/BrasilAPI>.
-
-## Licença e disclaimer
-
-Os dados pertencem ao Ministério da Saúde do Brasil. Este projeto apenas
-redistribui em formato estruturado.
-
-**Esta API é uma ferramenta de referência. Em caso de acidente com
-animal peçonhento, ligue para o SAMU (192) e procure o hospital mais
-próximo — as informações aqui podem estar desatualizadas em relação à
-realidade no momento do atendimento.**
+Este projeto foi desenhado para ser **compatível em filosofia** com a [BrasilAPI](https://brasilapi.com.br) — agrega e normaliza dados públicos governamentais brasileiros. Depois de alguns meses de estabilidade, faz sentido propor a inclusão como endpoint oficial via PR em [BrasilAPI/BrasilAPI](https://github.com/BrasilAPI/BrasilAPI).

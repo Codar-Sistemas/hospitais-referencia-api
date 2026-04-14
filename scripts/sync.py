@@ -333,7 +333,10 @@ def geocode_pendentes(sb: Supabase, uf: Optional[str] = None, limit: int = 1000)
         return {"geocoded": 0, "falhou": 0}
 
     print(f"Geocodificando {len(pendentes)} hospitais ...", flush=True)
-    geocoder = Geocoder()
+    geocoder = Geocoder(
+        supabase_url=sb.url,
+        supabase_key=os.environ.get("SUPABASE_SERVICE_KEY"),
+    )
     ok = falhou = 0
     for i, h in enumerate(pendentes, 1):
         res = geocoder.geocode_endereco(

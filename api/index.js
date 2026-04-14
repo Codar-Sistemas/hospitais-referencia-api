@@ -200,14 +200,15 @@ async function consultarCep(cepRaw) {
   }
 }
 
-function json(res, status, body, { cacheSeconds = 600 } = {}) {
+function json(res, status, body, { cacheSeconds = 60 } = {}) {
   res.status(status);
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  // private: browser pode cachear mas o CDN do Vercel não — necessário para rate limiting funcionar
   res.setHeader(
     'Cache-Control',
-    status === 200 ? `public, s-maxage=${cacheSeconds}, stale-while-revalidate=60` : 'no-store'
+    status === 200 ? `private, max-age=${cacheSeconds}` : 'no-store'
   );
   res.end(JSON.stringify(body));
 }

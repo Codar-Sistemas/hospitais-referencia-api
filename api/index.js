@@ -29,6 +29,40 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const RATE_LIMIT = 15;       // requisições por janela
+const RATE_WINDOW = 60;      // janela em segundos
+
+// Retorna { allowed: bool, count: number, remaining: number }
+async function checkRateLimit(ip) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return { allowed: true, count: 0, remaining: RATE_LIMIT };
+
+  const window = Math.floor(Date.now() / (RATE_WINDOW * 1000));
+  const key = `rl:${ip}:${window}`;
+
+  try {
+    // Pipeline: INCR + EXPIRE em uma única chamada HTTP
+    const r = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([
+        ['INCR', key],
+        ['EXPIRE', key, RATE_WINDOW],
+      ]),
+    });
+    const [incrResult] = await r.json();
+    const count = incrResult.result;
+    return { allowed: count <= RATE_LIMIT, count, remaining: Math.max(0, RATE_LIMIT - count) };
+  } catch {
+    // Se o Upstash estiver fora, deixa passar (fail open)
+    return { allowed: true, count: 0, remaining: RATE_LIMIT };
+  }
+}
+
 const TIPOS_CANONICOS = {
   // Termos técnicos (sem acento)
   'botropico':    'Botrópico',
@@ -382,6 +416,25 @@ module.exports = async (req, res) => {
   }
 
   if (req.method !== 'GET') return error(res, 405, 'Método não permitido');
+
+  // Rate limiting
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || req.headers['x-real-ip']
+    || req.socket?.remoteAddress
+    || 'unknown';
+
+  const rl = await checkRateLimit(ip);
+  res.setHeader('X-RateLimit-Limit', RATE_LIMIT);
+  res.setHeader('X-RateLimit-Remaining', rl.remaining);
+  res.setHeader('X-RateLimit-Window', `${RATE_WINDOW}s`);
+
+  if (!rl.allowed) {
+    res.setHeader('Retry-After', RATE_WINDOW);
+    return error(res, 429,
+      `Limite de ${RATE_LIMIT} requisições por ${RATE_WINDOW}s excedido. ` +
+      `Aguarde e tente novamente. Dica: cache as respostas na sua aplicação.`
+    );
+  }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
   const path = url.pathname.replace(/\/+$/, '');

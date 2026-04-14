@@ -90,8 +90,16 @@ export default function Profissionais() {
               placeholder="00000-000" maxLength={9} className={inputClass} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Raio</label>
-            <select value={raio} onChange={(e) => setRaio(e.target.value)} className={inputClass}>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              Raio{' '}
+              <span className="text-slate-400 normal-case font-normal">(só com CEP)</span>
+            </label>
+            <select
+              value={raio}
+              onChange={(e) => setRaio(e.target.value)}
+              disabled={cep.replace(/\D/g, '').length !== 8}
+              className={`${inputClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
               <option value="20000">20 km</option>
               <option value="50000">50 km</option>
               <option value="100000">100 km</option>

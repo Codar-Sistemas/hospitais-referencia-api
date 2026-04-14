@@ -222,7 +222,7 @@ async function listHospitais(req, res, url) {
   };
 
   if (uf)        params.uf = `eq.${uf}`;
-  if (municipio) params.municipio = `ilike.*${municipio}*`;
+  if (municipio) params.municipio_norm = `ilike.*${stripAccents(municipio).toLowerCase()}*`;
 
   if (atendimentoRaw) {
     const canonical = normalizeTipo(atendimentoRaw);

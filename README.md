@@ -129,57 +129,6 @@ sequenceDiagram
 
 ---
 
-## Modelo de dados
-
-```mermaid
-erDiagram
-    ESTADOS {
-        char(2)     uf PK
-        text        nome
-        text        pagina_url
-        text        pdf_url
-        text        formato
-        timestamptz atualizado_em
-        timestamptz sincronizado_em
-        text        pdf_hash
-        int         total_hospitais
-        text        status
-        text        ultimo_erro
-    }
-
-    HOSPITAIS {
-        serial      id PK
-        char(2)     uf FK
-        text        municipio
-        text        municipio_norm
-        text        unidade
-        text        endereco
-        text        telefones
-        text        cnes
-        text[]      atendimentos
-        text        atendimentos_raw
-        float8      lat
-        float8      lng
-        text        geocode_status
-        timestamptz criado_em
-        timestamptz atualizado_em
-    }
-
-    CEP_CACHE {
-        text        cep PK
-        float8      lat
-        float8      lng
-        jsonb       dados
-        timestamptz criado_em
-    }
-
-    ESTADOS ||--o{ HOSPITAIS : "tem"
-```
-
-> **Nota sobre `municipio_norm`**: campo derivado com remoção de acentos e minúsculas, usado para busca accent-insensitive (ex.: `"jundiai"` encontra `"Jundiaí"`).
-
----
-
 ## Endpoints
 
 **Base URL:** `https://hospitais-referencia-web.vercel.app`
@@ -569,8 +518,3 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
----
-
-## Sobre integração com BrasilAPI
-
-Este projeto foi desenhado para ser **compatível em filosofia** com a [BrasilAPI](https://brasilapi.com.br) — agrega e normaliza dados públicos governamentais brasileiros. Depois de alguns meses de estabilidade, faz sentido propor a inclusão como endpoint oficial via PR em [BrasilAPI/BrasilAPI](https://github.com/BrasilAPI/BrasilAPI).

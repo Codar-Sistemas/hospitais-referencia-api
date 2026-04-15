@@ -156,6 +156,26 @@ def fetch_page_metadata(pagina_url: str) -> tuple[datetime | None, str | None]:
     return data, pdf_url
 
 
+def _is_image_based_pdf(path: str) -> bool:
+    """
+    Detecta PDFs "escaneados": páginas sem texto extraível, só imagens.
+    Quando isso acontece, pdfplumber retorna 0 palavras — só OCR resolveria.
+
+    Retorna True se TODAS as páginas têm 0 palavras e ao menos 1 imagem.
+    """
+    try:
+        import pdfplumber  # import local para não poluir o import global
+        with pdfplumber.open(path) as pdf:
+            for page in pdf.pages:
+                if page.extract_words():
+                    return False
+                if not page.images:
+                    return False
+        return True
+    except Exception:
+        return False
+
+
 def download_pdf(url: str) -> tuple[bytes, str]:
     r = requests.get(url, headers={"User-Agent": USER_AGENT},
                      timeout=REQUEST_TIMEOUT)
@@ -205,6 +225,14 @@ def sync_uf(sb: Supabase, uf: str, force: bool = False) -> dict:
 
     try:
         registros = parse_pdf(tmp_path, uf)
+        # Se não extraiu nada, verifica se o PDF é baseado em imagem
+        # (escaneado) — caso em que não conseguimos parsear sem OCR.
+        if not registros and _is_image_based_pdf(tmp_path):
+            return {
+                "uf": uf,
+                "status": "nao_suportado",
+                "reason": "PDF baseado em imagem (escaneado) — requer OCR",
+            }
     finally:
         os.unlink(tmp_path)
 
@@ -417,9 +445,36 @@ def main():
         resultados.append(res)
 
     atualizados = sum(1 for r in resultados if r["status"] == "updated")
+    inalterados = sum(1 for r in resultados if r["status"] == "unchanged")
+    nao_suportados = sum(1 for r in resultados if r["status"] == "nao_suportado")
     erros = sum(1 for r in resultados if r["status"] == "error")
-    print(f"\nResumo: {atualizados} atualizados, {erros} erros, {len(resultados)} total")
-    sys.exit(1 if erros else 0)
+
+    print(
+        f"\nResumo: {atualizados} atualizados, {inalterados} inalterados, "
+        f"{nao_suportados} não suportados, {erros} erros, {len(resultados)} total"
+    )
+
+    ufs_nao_suportados = [r for r in resultados if r["status"] == "nao_suportado"]
+    if ufs_nao_suportados:
+        print("UFs não suportadas (requerem intervenção manual):")
+        for r in ufs_nao_suportados:
+            print(f"  - [{r['uf']}] {r.get('reason', 'motivo desconhecido')}")
+
+    ufs_com_erro = [r for r in resultados if r["status"] == "error"]
+    if ufs_com_erro:
+        print("UFs com erro:")
+        for r in ufs_com_erro:
+            print(f"  - [{r['uf']}] {r.get('reason', 'erro desconhecido')}")
+
+    # Fail apenas se NENHUMA UF foi processada com sucesso.
+    # Falhas parciais (erros ou não-suportados em algumas UFs) não quebram
+    # o workflow — elas ficam registradas em estados.status / ultimo_erro
+    # e visíveis no log acima.
+    sucessos = atualizados + inalterados
+    if sucessos == 0 and (erros > 0 or nao_suportados > 0):
+        print("\nNenhuma UF processada com sucesso — falhando o job.")
+        sys.exit(1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

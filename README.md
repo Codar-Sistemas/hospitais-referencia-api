@@ -12,7 +12,7 @@
 ### 🔗 Acesso rápido
 
 - **🌐 Site:** https://hospitais-referencia-web.vercel.app
-- **📡 API:** https://hospitais-referencia-api.vercel.app/v1/estados
+- **📡 API:** https://hospitais-referencia-api.vercel.app
 - **💻 Código:** https://github.com/Codar-Sistemas/hospitais-referencia-api
 
 ---

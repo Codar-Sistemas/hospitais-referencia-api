@@ -3,6 +3,7 @@
 > API pública e gratuita com os **hospitais de referência para acidentes por animais peçonhentos no Brasil**, extraídos dos PDFs oficiais do Ministério da Saúde e servidos em JSON estruturado.
 
 [![Sync diário](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml)
+[![Tests](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/tests.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/tests.yml)
 ![Custo](https://img.shields.io/badge/custo-R%240%2Fmês-brightgreen)
 ![Licença dados](https://img.shields.io/badge/dados-Ministério%20da%20Saúde-blue)
 ![Rate limit](https://img.shields.io/badge/rate%20limit-15%20req%2Fmin-orange)

@@ -214,10 +214,15 @@ function error(res, status, message) {
 
 async function listEstados(req, res) {
   const rows = await sb('estados', {
-    select: 'uf,nome,atualizado_em,sincronizado_em,total_hospitais',
+    select: 'uf,nome,atualizado_em,sincronizado_em,total_hospitais,status',
     order: 'uf.asc',
   });
-  json(res, 200, { estados: rows });
+  // Adiciona flag computada p/ frontend: extraído via OCR?
+  const estados = rows.map((r) => ({
+    ...r,
+    requer_verificacao: r.status === 'ok_ocr',
+  }));
+  json(res, 200, { estados });
 }
 
 async function getEstado(req, res, uf) {
@@ -243,7 +248,7 @@ async function listHospitais(req, res, url) {
   }
 
   const params = {
-    select: 'id,uf,municipio,unidade,endereco,telefones,cnes,atendimentos,lat,lng',
+    select: 'id,uf,municipio,unidade,endereco,telefones,cnes,atendimentos,lat,lng,fonte_extracao,confianca_ocr,requer_verificacao',
     order: 'municipio.asc,unidade.asc',
     limit: String(limit),
     offset: String(offset),
@@ -381,7 +386,7 @@ async function listHospitaisProximos(req, res, url) {
 
   const cidadeNorm = stripAccents(cidadeBusca).toLowerCase();
   const params = {
-    select: 'id,uf,municipio,unidade,endereco,telefones,cnes,atendimentos,lat,lng',
+    select: 'id,uf,municipio,unidade,endereco,telefones,cnes,atendimentos,lat,lng,fonte_extracao,confianca_ocr,requer_verificacao',
     municipio_norm: `ilike.*${cidadeNorm}*`,
     order: 'municipio.asc,unidade.asc',
     limit: String(limit),

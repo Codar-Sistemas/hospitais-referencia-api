@@ -25,6 +25,8 @@
  * Respostas: JSON, CORS liberado (*), cache 10 min no edge.
  */
 
+const { track, normalizeRoute } = require('./metrics');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -408,6 +410,8 @@ async function listHospitaisProximos(req, res, url) {
 // Handler Vercel ---------------------------------------------------------
 
 module.exports = async (req, res) => {
+  const inicio = Date.now();
+
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -416,13 +420,31 @@ module.exports = async (req, res) => {
     return res.end();
   }
 
-  if (req.method !== 'GET') return error(res, 405, 'Método não permitido');
-
   // Rate limiting
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
     || req.headers['x-real-ip']
     || req.socket?.remoteAddress
     || 'unknown';
+  const userAgent = req.headers['user-agent'] || null;
+
+  // Helper para gravar métrica ao final de cada resposta (fire-and-forget)
+  const trackReq = (rota, extras = {}) => {
+    track({
+      rota: normalizeRoute(rota),
+      metodo: req.method,
+      status: res.statusCode,
+      duracao_ms: Date.now() - inicio,
+      ip,
+      user_agent: userAgent,
+      ...extras,
+    });
+  };
+
+  if (req.method !== 'GET') {
+    error(res, 405, 'Método não permitido');
+    trackReq(req.url || '/', { erro_tipo: 'method_not_allowed' });
+    return;
+  }
 
   const rl = await checkRateLimit(ip);
   res.setHeader('X-RateLimit-Limit', RATE_LIMIT);
@@ -431,19 +453,24 @@ module.exports = async (req, res) => {
 
   if (!rl.allowed) {
     res.setHeader('Retry-After', RATE_WINDOW);
-    return error(res, 429,
+    error(res, 429,
       `Limite de ${RATE_LIMIT} requisições por ${RATE_WINDOW}s excedido. ` +
       `Aguarde e tente novamente. Dica: cache as respostas na sua aplicação.`
     );
+    trackReq(req.url || '/', { rate_limited: true, erro_tipo: 'rate_limit' });
+    return;
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
   const path = url.pathname.replace(/\/+$/, '');
+  const ufParam = url.searchParams.get('uf');
+
+  let ufCapturada = ufParam;
 
   try {
     // Roteamento simples
     if (path === '' || path === '/' || path === '/v1') {
-      return json(res, 200, {
+      json(res, 200, {
         nome: 'hospitais-referencia-api',
         versao: '1.1',
         fonte: 'Ministério da Saúde - gov.br/saude',
@@ -466,26 +493,36 @@ module.exports = async (req, res) => {
           'GET /v1/hospitais/proximos?cidade=Campinas&uf=SP',
         ],
       });
+    } else if (path === '/v1/estados') {
+      await listEstados(req, res);
+    } else if (/^\/v1\/estados\/([A-Za-z]{2})$/.test(path)) {
+      const uf = path.match(/^\/v1\/estados\/([A-Za-z]{2})$/)[1];
+      ufCapturada = uf.toUpperCase();
+      await getEstado(req, res, uf);
+    } else if (path === '/v1/hospitais') {
+      await listHospitais(req, res, url);
+    } else if (path === '/v1/hospitais/proximos') {
+      await listHospitaisProximos(req, res, url);
+    } else if (/^\/v1\/hospitais\/(\d+)$/.test(path)) {
+      const id = path.match(/^\/v1\/hospitais\/(\d+)$/)[1];
+      await getHospital(req, res, id);
+    } else {
+      error(res, 404, `Rota não encontrada: ${path}`);
     }
 
-    if (path === '/v1/estados') return listEstados(req, res);
-
-    let m;
-    if ((m = path.match(/^\/v1\/estados\/([A-Za-z]{2})$/))) {
-      return getEstado(req, res, m[1]);
-    }
-
-    if (path === '/v1/hospitais') return listHospitais(req, res, url);
-
-    if (path === '/v1/hospitais/proximos') return listHospitaisProximos(req, res, url);
-
-    if ((m = path.match(/^\/v1\/hospitais\/(\d+)$/))) {
-      return getHospital(req, res, m[1]);
-    }
-
-    return error(res, 404, `Rota não encontrada: ${path}`);
+    trackReq(path || '/', {
+      uf: ufCapturada,
+      erro_tipo: res.statusCode >= 400 ? `http_${res.statusCode}` : null,
+    });
   } catch (e) {
     console.error(e);
-    return error(res, 500, e.message || 'Erro interno');
+    if (!res.writableEnded) {
+      error(res, 500, e.message || 'Erro interno');
+    }
+    trackReq(path || '/', {
+      uf: ufCapturada,
+      erro_tipo: 'exception',
+      erro_msg: e.message,
+    });
   }
 };

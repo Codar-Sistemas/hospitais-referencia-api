@@ -11,3 +11,7 @@ venv/
 !package.json
 !vercel.json
 .DS_Store
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/

@@ -41,6 +41,17 @@ export interface Hospital {
   lng?: number | null;
   distancia_m?: number;
   distancia_km?: number;
+  /**
+   * Origem dos dados:
+   * - 'pdf_texto' (default): extraído de PDF com camada de texto, confiável.
+   * - 'pdf_ocr': extraído de PDF escaneado via Tesseract OCR — pode conter
+   *   erros de reconhecimento, deve ser exibido com aviso de verificação.
+   */
+  fonte_extracao?: 'pdf_texto' | 'pdf_ocr';
+  /** Score médio de confidence do OCR (0-100). Null quando fonte_extracao = pdf_texto. */
+  confianca_ocr?: number | null;
+  /** Flag computada no banco — true quando fonte_extracao = 'pdf_ocr'. */
+  requer_verificacao?: boolean;
 }
 
 export async function buscarHospitais(params: {

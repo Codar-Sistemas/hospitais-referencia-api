@@ -18,8 +18,27 @@ export default function HospitalCard({ hospital }: { hospital: Hospital }) {
       )}`
     : null;
 
+  const requerVerificacao = hospital.requer_verificacao === true;
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group">
+    <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all group ${
+      requerVerificacao
+        ? 'border-amber-300 hover:border-amber-400'
+        : 'border-slate-200 hover:border-slate-300'
+    }`}>
+      {requerVerificacao && (
+        <div className="mb-3 flex items-start gap-2 text-xs bg-amber-50 text-amber-800 ring-1 ring-amber-200 rounded-lg px-3 py-2">
+          <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>
+            <strong>Dados extraídos por OCR.</strong> Este estado publica o PDF como imagem escaneada,
+            e os campos de texto livre (nome, endereço, telefone) podem conter erros.{' '}
+            <strong>Confirme antes de usar em emergência.</strong>
+          </span>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
           <h3 className="font-semibold text-slate-900 leading-snug text-sm group-hover:text-emerald-700 transition-colors">

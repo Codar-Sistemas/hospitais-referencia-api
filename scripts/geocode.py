@@ -1,71 +1,75 @@
 """
-Geocoding de endereços de hospitais e consulta de CEPs.
+Orquestração de geocoding e consulta de CEP.
 
-Provedores:
-  * Nominatim (OpenStreetMap) — endereços → lat/lng. Grátis, 1 req/s.
-  * BrasilAPI /cep/v2       — CEP → cidade + (às vezes) lat/lng. Grátis.
+Este módulo NÃO implementa chamadas HTTP diretamente — delega para
+providers plugáveis definidos em `scripts/providers/`. Ver base.py
+para as interfaces abstratas.
 
-Política de rate limit:
-  * Respeitamos o rate limit do Nominatim (1 req/s). Um sync inicial de
-    ~5k hospitais leva ~1h20min; roda em GitHub Actions sem problema.
-  * User-Agent identificado, conforme exigido pelos termos do Nominatim.
+Responsabilidades do Geocoder:
+  1. Rate limit global (delegado ao NominatimProvider)
+  2. Cache em memória (dict por processo)
+  3. Cache persistente no Supabase (tabela geocode_cache)
+  4. Estratégia progressiva de fallback (endereço → logradouro → município)
 
-Cache em dois níveis:
-  1. Em memória (por processo): dict {cache_key → GeocodeResult|None}.
-     Evita repetição dentro do mesmo run para hospitais no mesmo município.
-  2. Persistente no Supabase (tabela geocode_cache): armazena cada query
-     enviada ao Nominatim com seu resultado. Runs futuros consultam o banco
-     antes de chamar o Nominatim — essencial para syncs de 500+ hospitais.
-     Misses (Nominatim não encontrou) também são cacheados para não repetir
-     chamadas inúteis. Para forçar retry de misses:
-       DELETE FROM geocode_cache WHERE lat IS NULL;
+Provedores default:
+  * NominatimProvider (OpenStreetMap) — endereços → lat/lng
+  * BrasilApiCepProvider — CEP → cidade + coordenadas
+
+Para trocar de provider, passe instâncias customizadas no construtor:
+
+    geo = Geocoder(
+        geocoding_provider=MyGoogleMapsProvider(api_key="..."),
+        cep_provider=ViaCepProvider(),
+    )
+
+Cache em dois níveis (mantido como antes):
+  1. Memória (por processo): dict {cache_key → GeocodingResult|None}.
+  2. Supabase (tabela geocode_cache): persistente entre runs. Misses
+     também são cacheados para evitar chamadas repetidas ao Nominatim.
+     Para forçar retry de misses: DELETE FROM geocode_cache WHERE lat IS NULL;
 """
 from __future__ import annotations
 
 import re
-import time
 from dataclasses import dataclass
 from typing import Optional
 
 import requests
 
+from scripts.providers import (
+    BrasilApiCepProvider,
+    CepLookupResult,
+    CepProvider,
+    GeocodingProvider,
+    GeocodingResult,
+    NominatimProvider,
+)
+
 USER_AGENT = "hospitais-referencia-api/1.0 (+https://github.com/Codar-Sistemas/hospitais-referencia-api)"
-
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-BRASILAPI_CEP_URL = "https://brasilapi.com.br/api/cep/v2/{cep}"
-
-RATE_LIMIT_NOMINATIM_S = 1.1  # um pouco acima de 1s pra margem
-REQUEST_TIMEOUT = 15
 
 # Sentinela: distingue "não está no cache" de "está no cache como miss (None)"
 _NOT_IN_CACHE = object()
 
 
-@dataclass
-class GeocodeResult:
-    lat: float
-    lng: float
-    fonte: str  # 'nominatim' | 'cache' | 'brasilapi'
-
-
-@dataclass
-class CepResult:
-    cep: str
-    logradouro: Optional[str]
-    bairro: Optional[str]
-    cidade: Optional[str]
-    uf: Optional[str]
-    lat: Optional[float]
-    lng: Optional[float]
+# Aliases para manter compatibilidade com código legado que importa estes nomes.
+# Os tipos concretos vivem agora em scripts/providers/base.py.
+GeocodeResult = GeocodingResult
+CepResult = CepLookupResult
 
 
 class Geocoder:
     """
-    Geocoder com rate limit global, cache em memória e cache persistente
-    no Supabase.
+    Orquestrador de geocoding com rate limit, cache em memória e cache persistente.
 
-    Parâmetros opcionais supabase_url / supabase_key habilitam o cache
-    persistente. Sem eles, o comportamento é idêntico ao anterior (só memória).
+    Aceita providers plugáveis via injeção de dependência:
+      * geocoding_provider → resolve endereço em coordenadas
+      * cep_provider       → resolve CEP em dados de endereço
+
+    Se não forem passados, usa NominatimProvider e BrasilApiCepProvider
+    como defaults (comportamento idêntico ao legado).
+
+    Parâmetros supabase_url / supabase_key habilitam o cache persistente.
+    Sem eles, só o cache em memória é usado.
     """
 
     def __init__(
@@ -73,11 +77,21 @@ class Geocoder:
         user_agent: str = USER_AGENT,
         supabase_url: Optional[str] = None,
         supabase_key: Optional[str] = None,
+        geocoding_provider: Optional[GeocodingProvider] = None,
+        cep_provider: Optional[CepProvider] = None,
     ):
-        self._last_nominatim_req = 0.0
-        self._mem_cache: dict[str, Optional[GeocodeResult]] = {}
+        self._mem_cache: dict[str, Optional[GeocodingResult]] = {}
         self._session = requests.Session()
         self._session.headers["User-Agent"] = user_agent
+
+        # Providers com defaults (Nominatim + BrasilAPI) usando a mesma session
+        self._geo_provider: GeocodingProvider = (
+            geocoding_provider
+            or NominatimProvider(session=self._session, user_agent=user_agent)
+        )
+        self._cep_provider: CepProvider = (
+            cep_provider or BrasilApiCepProvider(session=self._session)
+        )
 
         # Cache persistente (opcional)
         self._sb_url = supabase_url.rstrip("/") if supabase_url else None
@@ -166,16 +180,6 @@ class Geocoder:
             pass
 
     # ------------------------------------------------------------------
-    # Rate limit helpers
-    # ------------------------------------------------------------------
-
-    def _wait_nominatim(self) -> None:
-        elapsed = time.monotonic() - self._last_nominatim_req
-        if elapsed < RATE_LIMIT_NOMINATIM_S:
-            time.sleep(RATE_LIMIT_NOMINATIM_S - elapsed)
-        self._last_nominatim_req = time.monotonic()
-
-    # ------------------------------------------------------------------
     # Geocoding de endereço (hospital)
     # ------------------------------------------------------------------
 
@@ -221,49 +225,28 @@ class Geocoder:
         self._mem_cache[mem_key] = r
         return r
 
-    def _query_nominatim(self, query: str) -> Optional[GeocodeResult]:
+    def _query_nominatim(self, query: str) -> Optional[GeocodingResult]:
         """
-        Consulta o Nominatim com cache persistente:
+        Consulta o provider de geocoding com cache persistente.
+
+        O nome mantém `_nominatim` por compatibilidade com testes existentes
+        e histórico de código, mas internamente delega para
+        self._geo_provider — que pode ser qualquer GeocodingProvider.
+
+        Fluxo:
           1. Verifica geocode_cache no Supabase → retorna se encontrar
-          2. Aplica rate limit (1 req/s)
-          3. Chama Nominatim
-          4. Salva resultado (ou miss) no cache
+          2. Chama o provider (ele cuida do rate limit internamente)
+          3. Salva resultado (ou miss) no cache
         """
         # 1. Cache persistente
         cached = self._db_get(query)
         if cached is not _NOT_IN_CACHE:
-            return cached  # pode ser None (miss) ou GeocodeResult (hit)
+            return cached  # pode ser None (miss) ou GeocodingResult (hit)
 
-        # 2. Rate limit antes de chamar Nominatim
-        self._wait_nominatim()
+        # 2. Delega para o provider (rate limit fica dentro dele)
+        result = self._geo_provider.geocode(query)
 
-        # 3. Chamada ao Nominatim
-        result: Optional[GeocodeResult] = None
-        try:
-            resp = self._session.get(
-                NOMINATIM_URL,
-                params={
-                    "q": query,
-                    "format": "jsonv2",
-                    "limit": 1,
-                    "countrycodes": "br",
-                    "addressdetails": 0,
-                },
-                timeout=REQUEST_TIMEOUT,
-            )
-            if resp.ok:
-                data = resp.json()
-                if data:
-                    item = data[0]
-                    result = GeocodeResult(
-                        lat=float(item["lat"]),
-                        lng=float(item["lon"]),
-                        fonte="nominatim",
-                    )
-        except (requests.RequestException, ValueError, KeyError):
-            pass
-
-        # 4. Persiste no cache (incluindo misses para não repetir)
+        # 3. Persiste no cache (incluindo misses para não repetir)
         self._db_set(query, result)
         return result
 
@@ -271,36 +254,16 @@ class Geocoder:
     # Consulta de CEP (usada pela API em runtime)
     # ------------------------------------------------------------------
 
-    def consultar_cep(self, cep: str) -> Optional[CepResult]:
-        """Consulta CEP na BrasilAPI v2. Retorna None em caso de erro/não-encontrado."""
+    def consultar_cep(self, cep: str) -> Optional[CepLookupResult]:
+        """
+        Delega para o CepProvider configurado (default: BrasilAPI).
+
+        Retorna None em caso de erro, CEP inválido ou não encontrado.
+        """
         cep_limpo = re.sub(r"\D", "", cep or "")
         if len(cep_limpo) != 8:
             return None
-        try:
-            r = self._session.get(
-                BRASILAPI_CEP_URL.format(cep=cep_limpo),
-                timeout=REQUEST_TIMEOUT,
-            )
-            if r.status_code == 404:
-                return None
-            if not r.ok:
-                return None
-            data = r.json()
-            loc = data.get("location", {}) or {}
-            coords = loc.get("coordinates", {}) or {}
-            lat = coords.get("latitude")
-            lng = coords.get("longitude")
-            return CepResult(
-                cep=cep_limpo,
-                logradouro=data.get("street") or None,
-                bairro=data.get("neighborhood") or None,
-                cidade=data.get("city") or None,
-                uf=data.get("state") or None,
-                lat=float(lat) if lat else None,
-                lng=float(lng) if lng else None,
-            )
-        except (requests.RequestException, ValueError):
-            return None
+        return self._cep_provider.lookup(cep_limpo)
 
 
 # ----------------------------------------------------------------------

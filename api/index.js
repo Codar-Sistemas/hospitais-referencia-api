@@ -26,10 +26,17 @@
  */
 
 const { track, normalizeRoute } = require('./metrics');
+const { BrasilApiCepProvider } = require('./providers/cep');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+// Provider de CEP (singleton — instanciado uma vez por cold start)
+const cepProvider = new BrasilApiCepProvider({
+  userAgent:
+    'hospitais-referencia-api/1.0 (+https://github.com/Codar-Sistemas/hospitais-referencia-api)',
+});
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -161,7 +168,7 @@ async function cacheCep(data) {
   }
 }
 
-// Consulta CEP: primeiro no cache local (Supabase), depois na BrasilAPI
+// Consulta CEP: primeiro no cache local (Supabase), depois no provider
 async function consultarCep(cepRaw) {
   const cep = (cepRaw || '').replace(/\D/g, '');
   if (cep.length !== 8) return null;
@@ -174,32 +181,16 @@ async function consultarCep(cepRaw) {
       return { cep, cidade: c.cidade, uf: c.uf, bairro: c.bairro, logradouro: c.logradouro, lat: c.lat, lng: c.lng };
     }
   } catch {
-    // cache indisponível — segue para BrasilAPI
+    // cache indisponível — segue para o provider
   }
 
-  // 2. Chama BrasilAPI e salva no cache
-  try {
-    const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`, {
-      headers: { 'User-Agent': 'hospitais-referencia-api/1.0 (+https://github.com/Codar-Sistemas/hospitais-referencia-api)' },
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    const coords = (data.location && data.location.coordinates) || {};
-    const result = {
-      cep,
-      cidade: data.city || null,
-      uf: data.state || null,
-      bairro: data.neighborhood || null,
-      logradouro: data.street || null,
-      lat: coords.latitude ? parseFloat(coords.latitude) : null,
-      lng: coords.longitude ? parseFloat(coords.longitude) : null,
-    };
-    // Salva no cache de forma assíncrona (não bloqueia a resposta)
-    cacheCep({ cep: result.cep, cidade: result.cidade, uf: result.uf, bairro: result.bairro, logradouro: result.logradouro, lat: result.lat, lng: result.lng });
-    return result;
-  } catch {
-    return null;
-  }
+  // 2. Delega para o provider (default: BrasilAPI v2)
+  const result = await cepProvider.lookup(cep);
+  if (!result) return null;
+
+  // Salva no cache de forma assíncrona (não bloqueia a resposta)
+  cacheCep(result);
+  return result;
 }
 
 function json(res, status, body, { cacheSeconds = 60 } = {}) {

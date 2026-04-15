@@ -223,16 +223,59 @@ def sync_uf(sb: Supabase, uf: str, force: bool = False) -> dict:
         f.write(content)
         tmp_path = f.name
 
+    fonte_extracao = "pdf_texto"
+    confianca_ocr: Optional[int] = None
+
     try:
         registros = parse_pdf(tmp_path, uf)
+
         # Se não extraiu nada, verifica se o PDF é baseado em imagem
-        # (escaneado) — caso em que não conseguimos parsear sem OCR.
+        # (escaneado). Se for, tenta OCR como fallback.
         if not registros and _is_image_based_pdf(tmp_path):
-            return {
-                "uf": uf,
-                "status": "nao_suportado",
-                "reason": "PDF baseado em imagem (escaneado) — requer OCR",
-            }
+            try:
+                from scripts.ocr import is_ocr_available
+                from scripts.parser_ocr import parse_pdf_ocr
+            except ImportError as e:
+                return {
+                    "uf": uf,
+                    "status": "nao_suportado",
+                    "reason": f"PDF escaneado, OCR indisponível: {e}",
+                }
+
+            if not is_ocr_available():
+                return {
+                    "uf": uf,
+                    "status": "nao_suportado",
+                    "reason": "PDF escaneado, OCR indisponível (tesseract não instalado no ambiente)",
+                }
+
+            print(
+                f"[{uf}] PDF escaneado detectado — tentando extração via OCR ...",
+                flush=True,
+            )
+            try:
+                registros, conf = parse_pdf_ocr(tmp_path, uf)
+            except Exception as e:
+                return {
+                    "uf": uf,
+                    "status": "error",
+                    "reason": f"Falha no OCR: {e}",
+                }
+
+            if not registros:
+                return {
+                    "uf": uf,
+                    "status": "nao_suportado",
+                    "reason": "PDF escaneado — OCR rodou mas não extraiu registros",
+                }
+
+            fonte_extracao = "pdf_ocr"
+            confianca_ocr = int(round(conf))
+            print(
+                f"[{uf}] OCR extraiu {len(registros)} registros "
+                f"(confiança média: {conf:.1f}%)",
+                flush=True,
+            )
     finally:
         os.unlink(tmp_path)
 
@@ -275,6 +318,8 @@ def sync_uf(sb: Supabase, uf: str, force: bool = False) -> dict:
                 "cnes": reg["cnes"],
                 "atendimentos": reg["atendimentos"],
                 "atendimentos_raw": reg["atendimentos_raw"],
+                "fonte_extracao": fonte_extracao,
+                "confianca_ocr": confianca_ocr,
                 "atualizado_em": datetime.now(timezone.utc).isoformat(),
             }
             if not endereco_igual:
@@ -289,6 +334,8 @@ def sync_uf(sb: Supabase, uf: str, force: bool = False) -> dict:
         else:
             para_inserir.append({
                 **reg,
+                "fonte_extracao": fonte_extracao,
+                "confianca_ocr": confianca_ocr,
                 "geocode_status": "pendente",
             })
 
@@ -316,11 +363,17 @@ def sync_uf(sb: Supabase, uf: str, force: bool = False) -> dict:
         "sincronizado_em": datetime.now(timezone.utc).isoformat(),
         "pdf_hash": pdf_hash,
         "total_hospitais": len(registros),
-        "status": "ok",
+        "status": "ok_ocr" if fonte_extracao == "pdf_ocr" else "ok",
         "ultimo_erro": None,
     })
 
-    return {"uf": uf, "status": "updated", "total": len(registros)}
+    return {
+        "uf": uf,
+        "status": "updated",
+        "total": len(registros),
+        "fonte_extracao": fonte_extracao,
+        "confianca_ocr": confianca_ocr,
+    }
 
 
 def sync_uf_safe(sb: Supabase, uf: str, force: bool = False) -> dict:
@@ -453,6 +506,13 @@ def main():
         f"\nResumo: {atualizados} atualizados, {inalterados} inalterados, "
         f"{nao_suportados} não suportados, {erros} erros, {len(resultados)} total"
     )
+
+    ufs_via_ocr = [
+        r for r in resultados
+        if r.get("fonte_extracao") == "pdf_ocr"
+    ]
+    if ufs_via_ocr:
+        print(f"UFs extraídas via OCR: {', '.join(r['uf'] for r in ufs_via_ocr)}")
 
     ufs_nao_suportados = [r for r in resultados if r["status"] == "nao_suportado"]
     if ufs_nao_suportados:

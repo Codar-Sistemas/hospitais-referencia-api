@@ -9,6 +9,14 @@
 
 ---
 
+### 🔗 Acesso rápido
+
+- **🌐 Site:** https://hospitais-referencia-web.vercel.app
+- **📡 API:** https://hospitais-referencia-api.vercel.app/v1/estados
+- **💻 Código:** https://github.com/Codar-Sistemas/hospitais-referencia-api
+
+---
+
 > ⚠️ **Em caso de emergência, ligue para o SAMU: 192.** Esta API é uma ferramenta de referência — as informações podem estar desatualizadas em relação à realidade no momento do atendimento.
 
 ---

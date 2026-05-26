@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Combobox from '@/components/ui/Combobox';
 import { STATES, TREATMENTS } from '@/lib/constants';
 import { fetchCitiesByState } from '@/lib/ibge';
-import { FIELD_LABEL_CLASS, INPUT_CLASS } from './SearchTabs';
+import { FIELD_LABEL_CLASS } from './SearchTabs';
 
 interface SearchByCityProps {
   city: string;
@@ -24,8 +25,28 @@ export default function SearchByCity({
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch cities from IBGE whenever the state changes.
-  // Clears the selected city so a stale value can't survive a state change.
+  const stateOptions = useMemo(
+    () => STATES.map((s) => ({ value: s.code, label: s.name, keywords: s.code })),
+    [],
+  );
+
+  const treatmentOptions = useMemo(
+    () =>
+      TREATMENTS.map((t) => ({
+        value: t.value,
+        label: `${t.emoji} ${t.animal}`,
+        keywords: `${t.label} ${t.value}`,
+      })),
+    [],
+  );
+
+  const cityOptions = useMemo(
+    () => cities.map((name) => ({ value: name, label: name })),
+    [cities],
+  );
+
+  // Fetch IBGE city list whenever the state changes. Clears the selected
+  // city if it doesn't exist in the new state's list.
   useEffect(() => {
     if (!stateCode) {
       setCities([]);
@@ -45,11 +66,10 @@ export default function SearchByCity({
     return () => {
       cancelled = true;
     };
-    // We only want to refetch when stateCode changes — onCityChange is stable
-    // from the parent hook and city is read inside without dependency tracking.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stateCode]);
 
+  const cityDisabled = !stateCode || loading;
   const cityPlaceholder = !stateCode
     ? 'Selecione um estado primeiro'
     : loading
@@ -60,49 +80,32 @@ export default function SearchByCity({
     <div className="col-span-full grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div>
         <label className={FIELD_LABEL_CLASS}>Estado *</label>
-        <select
+        <Combobox
           value={stateCode}
-          onChange={(e) => onStateCodeChange(e.target.value)}
-          className={INPUT_CLASS}
-        >
-          <option value="">Selecione o estado</option>
-          {STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+          onChange={onStateCodeChange}
+          options={stateOptions}
+          placeholder="Selecione o estado"
+        />
       </div>
       <div>
         <label className={FIELD_LABEL_CLASS}>Cidade *</label>
-        <select
+        <Combobox
           value={city}
-          onChange={(e) => onCityChange(e.target.value)}
-          disabled={!stateCode || loading}
-          className={`${INPUT_CLASS} ${!stateCode || loading ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <option value="">{cityPlaceholder}</option>
-          {cities.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+          onChange={onCityChange}
+          options={cityOptions}
+          placeholder="Selecione uma cidade"
+          disabledPlaceholder={cityPlaceholder}
+          disabled={cityDisabled}
+        />
       </div>
       <div>
         <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
-        <select
+        <Combobox
           value={treatment}
-          onChange={(e) => onTreatmentChange(e.target.value)}
-          className={INPUT_CLASS}
-        >
-          <option value="">Todos os tipos</option>
-          {TREATMENTS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.emoji} {t.animal}
-            </option>
-          ))}
-        </select>
+          onChange={onTreatmentChange}
+          options={treatmentOptions}
+          placeholder="Todos os tipos"
+        />
       </div>
     </div>
   );

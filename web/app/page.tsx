@@ -9,7 +9,7 @@ import { useHospitalSearch } from '@/hooks/useHospitalSearch';
 import type { SearchMode } from '@/lib/types';
 
 export default function Home() {
-  const [mode, setMode] = useState<SearchMode>('animal');
+  const [mode, setMode] = useState<SearchMode>('city');
   const [stateCode, setStateCode] = useState('');
   const [treatment, setTreatment] = useState('');
   const [city, setCity] = useState('');

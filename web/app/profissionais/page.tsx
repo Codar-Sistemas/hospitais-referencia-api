@@ -1,8 +1,14 @@
 'use client';
-import { useState, useTransition } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import Combobox from '@/components/ui/Combobox';
 import { searchHospitals, searchNearby } from '@/lib/api-client';
 import { STATES, TREATMENTS, TREATMENT_TEXT_CLASS } from '@/lib/constants';
+import { fetchCitiesByState } from '@/lib/ibge';
 import type { Hospital } from '@/lib/types';
+
+// Leaflet touches `window` on import — keep it client-only.
+const HospitalMap = dynamic(() => import('@/components/hospital/HospitalMap'), { ssr: false });
 
 // Treatment columns to render in the comparison table. Order mirrors the
 // previous PT-labeled list (Antiarachnidic intentionally excluded to keep the
@@ -28,6 +34,32 @@ export default function Profissionais() {
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // Fetch IBGE city list whenever the state changes; clear the city if it
+  // doesn't exist in the new state.
+  useEffect(() => {
+    if (!stateCode) {
+      setCities([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingCities(true);
+    fetchCitiesByState(stateCode)
+      .then((list) => {
+        if (cancelled) return;
+        setCities(list);
+        if (city && !list.includes(city)) setCity('');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCities(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateCode]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -69,6 +101,45 @@ export default function Profissionais() {
   const inputClass =
     'border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm text-slate-800 placeholder-slate-400';
 
+  const stateOptions = useMemo(
+    () => STATES.map((s) => ({ value: s.code, label: `${s.code} – ${s.name}`, keywords: s.name })),
+    [],
+  );
+
+  const treatmentOptions = useMemo(
+    () =>
+      TREATMENTS.map((t) => ({
+        value: t.value,
+        label: `${t.emoji} ${t.animal}`,
+        keywords: `${t.label} ${t.value}`,
+      })),
+    [],
+  );
+
+  const cityOptions = useMemo(
+    () => cities.map((name) => ({ value: name, label: name })),
+    [cities],
+  );
+
+  const radiusOptions = useMemo(
+    () => [
+      { value: '20000', label: '20 km' },
+      { value: '50000', label: '50 km' },
+      { value: '100000', label: '100 km' },
+      { value: '200000', label: '200 km' },
+    ],
+    [],
+  );
+
+  const cepDigits = cep.replace(/\D/g, '').length;
+  const radiusDisabled = cepDigits !== 8;
+  const cityDisabled = !stateCode || loadingCities;
+  const cityPlaceholder = !stateCode
+    ? 'Selecione um estado primeiro'
+    : loadingCities
+      ? 'Carregando cidades...'
+      : 'Selecione uma cidade';
+
   const showDistance = hospitals.some((h) => h.distance_km !== undefined);
 
   return (
@@ -91,22 +162,22 @@ export default function Profissionais() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Estado</label>
-            <select value={stateCode} onChange={(e) => setStateCode(e.target.value)} className={inputClass}>
-              <option value="">Todos</option>
-              {STATES.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.code} – {s.name}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              value={stateCode}
+              onChange={setStateCode}
+              options={stateOptions}
+              placeholder="Todos"
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Município</label>
-            <input
+            <Combobox
               value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Ex: Campinas"
-              className={inputClass}
+              onChange={setCity}
+              options={cityOptions}
+              placeholder="Selecione uma cidade"
+              disabledPlaceholder={cityPlaceholder}
+              disabled={cityDisabled}
             />
           </div>
           <div>
@@ -124,28 +195,23 @@ export default function Profissionais() {
               Raio{' '}
               <span className="text-slate-400 normal-case font-normal">(só com CEP)</span>
             </label>
-            <select
+            <Combobox
               value={radius}
-              onChange={(e) => setRadius(e.target.value)}
-              disabled={cep.replace(/\D/g, '').length !== 8}
-              className={`${inputClass} disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              <option value="20000">20 km</option>
-              <option value="50000">50 km</option>
-              <option value="100000">100 km</option>
-              <option value="200000">200 km</option>
-            </select>
+              onChange={setRadius}
+              options={radiusOptions}
+              placeholder="50 km"
+              disabledPlaceholder="Informe um CEP primeiro"
+              disabled={radiusDisabled}
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipo de soro</label>
-            <select value={treatment} onChange={(e) => setTreatment(e.target.value)} className={inputClass}>
-              <option value="">Todos</option>
-              {TREATMENTS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.emoji} {t.animal}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              value={treatment}
+              onChange={setTreatment}
+              options={treatmentOptions}
+              placeholder="Todos"
+            />
           </div>
           <div className="flex items-end">
             <button
@@ -167,7 +233,7 @@ export default function Profissionais() {
         )}
       </form>
 
-      {/* Results table */}
+      {/* Results: map + table */}
       {searched && hospitals.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-3">
@@ -177,6 +243,10 @@ export default function Profissionais() {
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
               <span className="text-emerald-600 font-bold">✓</span> = atende
             </div>
+          </div>
+
+          <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+            <HospitalMap hospitals={hospitals} />
           </div>
           <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm bg-white">
             <table className="w-full text-sm">
@@ -199,6 +269,7 @@ export default function Profissionais() {
                   {showDistance && (
                     <th className="px-4 py-3 font-semibold text-slate-600 text-right text-xs uppercase tracking-wide whitespace-nowrap">Dist.</th>
                   )}
+                  <th className="px-3 py-3 font-semibold text-slate-600 text-center text-xs uppercase tracking-wide whitespace-nowrap">Mapa</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -238,6 +309,29 @@ export default function Profissionais() {
                         {h.distance_km !== undefined ? `${h.distance_km.toFixed(1)} km` : '—'}
                       </td>
                     )}
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                      {h.address || (h.lat && h.lng) ? (
+                        <a
+                          href={
+                            h.lat && h.lng
+                              ? `https://www.google.com/maps/search/?api=1&query=${h.lat},${h.lng}`
+                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${h.name} ${h.address} ${h.city}`)}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Abrir no Google Maps"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Abrir
+                        </a>
+                      ) : (
+                        <span className="text-slate-300 text-sm">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

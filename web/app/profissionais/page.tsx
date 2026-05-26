@@ -1,5 +1,6 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
+import Combobox from '@/components/ui/Combobox';
 import { searchHospitals, searchNearby } from '@/lib/api-client';
 import { STATES, TREATMENTS, TREATMENT_TEXT_CLASS } from '@/lib/constants';
 import type { Hospital } from '@/lib/types';
@@ -69,6 +70,21 @@ export default function Profissionais() {
   const inputClass =
     'border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm text-slate-800 placeholder-slate-400';
 
+  const stateOptions = useMemo(
+    () => STATES.map((s) => ({ value: s.code, label: `${s.code} – ${s.name}`, keywords: s.name })),
+    [],
+  );
+
+  const treatmentOptions = useMemo(
+    () =>
+      TREATMENTS.map((t) => ({
+        value: t.value,
+        label: `${t.emoji} ${t.animal}`,
+        keywords: `${t.label} ${t.value}`,
+      })),
+    [],
+  );
+
   const showDistance = hospitals.some((h) => h.distance_km !== undefined);
 
   return (
@@ -91,14 +107,12 @@ export default function Profissionais() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Estado</label>
-            <select value={stateCode} onChange={(e) => setStateCode(e.target.value)} className={inputClass}>
-              <option value="">Todos</option>
-              {STATES.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.code} – {s.name}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              value={stateCode}
+              onChange={setStateCode}
+              options={stateOptions}
+              placeholder="Todos"
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Município</label>
@@ -138,14 +152,12 @@ export default function Profissionais() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipo de soro</label>
-            <select value={treatment} onChange={(e) => setTreatment(e.target.value)} className={inputClass}>
-              <option value="">Todos</option>
-              {TREATMENTS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.emoji} {t.animal}
-                </option>
-              ))}
-            </select>
+            <Combobox
+              value={treatment}
+              onChange={setTreatment}
+              options={treatmentOptions}
+              placeholder="Todos"
+            />
           </div>
           <div className="flex items-end">
             <button

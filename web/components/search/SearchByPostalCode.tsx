@@ -1,4 +1,6 @@
 'use client';
+import { useMemo } from 'react';
+import Combobox from '@/components/ui/Combobox';
 import { TREATMENTS } from '@/lib/constants';
 import { FIELD_LABEL_CLASS, INPUT_CLASS } from './SearchTabs';
 
@@ -15,6 +17,16 @@ export default function SearchByPostalCode({
   onCepChange,
   onTreatmentChange,
 }: SearchByPostalCodeProps) {
+  const treatmentOptions = useMemo(
+    () =>
+      TREATMENTS.map((t) => ({
+        value: t.value,
+        label: `${t.emoji} ${t.animal}`,
+        keywords: `${t.label} ${t.value}`,
+      })),
+    [],
+  );
+
   return (
     <>
       <div>
@@ -29,14 +41,12 @@ export default function SearchByPostalCode({
       </div>
       <div>
         <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
-        <select value={treatment} onChange={(e) => onTreatmentChange(e.target.value)} className={INPUT_CLASS}>
-          <option value="">Todos os tipos</option>
-          {TREATMENTS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.emoji} {t.animal}
-            </option>
-          ))}
-        </select>
+        <Combobox
+          value={treatment}
+          onChange={onTreatmentChange}
+          options={treatmentOptions}
+          placeholder="Todos os tipos"
+        />
       </div>
     </>
   );

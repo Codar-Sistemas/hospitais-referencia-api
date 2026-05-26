@@ -1,6 +1,8 @@
 'use client';
+import { useMemo } from 'react';
+import Combobox from '@/components/ui/Combobox';
 import { STATES, TREATMENTS } from '@/lib/constants';
-import { FIELD_LABEL_CLASS, INPUT_CLASS } from './SearchTabs';
+import { FIELD_LABEL_CLASS } from './SearchTabs';
 
 interface SearchByAnimalProps {
   stateCode: string;
@@ -15,29 +17,42 @@ export default function SearchByAnimal({
   onStateCodeChange,
   onTreatmentChange,
 }: SearchByAnimalProps) {
+  // keywords includes the UF code so typing "SP" finds "São Paulo".
+  const stateOptions = useMemo(
+    () => STATES.map((s) => ({ value: s.code, label: s.name, keywords: s.code })),
+    [],
+  );
+
+  // Animal name is what users actually type; keep canonical EN value for the API.
+  const treatmentOptions = useMemo(
+    () =>
+      TREATMENTS.map((t) => ({
+        value: t.value,
+        label: `${t.emoji} ${t.animal}`,
+        keywords: `${t.label} ${t.value}`,
+      })),
+    [],
+  );
+
   return (
     <>
       <div>
         <label className={FIELD_LABEL_CLASS}>Estado *</label>
-        <select value={stateCode} onChange={(e) => onStateCodeChange(e.target.value)} className={INPUT_CLASS}>
-          <option value="">Selecione o estado</option>
-          {STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <Combobox
+          value={stateCode}
+          onChange={onStateCodeChange}
+          options={stateOptions}
+          placeholder="Selecione o estado"
+        />
       </div>
       <div>
         <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
-        <select value={treatment} onChange={(e) => onTreatmentChange(e.target.value)} className={INPUT_CLASS}>
-          <option value="">Todos os tipos</option>
-          {TREATMENTS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.emoji} {t.animal}
-            </option>
-          ))}
-        </select>
+        <Combobox
+          value={treatment}
+          onChange={onTreatmentChange}
+          options={treatmentOptions}
+          placeholder="Todos os tipos"
+        />
       </div>
     </>
   );

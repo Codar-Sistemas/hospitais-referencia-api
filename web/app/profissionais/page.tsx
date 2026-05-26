@@ -1,10 +1,14 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Combobox from '@/components/ui/Combobox';
 import { searchHospitals, searchNearby } from '@/lib/api-client';
 import { STATES, TREATMENTS, TREATMENT_TEXT_CLASS } from '@/lib/constants';
 import { fetchCitiesByState } from '@/lib/ibge';
 import type { Hospital } from '@/lib/types';
+
+// Leaflet touches `window` on import — keep it client-only.
+const HospitalMap = dynamic(() => import('@/components/hospital/HospitalMap'), { ssr: false });
 
 // Treatment columns to render in the comparison table. Order mirrors the
 // previous PT-labeled list (Antiarachnidic intentionally excluded to keep the
@@ -229,7 +233,7 @@ export default function Profissionais() {
         )}
       </form>
 
-      {/* Results table */}
+      {/* Results: map + table */}
       {searched && hospitals.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-3">
@@ -239,6 +243,10 @@ export default function Profissionais() {
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
               <span className="text-emerald-600 font-bold">✓</span> = atende
             </div>
+          </div>
+
+          <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+            <HospitalMap hospitals={hospitals} />
           </div>
           <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm bg-white">
             <table className="w-full text-sm">

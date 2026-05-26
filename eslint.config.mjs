@@ -11,7 +11,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ['api/**/*.js'],
+    files: ['api/**/*.js', 'lib/**/*.js'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'commonjs',

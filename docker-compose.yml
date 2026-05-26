@@ -77,6 +77,7 @@ services:
       - '3030:3000'
     volumes:
       - ./api:/app/api:ro
+      - ./lib:/app/lib:ro
       - ./package.json:/app/package.json:ro
       - ./scripts/local_server.js:/app/scripts/local_server.js:ro
     command: node /app/scripts/local_server.js

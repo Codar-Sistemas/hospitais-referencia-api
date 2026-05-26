@@ -3,21 +3,21 @@
  * Vercel serverless entry. All real work lives in handlers/services/repositories.
  */
 
-const { error } = require('./lib/http');
-const { ApiError } = require('./lib/errors');
-const { handlePreflight } = require('./middleware/cors');
+const { error } = require('../lib/core/http');
+const { ApiError } = require('../lib/core/errors');
+const { handlePreflight } = require('../lib/middleware/cors');
 const {
   checkRateLimit,
   applyRateHeaders,
   RATE_LIMIT,
   RATE_WINDOW,
-} = require('./middleware/rate-limit');
-const { createTracker } = require('./middleware/metrics');
-const states = require('./handlers/states');
-const hospitals = require('./handlers/hospitals');
-const metadata = require('./handlers/metadata');
-const track = require('./handlers/track');
-const stats = require('./handlers/stats');
+} = require('../lib/middleware/rate-limit');
+const { createTracker } = require('../lib/middleware/metrics');
+const states = require('../lib/handlers/states');
+const hospitals = require('../lib/handlers/hospitals');
+const metadata = require('../lib/handlers/metadata');
+const track = require('../lib/handlers/track');
+const stats = require('../lib/handlers/stats');
 
 const STATE_PATH = /^\/v1\/states\/([A-Za-z]{2})$/;
 const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;

@@ -269,6 +269,7 @@ export default function Profissionais() {
                   {showDistance && (
                     <th className="px-4 py-3 font-semibold text-slate-600 text-right text-xs uppercase tracking-wide whitespace-nowrap">Dist.</th>
                   )}
+                  <th className="px-3 py-3 font-semibold text-slate-600 text-center text-xs uppercase tracking-wide whitespace-nowrap">Mapa</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -308,6 +309,29 @@ export default function Profissionais() {
                         {h.distance_km !== undefined ? `${h.distance_km.toFixed(1)} km` : '—'}
                       </td>
                     )}
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                      {h.address || (h.lat && h.lng) ? (
+                        <a
+                          href={
+                            h.lat && h.lng
+                              ? `https://www.google.com/maps/search/?api=1&query=${h.lat},${h.lng}`
+                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${h.name} ${h.address} ${h.city}`)}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Abrir no Google Maps"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Abrir
+                        </a>
+                      ) : (
+                        <span className="text-slate-300 text-sm">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

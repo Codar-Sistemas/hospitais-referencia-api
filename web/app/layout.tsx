@@ -7,9 +7,50 @@ import PostHogScript from "@/components/PostHogScript";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hospitais-referencia-web.vercel.app"),
   title: "Hospitais de Referência | Animais Peçonhentos",
   description:
-    "Encontre hospitais com soro antiofídico e antiveneno no Brasil. Dados oficiais do Ministério da Saúde.",
+    "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.",
+  keywords: [
+    "soro antiofídico",
+    "antiveneno",
+    "animais peçonhentos",
+    "cobra",
+    "escorpião",
+    "aranha",
+    "hospital de referência",
+    "ministério da saúde",
+    "emergência",
+  ],
+  authors: [{ name: "Codar Sistemas", url: "https://github.com/Codar-Sistemas" }],
+  openGraph: {
+    title: "Hospitais de Referência | Animais Peçonhentos",
+    description:
+      "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.",
+    url: "https://hospitais-referencia-web.vercel.app",
+    siteName: "Hospitais de Referência",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hospitais de Referência | Animais Peçonhentos",
+    description:
+      "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Hospitais de Referência",
+  description:
+    "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.",
+  url: "https://hospitais-referencia-web.vercel.app",
 };
 
 export default function RootLayout({
@@ -20,6 +61,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${geist.className} min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <PostHogScript />
         <Navbar />
         <div className="bg-red-600 text-white text-xs sm:text-sm font-medium text-center px-4 py-2 flex items-center justify-center gap-2">

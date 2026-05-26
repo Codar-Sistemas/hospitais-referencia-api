@@ -32,7 +32,7 @@ export default function Home() {
             Dados oficiais do Ministério da Saúde
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight tracking-tight">
-            Hospitais com soro antiofídico
+            Hospitais com soro antiofídico{" "}
             <br />
             <span className="text-emerald-600">e antiveneno no Brasil</span>
           </h1>

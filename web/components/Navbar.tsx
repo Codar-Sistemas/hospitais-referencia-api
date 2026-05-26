@@ -24,7 +24,7 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {links.map(({ href, label }) => (
             <Link
               key={href}

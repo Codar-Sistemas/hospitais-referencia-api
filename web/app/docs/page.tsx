@@ -1,3 +1,10 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'API Docs | Hospitais de Referência',
+  description: 'Documentação da API pública e gratuita para consulta de hospitais de referência para tratamento de acidentes com animais peçonhentos no Brasil.',
+};
+
 const BASE = 'https://hospitais-referencia-api.vercel.app';
 
 function Method({ method }: { method: string }) {

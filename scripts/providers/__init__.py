@@ -1,33 +1,34 @@
 """
-Camada de abstração para providers externos (geocoding e CEP).
+Provider abstraction for external services (geocoding and CEP).
 
-Cada provider implementa uma interface simples e pode ser substituído
-sem tocar no código de orquestração (rate limit, cache, lógica de retry).
+Each provider implements a small interface and can be swapped without
+touching orchestration logic (rate limiting, caching, retry strategy).
 
-Uso típico:
+Example:
 
     from scripts.providers import NominatimProvider, BrasilApiCepProvider
 
-    geo = NominatimProvider(session, user_agent="meu-app/1.0")
-    result = geo.geocode("Avenida Paulista, São Paulo, SP, Brasil")
+    geo = NominatimProvider(session, user_agent="my-app/1.0")
+    result = geo.geocode("Avenida Paulista, Sao Paulo, SP, Brasil")
 
     cep = BrasilApiCepProvider(session)
     data = cep.lookup("01310100")
 """
+
 from scripts.providers.base import (
     CepLookupResult,
     CepProvider,
     GeocodingProvider,
     GeocodingResult,
 )
-from scripts.providers.nominatim import NominatimProvider
 from scripts.providers.brasilapi import BrasilApiCepProvider
+from scripts.providers.nominatim import NominatimProvider
 
 __all__ = [
+    "BrasilApiCepProvider",
+    "CepLookupResult",
+    "CepProvider",
     "GeocodingProvider",
     "GeocodingResult",
-    "CepProvider",
-    "CepLookupResult",
     "NominatimProvider",
-    "BrasilApiCepProvider",
 ]

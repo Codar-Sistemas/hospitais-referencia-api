@@ -1,23 +1,19 @@
 /**
- * Providers de consulta de CEP — abstração sobre fornecedores externos.
+ * CEP lookup providers — abstraction over external vendors.
  *
- * Para trocar de provider, passe uma instância diferente de CepProvider
- * no handler (ver api/index.js). Cada provider implementa:
- *   - get name(): string            — identificador (ex: 'brasilapi')
- *   - async lookup(cep): CepResult  — retorna dados ou null
+ * To swap providers, pass a different CepProvider instance to the service
+ * (see api/services/geocoding-service.js). Each provider implements:
+ *   - get name(): string                — identifier (e.g. 'brasilapi')
+ *   - async lookup(cep): CepResult|null — returns data or null
  *
- * CepResult = {
- *   cep, logradouro, bairro, cidade, uf, lat, lng
- * }
+ * CepResult = { cep, street, neighborhood, city, state_code, lat, lng }
  */
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
 /**
- * BrasilAPI v2 — combina múltiplas fontes de CEP (Correios + ViaCEP + etc)
- * e retorna coordenadas quando disponíveis.
- *
- * Grátis, sem chave, rate limit generoso.
+ * BrasilAPI v2 — combines multiple CEP sources (Correios + ViaCEP + ...)
+ * and returns coordinates when available. Free, no key, generous rate limit.
  * https://brasilapi.com.br/docs#tag/CEP-V2
  */
 class BrasilApiCepProvider {
@@ -33,14 +29,14 @@ class BrasilApiCepProvider {
   }
 
   async lookup(cep) {
-    const cepLimpo = (cep || '').replace(/\D/g, '');
-    if (cepLimpo.length !== 8) return null;
+    const cleanCep = (cep || '').replace(/\D/g, '');
+    if (cleanCep.length !== 8) return null;
 
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), this._timeoutMs);
+    const timer = setTimeout(() => controller.abort(), this._timeoutMs);
 
     try {
-      const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${cepLimpo}`, {
+      const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${cleanCep}`, {
         headers: { 'User-Agent': this._userAgent },
         signal: controller.signal,
       });
@@ -48,18 +44,18 @@ class BrasilApiCepProvider {
       const data = await r.json();
       const coords = (data.location && data.location.coordinates) || {};
       return {
-        cep: cepLimpo,
-        cidade: data.city || null,
-        uf: data.state || null,
-        bairro: data.neighborhood || null,
-        logradouro: data.street || null,
+        cep: cleanCep,
+        city: data.city || null,
+        state_code: data.state || null,
+        neighborhood: data.neighborhood || null,
+        street: data.street || null,
         lat: coords.latitude ? parseFloat(coords.latitude) : null,
         lng: coords.longitude ? parseFloat(coords.longitude) : null,
       };
     } catch {
       return null;
     } finally {
-      clearTimeout(t);
+      clearTimeout(timer);
     }
   }
 }

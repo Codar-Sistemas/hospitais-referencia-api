@@ -1,80 +1,68 @@
 """
-Interfaces abstratas para providers de geocoding e CEP.
+Abstract interfaces for geocoding and CEP providers.
 
-Implementações concretas ficam em:
+Concrete implementations:
   - nominatim.py       (GeocodingProvider)
   - brasilapi.py       (CepProvider)
 
-Para adicionar um novo provider (ex: Google Maps, OpenCage, ViaCEP),
-basta criar uma subclasse que implemente os métodos abstratos.
+To plug in another provider (Google Maps, OpenCage, ViaCEP, ...), subclass
+the appropriate interface and pass it to the Geocoder.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
 class GeocodingResult:
-    """Resultado de uma operação de geocoding."""
+    """Result of a geocoding lookup."""
+
     lat: float
     lng: float
-    fonte: str  # nome do provider que resolveu (ex: "nominatim")
+    source: str  # provider identifier (e.g. "nominatim")
 
 
 @dataclass
 class CepLookupResult:
-    """Resultado de uma consulta de CEP."""
+    """Result of a CEP (Brazilian postal code) lookup."""
+
     cep: str
-    logradouro: Optional[str]
-    bairro: Optional[str]
-    cidade: Optional[str]
-    uf: Optional[str]
-    lat: Optional[float]
-    lng: Optional[float]
+    street: str | None
+    neighborhood: str | None
+    city: str | None
+    state_code: str | None
+    lat: float | None
+    lng: float | None
 
 
 class GeocodingProvider(ABC):
     """
-    Provider de geocoding: converte uma string de endereço em coordenadas.
+    Geocoding provider: resolves an address string to coordinates.
 
-    Implementações devem respeitar o rate limit do serviço externo
-    internamente (ex: Nominatim = 1 req/s).
+    Implementations must respect the rate limit of the external service
+    internally (e.g. Nominatim caps at 1 req/s).
     """
 
     @property
     @abstractmethod
     def name(self) -> str:
-        """Identificador curto do provider (ex: 'nominatim')."""
+        """Short provider identifier (e.g. 'nominatim')."""
 
     @abstractmethod
-    def geocode(self, query: str) -> Optional[GeocodingResult]:
-        """
-        Resolve a query em coordenadas.
-
-        Retorna GeocodingResult em caso de sucesso, None caso contrário.
-        Nunca lança exceção — erros são tratados internamente.
-        """
+    def geocode(self, query: str) -> GeocodingResult | None:
+        """Resolve `query` to coordinates. Returns None on failure. Never raises."""
 
 
 class CepProvider(ABC):
-    """
-    Provider de consulta de CEP brasileiro.
-
-    Retorna dados do endereço e, quando disponível, coordenadas.
-    """
+    """Lookup provider for Brazilian CEPs."""
 
     @property
     @abstractmethod
     def name(self) -> str:
-        """Identificador curto do provider (ex: 'brasilapi')."""
+        """Short provider identifier (e.g. 'brasilapi')."""
 
     @abstractmethod
-    def lookup(self, cep: str) -> Optional[CepLookupResult]:
-        """
-        Consulta o CEP. Aceita CEP com ou sem hífen.
-
-        Retorna CepLookupResult em caso de sucesso, None caso contrário.
-        Nunca lança exceção.
-        """
+    def lookup(self, cep: str) -> CepLookupResult | None:
+        """Look up a CEP (with or without hyphen). Returns None on failure. Never raises."""

@@ -1,20 +1,20 @@
-name: sync-hospitais
+name: sync-hospitals
 
 on:
   schedule:
-    - cron: '0 3 * * *'   # diário 03:00 UTC = 00:00 Brasília
+    - cron: '0 3 * * *'   # daily 03:00 UTC = 00:00 Brasília
   workflow_dispatch:
     inputs:
-      uf:
-        description: 'UF específica (vazio = todas)'
+      state_code:
+        description: 'Specific state code (empty = all)'
         required: false
         default: ''
       force:
-        description: 'Forçar reprocessamento'
+        description: 'Force reprocessing'
         required: false
         default: 'false'
-      skip_geocode:
-        description: 'Pular etapa de geocoding'
+      skip_geocoding:
+        description: 'Skip the geocoding step'
         required: false
         default: 'false'
 
@@ -24,7 +24,7 @@ jobs:
     environment: production
     timeout-minutes: 45
     outputs:
-      tem_pendentes: ${{ steps.check.outputs.tem_pendentes }}
+      has_pending: ${{ steps.check.outputs.has_pending }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,10 +32,10 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      # Dependências nativas para o fallback de OCR.
-      # tesseract-ocr-por: dicionário português para melhor reconhecimento.
-      # poppler-utils:     necessário para pdf2image converter PDF em imagem.
-      - name: Instalar dependências de OCR (tesseract + poppler)
+      # Native deps for OCR fallback.
+      # tesseract-ocr-por: Portuguese dictionary for better recognition.
+      # poppler-utils:     required by pdf2image to rasterize PDFs.
+      - name: Install OCR system dependencies (tesseract + poppler)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -43,19 +43,19 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Sync PDFs para o banco
+      - name: Sync PDFs into the database
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           ARGS="sync"
           if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
-          if [ -n "${{ github.event.inputs.uf }}" ]; then ARGS="$ARGS ${{ github.event.inputs.uf }}"; fi
+          if [ -n "${{ github.event.inputs.state_code }}" ]; then ARGS="$ARGS ${{ github.event.inputs.state_code }}"; fi
           python -m scripts.sync $ARGS
 
       - id: check
-        name: Ver se ha hospitais pendentes de geocode
-        if: github.event.inputs.skip_geocode != 'true'
+        name: Check whether any hospitals are pending geocoding
+        if: github.event.inputs.skip_geocoding != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -64,18 +64,18 @@ jobs:
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             -H "Prefer: count=exact" \
-            -I "$SUPABASE_URL/rest/v1/hospitais?geocode_status=eq.pendente&limit=1" \
+            -I "$SUPABASE_URL/rest/v1/hospitals?geocoding_status=eq.pending&limit=1" \
             | grep -i content-range | awk -F'/' '{print $2}' | tr -d '\r' || echo "0")
-          echo "Pendentes: $COUNT"
+          echo "Pending: $COUNT"
           if [ "${COUNT:-0}" -gt 0 ]; then
-            echo "tem_pendentes=true" >> $GITHUB_OUTPUT
+            echo "has_pending=true" >> $GITHUB_OUTPUT
           else
-            echo "tem_pendentes=false" >> $GITHUB_OUTPUT
+            echo "has_pending=false" >> $GITHUB_OUTPUT
           fi
 
   geocode:
     needs: sync
-    if: needs.sync.outputs.tem_pendentes == 'true' && github.event.inputs.skip_geocode != 'true'
+    if: needs.sync.outputs.has_pending == 'true' && github.event.inputs.skip_geocoding != 'true'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 120
@@ -87,7 +87,7 @@ jobs:
           cache: 'pip'
       - run: pip install -r requirements.txt
 
-      - name: Geocodificar pendentes
+      - name: Geocode pending hospitals
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

@@ -92,7 +92,7 @@ export default function Termos() {
 
       <Section title="4. Isenção de responsabilidade">
         <p>
-          Este serviço é fornecido <strong>"no estado em que se encontra"</strong>, sem garantias de disponibilidade,
+          Este serviço é fornecido <strong>&quot;no estado em que se encontra&quot;</strong>, sem garantias de disponibilidade,
           completude ou atualidade dos dados. Os mantenedores não se responsabilizam por:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-1">

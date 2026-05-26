@@ -3,10 +3,10 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Hospital } from '@/lib/api';
+import type { Hospital } from '@/lib/types';
 
-// Corrige ícone padrão do Leaflet no Next.js
-const icon = L.icon({
+// Fixes Leaflet's default marker icon path resolution under Next.js bundling.
+const markerIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -16,21 +16,25 @@ const icon = L.icon({
   shadowSize: [41, 41],
 });
 
-function FitBounds({ hospitais }: { hospitais: Hospital[] }) {
+function FitBounds({ hospitals }: { hospitals: Hospital[] }) {
   const map = useMap();
   useEffect(() => {
-    const comCoords = hospitais.filter((h) => h.lat && h.lng);
-    if (comCoords.length === 0) return;
-    const bounds = L.latLngBounds(comCoords.map((h) => [h.lat!, h.lng!]));
+    const withCoords = hospitals.filter((h) => h.lat && h.lng);
+    if (withCoords.length === 0) return;
+    const bounds = L.latLngBounds(withCoords.map((h) => [h.lat!, h.lng!]));
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
-  }, [hospitais, map]);
+  }, [hospitals, map]);
   return null;
 }
 
-export default function HospitalMap({ hospitais }: { hospitais: Hospital[] }) {
-  const comCoords = hospitais.filter((h) => h.lat && h.lng);
+interface HospitalMapProps {
+  hospitals: Hospital[];
+}
 
-  if (comCoords.length === 0) {
+export default function HospitalMap({ hospitals }: HospitalMapProps) {
+  const withCoords = hospitals.filter((h) => h.lat && h.lng);
+
+  if (withCoords.length === 0) {
     return (
       <div className="h-64 bg-gray-100 rounded-xl flex items-center justify-center text-sm text-gray-400">
         Nenhum hospital com coordenadas disponíveis ainda.
@@ -50,16 +54,24 @@ export default function HospitalMap({ hospitais }: { hospitais: Hospital[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitBounds hospitais={comCoords} />
-      {comCoords.map((h) => (
-        <Marker key={h.id} position={[h.lat!, h.lng!]} icon={icon}>
+      <FitBounds hospitals={withCoords} />
+      {withCoords.map((h) => (
+        <Marker key={h.id} position={[h.lat!, h.lng!]} icon={markerIcon}>
           <Popup>
-            <strong>{h.unidade}</strong>
+            <strong>{h.name}</strong>
             <br />
-            {h.municipio} · {h.uf}
-            {h.telefones && <><br />📞 {h.telefones}</>}
-            {h.distancia_km !== undefined && (
-              <><br />📍 {h.distancia_km.toFixed(1)} km</>
+            {h.city} · {h.state_code}
+            {h.phones && (
+              <>
+                <br />
+                📞 {h.phones}
+              </>
+            )}
+            {h.distance_km !== undefined && (
+              <>
+                <br />
+                📍 {h.distance_km.toFixed(1)} km
+              </>
             )}
           </Popup>
         </Marker>

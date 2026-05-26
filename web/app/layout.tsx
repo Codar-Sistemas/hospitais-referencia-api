@@ -44,13 +44,97 @@ export const metadata: Metadata = {
   },
 };
 
+// Schema.org graph with multiple typed nodes — gives both classic search
+// engines and AI engines (ChatGPT, Gemini, Perplexity) rich context:
+// - Organization → who maintains the project
+// - WebSite     → the site itself + SearchAction (Google sitelinks searchbox)
+// - WebApplication → the public-facing app
+// - Dataset     → flags the API/data as a citable public dataset (boosts AI visibility)
+const SITE_URL = "https://hospitais-referencia-web.vercel.app";
+const API_URL = "https://hospitais-referencia-api.vercel.app";
+const DESCRIPTION =
+  "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.";
+
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "Hospitais de Referência",
-  description:
-    "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.",
-  url: "https://hospitais-referencia-web.vercel.app",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}#organization`,
+      name: "Codar Sistemas",
+      url: "https://codarsistemas.com.br",
+      sameAs: ["https://github.com/Codar-Sistemas"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}#website`,
+      name: "Hospitais de Referência",
+      description: DESCRIPTION,
+      url: SITE_URL,
+      inLanguage: "pt-BR",
+      publisher: { "@id": `${SITE_URL}#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${SITE_URL}/?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@type": "WebApplication",
+      "@id": `${SITE_URL}#webapp`,
+      name: "Hospitais de Referência",
+      description: DESCRIPTION,
+      url: SITE_URL,
+      applicationCategory: "HealthApplication",
+      operatingSystem: "Any",
+      inLanguage: "pt-BR",
+      isAccessibleForFree: true,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "BRL" },
+      publisher: { "@id": `${SITE_URL}#organization` },
+    },
+    {
+      "@type": "Dataset",
+      "@id": `${SITE_URL}#dataset`,
+      name: "Hospitais de Referência para Animais Peçonhentos no Brasil",
+      description:
+        "Diretório atualizado diariamente dos hospitais brasileiros habilitados a tratar acidentes com animais peçonhentos (cobras, escorpiões, aranhas, lagartas), agregando os PDFs oficiais do Ministério da Saúde em uma API REST pública.",
+      url: SITE_URL,
+      license: "https://opendatacommons.org/licenses/odbl/",
+      isAccessibleForFree: true,
+      keywords: [
+        "soro antiofídico",
+        "antiveneno",
+        "animais peçonhentos",
+        "hospitais",
+        "Brasil",
+        "Ministério da Saúde",
+        "SUS",
+        "emergência",
+        "envenenamento",
+      ],
+      creator: { "@id": `${SITE_URL}#organization` },
+      sourceOrganization: {
+        "@type": "GovernmentOrganization",
+        name: "Ministério da Saúde do Brasil",
+        url: "https://www.gov.br/saude",
+      },
+      distribution: [
+        {
+          "@type": "DataDownload",
+          encodingFormat: "application/json",
+          contentUrl: `${API_URL}/v1/hospitals`,
+        },
+        {
+          "@type": "DataDownload",
+          encodingFormat: "application/json",
+          contentUrl: `${API_URL}/v1/states`,
+        },
+      ],
+    },
+  ],
 };
 
 export default function RootLayout({

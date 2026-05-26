@@ -1,13 +1,29 @@
 {
   "name": "hospitais-referencia-api",
   "version": "1.0.0",
-  "description": "API pública de hospitais de referência para acidentes por animais peçonhentos (Ministério da Saúde)",
+  "description": "Public API for Brazilian reference hospitals treating venomous animal accidents (Ministry of Health data)",
   "main": "api/index.js",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "lint": "eslint api/",
+    "lint:fix": "eslint api/ --fix",
+    "format": "prettier --write \"api/**/*.{js,json,md}\" \"*.{json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"api/**/*.{js,json,md}\" \"*.{json,md,yml,yaml}\"",
+    "lint:py": "ruff check scripts/ tests/",
+    "lint:py:fix": "ruff check scripts/ tests/ --fix",
+    "format:py": "ruff format scripts/ tests/",
+    "format:py:check": "ruff format --check scripts/ tests/",
+    "check": "npm run lint && npm run format:check && npm run lint:py && npm run format:py:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2"
   },
   "license": "MIT"
 }

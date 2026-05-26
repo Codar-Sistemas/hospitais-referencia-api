@@ -1,0 +1,29 @@
+[project]
+name = "hospitais-referencia-api-scripts"
+version = "1.0.0"
+description = "ETL pipeline for Brazilian reference hospitals API"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "node_modules", ".next", ".vercel"]
+
+[tool.ruff.lint]
+# Enabled rule groups — pragmatic baseline, not exhaustive.
+# E/W: pycodestyle, F: pyflakes, I: isort, B: bugbear,
+# UP: pyupgrade, SIM: simplify, RUF: ruff-specific.
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+  "E501",   # line length — handled by formatter
+  "B008",   # function calls in default args — common in FastAPI/Click patterns
+  "SIM108", # ternary preference — sometimes if/else is clearer
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # allow assert in tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

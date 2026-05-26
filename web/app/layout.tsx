@@ -6,11 +6,19 @@ import PostHogScript from "@/components/PostHogScript";
 
 const geist = Geist({ subsets: ["latin"] });
 
+// Title kept at ~55 chars (sweet spot between SEO Site Checkup and SEOptimer
+// recommendations). Description at ~150 chars (Google truncates at ~160).
+const TITLE = "Hospitais de Referência para Animais Peçonhentos | Brasil";
+const DESCRIPTION =
+  "Encontre hospitais com soro antiofídico e antiveneno no Brasil. Busca por cidade, CEP ou animal. Dados oficiais do Ministério da Saúde.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://hospitais-referencia-web.vercel.app"),
-  title: "Hospitais de Referência | Animais Peçonhentos",
-  description:
-    "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.",
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
   keywords: [
     "soro antiofídico",
     "antiveneno",
@@ -18,15 +26,19 @@ export const metadata: Metadata = {
     "cobra",
     "escorpião",
     "aranha",
+    "lagarta",
+    "jararaca",
+    "cascavel",
     "hospital de referência",
     "ministério da saúde",
+    "SAMU",
     "emergência",
+    "acidente peçonhento",
   ],
   authors: [{ name: "Codar Sistemas", url: "https://github.com/Codar-Sistemas" }],
   openGraph: {
-    title: "Hospitais de Referência | Animais Peçonhentos",
-    description:
-      "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.",
+    title: TITLE,
+    description: DESCRIPTION,
     url: "https://hospitais-referencia-web.vercel.app",
     siteName: "Hospitais de Referência",
     locale: "pt_BR",
@@ -34,9 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hospitais de Referência | Animais Peçonhentos",
-    description:
-      "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil.",
+    title: TITLE,
+    description: DESCRIPTION,
   },
   robots: {
     index: true,
@@ -52,8 +63,6 @@ export const metadata: Metadata = {
 // - Dataset     → flags the API/data as a citable public dataset (boosts AI visibility)
 const SITE_URL = "https://hospitais-referencia-web.vercel.app";
 const API_URL = "https://hospitais-referencia-api.vercel.app";
-const DESCRIPTION =
-  "Localize hospitais de referência com soro antiofídico e antiveneno para tratamento de acidentes com animais peçonhentos no Brasil. Dados oficiais do Ministério da Saúde.";
 
 const jsonLd = {
   "@context": "https://schema.org",

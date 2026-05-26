@@ -114,6 +114,203 @@ export default function Home() {
 
         {searched && <HospitalList hospitals={hospitals} />}
       </div>
+
+      {/* ----------------------------------------------------------------
+          Below-the-fold SEO content. Server-rendered (despite the parent
+          being a Client Component) so crawlers see real H2/H3 hierarchy,
+          and AI engines pick up the FAQPage schema.
+          ---------------------------------------------------------------- */}
+      <section
+        aria-labelledby="como-funciona"
+        className="max-w-3xl mx-auto px-4 sm:px-6 pb-12"
+      >
+        <h2
+          id="como-funciona"
+          className="text-2xl font-bold text-slate-900 mb-6"
+        >
+          Como funciona
+        </h2>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-2">
+              1. Dados oficiais
+            </h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Os PDFs publicados pelo Ministério da Saúde para cada estado são
+              monitorados todos os dias. Quando um arquivo muda, a base é
+              atualizada automaticamente.
+            </p>
+          </article>
+          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-2">
+              2. Busca inteligente
+            </h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Localize a unidade de referência mais próxima por cidade, CEP ou
+              tipo de animal. Resultados ordenados por distância quando
+              coordenadas estão disponíveis.
+            </p>
+          </article>
+          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-2">
+              3. Pronto para emergência
+            </h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Cada hospital traz telefone, endereço, CNES e a lista exata de
+              soros disponíveis (botrópico, crotálico, elapídico, escorpiônico
+              e outros).
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="faq"
+        className="max-w-3xl mx-auto px-4 sm:px-6 pb-16"
+      >
+        <h2 id="faq" className="text-2xl font-bold text-slate-900 mb-6">
+          Perguntas frequentes
+        </h2>
+        <div className="space-y-4">
+          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <summary className="font-semibold text-slate-900 cursor-pointer">
+              O que são animais peçonhentos?
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              Animais peçonhentos são aqueles que produzem veneno e possuem um
+              mecanismo para inoculá-lo, como cobras (jararaca, cascavel,
+              coral, surucucu), escorpiões, aranhas (armadeira, marrom) e
+              lagartas (Lonomia). No Brasil, acidentes com esses animais são
+              tratados como urgência médica no SUS.
+            </p>
+          </details>
+          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <summary className="font-semibold text-slate-900 cursor-pointer">
+              O que devo fazer em caso de acidente?
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              Ligue imediatamente para o SAMU (192). Mantenha a pessoa
+              acidentada calma e em repouso, com o membro afetado elevado se
+              possível. Não faça torniquete, não corte a região, não chupe o
+              veneno. Lave o local com água e sabão e procure o hospital de
+              referência mais próximo — esta ferramenta ajuda você a
+              identificá-lo.
+            </p>
+          </details>
+          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <summary className="font-semibold text-slate-900 cursor-pointer">
+              De onde vêm os dados?
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              Os dados vêm dos PDFs oficiais publicados pelo Ministério da
+              Saúde em{' '}
+              <a
+                href="https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 hover:underline"
+              >
+                gov.br/saude
+              </a>
+              . Eles são lidos automaticamente todos os dias e estruturados
+              para facilitar a busca. Nenhum dado é inventado — apenas
+              normalizado.
+            </p>
+          </details>
+          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <summary className="font-semibold text-slate-900 cursor-pointer">
+              Quais tipos de soro existem?
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              Os principais são: soro antibotrópico (jararaca, urutu), soro
+              anticrotálico (cascavel), soro antielapídico (coral-verdadeira),
+              soro antilaquético (surucucu), soro antiescorpiônico, soro
+              antiloxoscélico (aranha marrom), soro antifoneutrico (aranha
+              armadeira) e soro antilonômico (lagarta-de-fogo). Nem todo
+              hospital tem todos os tipos — esta ferramenta mostra exatamente
+              quais cada unidade disponibiliza.
+            </p>
+          </details>
+          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <summary className="font-semibold text-slate-900 cursor-pointer">
+              A API é gratuita?
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              Sim. A API REST é pública, gratuita, sem autenticação e
+              documentada em{' '}
+              <a href="/docs" className="text-emerald-600 hover:underline">
+                /docs
+              </a>
+              . Há rate limit de 15 requisições por minuto por IP para
+              proteger contra abusos. Para casos de uso institucional com
+              volume maior,{' '}
+              <a
+                href="https://github.com/Codar-Sistemas/hospitais-referencia-api/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 hover:underline"
+              >
+                abra uma issue
+              </a>
+              .
+            </p>
+          </details>
+        </div>
+      </section>
+
+      {/* FAQPage JSON-LD — makes the questions citable by AI engines and
+          enables rich snippets in Google search results. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
     </div>
   );
 }
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'O que são animais peçonhentos?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Animais peçonhentos são aqueles que produzem veneno e possuem um mecanismo para inoculá-lo, como cobras (jararaca, cascavel, coral, surucucu), escorpiões, aranhas (armadeira, marrom) e lagartas (Lonomia). No Brasil, acidentes com esses animais são tratados como urgência médica no SUS.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'O que devo fazer em caso de acidente com animal peçonhento?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Ligue imediatamente para o SAMU (192). Mantenha a pessoa acidentada calma e em repouso, com o membro afetado elevado se possível. Não faça torniquete, não corte a região, não chupe o veneno. Lave o local com água e sabão e procure o hospital de referência mais próximo.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'De onde vêm os dados dos hospitais de referência?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Os dados vêm dos PDFs oficiais publicados pelo Ministério da Saúde do Brasil em gov.br/saude. Eles são lidos automaticamente todos os dias e estruturados para facilitar a busca. Nenhum dado é inventado — apenas normalizado.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Quais tipos de soro antiofídico e antiveneno existem?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Os principais são: soro antibotrópico (jararaca, urutu), soro anticrotálico (cascavel), soro antielapídico (coral-verdadeira), soro antilaquético (surucucu), soro antiescorpiônico, soro antiloxoscélico (aranha marrom), soro antifoneutrico (aranha armadeira) e soro antilonômico (lagarta-de-fogo).',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'A API de hospitais de referência é gratuita?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Sim. A API REST é pública, gratuita, sem autenticação e documentada na rota /docs. Há rate limit de 15 requisições por minuto por IP para proteger contra abusos.',
+      },
+    },
+  ],
+};

@@ -1,74 +1,86 @@
 services:
   # ---------------------------------------------------------------------------
-  # Postgres 16 com earthdistance habilitado
+  # Postgres 16 with earthdistance enabled.
+  # All migrations run automatically on first init (alphabetical order).
   # ---------------------------------------------------------------------------
   db:
     image: postgres:16-alpine
-    container_name: hospitais-referencia-db
+    container_name: reference-hospitals-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: hospitais-referencia
+      POSTGRES_DB: reference_hospitals
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - '5440:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Scripts SQL executados automaticamente na primeira inicialização
-      # (na ordem alfabética). Prefixos 001_ e 002_ garantem a ordem correta.
+      # Roles must exist BEFORE migrations 001-006 (which grant to them).
+      - ./sql/local_999_roles.sql:/docker-entrypoint-initdb.d/000_roles.sql:ro
       - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
       - ./sql/002_geocoding.sql:/docker-entrypoint-initdb.d/002_geocoding.sql:ro
-      - ./sql/local_999_roles.sql:/docker-entrypoint-initdb.d/999_roles.sql:ro
+      - ./sql/003_geocode_cache.sql:/docker-entrypoint-initdb.d/003_geocode_cache.sql:ro
+      - ./sql/004_metrics.sql:/docker-entrypoint-initdb.d/004_metrics.sql:ro
+      - ./sql/005_fonte_extracao.sql:/docker-entrypoint-initdb.d/005_fonte_extracao.sql:ro
+      - ./sql/006_rpc_fonte_extracao.sql:/docker-entrypoint-initdb.d/006_rpc_fonte_extracao.sql:ro
+      - ./sql/007_rename_to_english.sql:/docker-entrypoint-initdb.d/007_rename_to_english.sql:ro
+      - ./sql/008_metrics_phase1.sql:/docker-entrypoint-initdb.d/008_metrics_phase1.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hospitais-referencia"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d reference_hospitals']
       interval: 5s
       timeout: 5s
       retries: 10
 
   # ---------------------------------------------------------------------------
-  # PostgREST: expõe o Postgres como REST API (mesma engine do Supabase)
+  # PostgREST: exposes Postgres as a REST API (same engine as Supabase).
   # ---------------------------------------------------------------------------
   postgrest:
     image: postgrest/postgrest:v12.2.0
-    container_name: hospitais-referencia-postgrest
+    container_name: reference-hospitals-postgrest
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://authenticator:authpass@db:5432/hospitais-referencia
+      PGRST_DB_URI: postgres://authenticator:authpass@db:5432/reference_hospitals
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
-      # JWT secret dummy para simular o Supabase localmente.
-      # Em dev, simplesmente passamos 'apikey' com um token válido.
-      PGRST_JWT_SECRET: "dev-local-jwt-secret-32-chars-minimum-value-ok"
+      # Dummy JWT secret to simulate Supabase locally. In dev we just pass
+      # 'apikey' with a valid token.
+      PGRST_JWT_SECRET: 'dev-local-jwt-secret-32-chars-minimum-value-ok'
       PGRST_OPENAPI_MODE: follow-privileges
     ports:
-      - "3001:3000"
+      - '3010:3000'
 
   # ---------------------------------------------------------------------------
-  # API Node (sua camada com validação, /proximos, CORS, cache etc.)
+  # Node API (validation, /nearby, CORS, cache, rate-limit).
   # ---------------------------------------------------------------------------
   api:
     image: node:20-alpine
-    container_name: hospitais-referencia-api
+    container_name: reference-hospitals-api
     working_dir: /app
     restart: unless-stopped
     depends_on:
       - postgrest
     environment:
       SUPABASE_URL: http://postgrest:3000
-      # Token JWT assinado com o segredo PGRST_JWT_SECRET acima, role=anon.
-      # Para gerar outro, rode: python scripts/local_jwt.py <role>
+      SUPABASE_REST_URL: http://postgrest:3000
+      # JWT signed with PGRST_JWT_SECRET above, role=anon.
+      # Regenerate with: python scripts/local_jwt.py <role>
       SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.NFTKfrTgubu4fM4lIiYLSpn-XNF61nsPdPFxhpwKQWg
+      # service_role JWT — needed by the API itself to write api_metrics and web_events
+      # (RLS policies require service_role for writes). Regenerate with:
+      #   python scripts/local_jwt.py service_role
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.-2WFPFSsEk6KDRZfiG55wCnjhFj1BZIcp0MUpS02X7Y
       PORT: 3000
     ports:
-      - "3000:3000"
+      - '3030:3000'
     volumes:
       - ./api:/app/api:ro
+      - ./lib:/app/lib:ro
       - ./package.json:/app/package.json:ro
-      - ./scripts/local_server.js:/app/server.js:ro
-    command: node /app/server.js
+      - ./scripts/local_server.js:/app/scripts/local_server.js:ro
+    command: node /app/scripts/local_server.js
 
 volumes:
   pgdata:

@@ -1,19 +1,19 @@
 """
-Gera JWT HS256 para uso local com PostgREST.
+Generate an HS256 JWT for local PostgREST development.
 
-Uso:
+Usage:
   python scripts/local_jwt.py anon
   python scripts/local_jwt.py service_role
-  python scripts/local_jwt.py anon --secret "outro-segredo"
+  python scripts/local_jwt.py anon --secret "another-secret"
 """
+
 import argparse
 import base64
 import hashlib
 import hmac
 import json
 
-
-# Precisa bater com PGRST_JWT_SECRET no docker-compose.yml
+# Must match PGRST_JWT_SECRET in docker-compose.yml
 DEFAULT_SECRET = "dev-local-jwt-secret-32-chars-minimum-value-ok"
 
 
@@ -32,8 +32,8 @@ def make_jwt(role: str, secret: str) -> str:
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser()
-    ap.add_argument("role", choices=["anon", "authenticated", "service_role"])
-    ap.add_argument("--secret", default=DEFAULT_SECRET)
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("role", choices=["anon", "authenticated", "service_role"])
+    parser.add_argument("--secret", default=DEFAULT_SECRET)
+    args = parser.parse_args()
     print(make_jwt(args.role, args.secret))

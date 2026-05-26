@@ -1,10 +1,8 @@
 const BASE = 'https://hospitais-referencia-api.vercel.app';
 
-function Method({ m }: { m: string }) {
+function Method({ method }: { method: string }) {
   return (
-    <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-600 text-white">
-      {m}
-    </span>
+    <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-600 text-white">{method}</span>
   );
 }
 
@@ -16,7 +14,14 @@ function Code({ children }: { children: string }) {
   );
 }
 
-function ParamTable({ params }: { params: { nome: string; tipo: string; desc: string; obrigatorio?: boolean }[] }) {
+interface ParamDef {
+  name: string;
+  type: string;
+  description: string;
+  required?: boolean;
+}
+
+function ParamTable({ params }: { params: ParamDef[] }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200">
       <table className="w-full text-xs">
@@ -29,12 +34,13 @@ function ParamTable({ params }: { params: { nome: string; tipo: string; desc: st
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
           {params.map((p) => (
-            <tr key={p.nome}>
+            <tr key={p.name}>
               <td className="px-4 py-2.5 font-mono text-emerald-700 font-medium">
-                {p.nome}{p.obrigatorio && <span className="text-red-500 ml-0.5">*</span>}
+                {p.name}
+                {p.required && <span className="text-red-500 ml-0.5">*</span>}
               </td>
-              <td className="px-4 py-2.5 text-slate-500">{p.tipo}</td>
-              <td className="px-4 py-2.5 text-slate-600">{p.desc}</td>
+              <td className="px-4 py-2.5 text-slate-500">{p.type}</td>
+              <td className="px-4 py-2.5 text-slate-600">{p.description}</td>
             </tr>
           ))}
         </tbody>
@@ -43,19 +49,24 @@ function ParamTable({ params }: { params: { nome: string; tipo: string; desc: st
   );
 }
 
-function Endpoint({ method, path, desc, params, example, response }: {
-  method: string; path: string; desc: string;
-  params?: { nome: string; tipo: string; desc: string; obrigatorio?: boolean }[];
-  example: string; response: string;
-}) {
+interface EndpointProps {
+  method: string;
+  path: string;
+  description: string;
+  params?: ParamDef[];
+  example: string;
+  response: string;
+}
+
+function Endpoint({ method, path, description, params, example, response }: EndpointProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50">
-        <Method m={method} />
+        <Method method={method} />
         <code className="text-sm font-mono text-slate-800 font-semibold">{path}</code>
       </div>
       <div className="p-5 space-y-4">
-        <p className="text-sm text-slate-600 leading-relaxed">{desc}</p>
+        <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
         {params && params.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Parâmetros</h4>
@@ -78,20 +89,17 @@ function Endpoint({ method, path, desc, params, example, response }: {
 export default function Docs() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 bg-slate-800 rounded-lg flex items-center justify-center">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
             </svg>
           </div>
           <h1 className="text-xl font-bold text-slate-900">Documentação da API</h1>
         </div>
-        <p className="text-slate-500 text-sm mb-4">
-          API pública e gratuita. Sem autenticação. CORS liberado.
-        </p>
+        <p className="text-slate-500 text-sm mb-4">API pública e gratuita. Sem autenticação. CORS liberado.</p>
         <div className="bg-slate-900 text-slate-100 rounded-xl px-5 py-3 font-mono text-sm flex items-center gap-3 mb-3">
           <span className="text-slate-400 text-xs uppercase tracking-wide">Base URL</span>
           <span className="text-emerald-400">{BASE}</span>
@@ -115,7 +123,7 @@ export default function Docs() {
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </div>
           <div>
@@ -134,7 +142,7 @@ export default function Docs() {
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2 text-xs text-blue-800">
                   <svg className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   {item}
                 </li>
@@ -144,26 +152,26 @@ export default function Docs() {
         </div>
       </div>
 
-      {/* Animal types */}
+      {/* Treatment types */}
       <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-5">
         <h3 className="font-semibold text-amber-900 mb-1 text-sm">Tipos de atendimento</h3>
         <p className="text-xs text-amber-700 mb-4">
-          O parâmetro <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono">atendimento</code> aceita o nome técnico ou popular do animal (sem acento, case-insensitive).
+          O parâmetro <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono">treatment</code> aceita o nome canônico em inglês ou aliases populares (sem acento, case-insensitive).
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { tecnico: 'botropico',    popular: 'jararaca, cobra' },
-            { tecnico: 'crotalico',    popular: 'cascavel' },
-            { tecnico: 'elapidico',    popular: 'coral' },
-            { tecnico: 'laquetico',    popular: 'surucucu' },
-            { tecnico: 'escorpionico', popular: 'escorpiao' },
-            { tecnico: 'loxoscelico',  popular: 'aranha marrom' },
-            { tecnico: 'foneutrico',   popular: 'armadeira' },
-            { tecnico: 'lonomico',     popular: 'lagarta' },
-          ].map(({ tecnico, popular }) => (
-            <div key={tecnico} className="bg-white rounded-xl p-3 border border-amber-100">
-              <div className="font-mono font-bold text-slate-800 text-xs">{tecnico}</div>
-              <div className="text-amber-700 text-xs mt-0.5">{popular}</div>
+            { canonical: 'Bothropic',      aliases: 'jararaca, cobra' },
+            { canonical: 'Crotalic',       aliases: 'cascavel' },
+            { canonical: 'Elapidic',       aliases: 'coral' },
+            { canonical: 'Lachetic',       aliases: 'surucucu' },
+            { canonical: 'Scorpionic',     aliases: 'escorpiao' },
+            { canonical: 'Loxoscelic',     aliases: 'aranha marrom' },
+            { canonical: 'Phoneutric',     aliases: 'armadeira' },
+            { canonical: 'Lonomic',        aliases: 'lagarta, lonomia' },
+          ].map(({ canonical, aliases }) => (
+            <div key={canonical} className="bg-white rounded-xl p-3 border border-amber-100">
+              <div className="font-mono font-bold text-slate-800 text-xs">{canonical}</div>
+              <div className="text-amber-700 text-xs mt-0.5">{aliases}</div>
             </div>
           ))}
         </div>
@@ -173,130 +181,135 @@ export default function Docs() {
       <h2 className="text-lg font-bold text-slate-900 mb-4">Endpoints</h2>
 
       <Endpoint
-        method="GET" path="/v1/estados"
-        desc="Lista as 27 UFs com status de sincronização e total de hospitais cadastrados."
-        example={`curl "${BASE}/v1/estados"`}
+        method="GET"
+        path="/v1/states"
+        description="Lista as 27 UFs com status de sincronização e total de hospitais cadastrados."
+        example={`curl "${BASE}/v1/states"`}
         response={`{
-  "estados": [
+  "states": [
     {
-      "uf": "SP",
-      "nome": "São Paulo",
-      "atualizado_em": "2026-02-14T18:04:00Z",
-      "sincronizado_em": "2026-04-14T03:00:00Z",
-      "total_hospitais": 242
+      "state_code": "SP",
+      "name": "São Paulo",
+      "updated_at": "2026-02-14T18:04:00Z",
+      "synced_at": "2026-04-14T03:00:00Z",
+      "total_hospitals": 242
     }
   ]
 }`}
       />
 
       <Endpoint
-        method="GET" path="/v1/estados/:uf"
-        desc="Detalhes de um estado específico, incluindo URL do PDF fonte e hash SHA256."
-        example={`curl "${BASE}/v1/estados/SP"`}
+        method="GET"
+        path="/v1/states/:state_code"
+        description="Detalhes de um estado específico, incluindo URL do PDF fonte e hash SHA256."
+        example={`curl "${BASE}/v1/states/SP"`}
         response={`{
-  "uf": "SP",
-  "nome": "São Paulo",
+  "state_code": "SP",
+  "name": "São Paulo",
   "pdf_url": "https://www.gov.br/saude/...",
-  "atualizado_em": null,
-  "sincronizado_em": "2026-04-14T03:00:00Z",
-  "total_hospitais": 242,
+  "updated_at": null,
+  "synced_at": "2026-04-14T03:00:00Z",
+  "total_hospitals": 242,
   "status": "ok"
 }`}
       />
 
       <Endpoint
-        method="GET" path="/v1/hospitais"
-        desc="Busca hospitais com filtros combinados. Requer ao menos uf, municipio/cidade ou q."
+        method="GET"
+        path="/v1/hospitals"
+        description="Busca hospitais com filtros combinados. Requer ao menos state_code, city ou q."
         params={[
-          { nome: 'uf',          tipo: 'string', desc: 'Sigla do estado (ex: SP, RJ)' },
-          { nome: 'municipio',   tipo: 'string', desc: 'Nome da cidade (busca parcial)' },
-          { nome: 'cidade',      tipo: 'string', desc: 'Alias de municipio' },
-          { nome: 'atendimento', tipo: 'string', desc: 'Tipo de soro ou nome do animal' },
-          { nome: 'q',           tipo: 'string', desc: 'Full-text em unidade + endereço' },
-          { nome: 'limit',       tipo: 'number', desc: 'Máximo de resultados (padrão 100, máx 500)' },
-          { nome: 'offset',      tipo: 'number', desc: 'Paginação' },
+          { name: 'state_code', type: 'string', description: 'Sigla do estado (ex: SP, RJ)' },
+          { name: 'city',       type: 'string', description: 'Nome da cidade (busca parcial)' },
+          { name: 'treatment',  type: 'string', description: 'Tipo de soro (canônico em inglês ou alias popular)' },
+          { name: 'q',          type: 'string', description: 'Full-text em name + address' },
+          { name: 'limit',      type: 'number', description: 'Máximo de resultados (padrão 100, máx 500)' },
+          { name: 'offset',     type: 'number', description: 'Paginação' },
         ]}
         example={`# Por estado e animal
-curl "${BASE}/v1/hospitais?uf=SP&atendimento=escorpiao"
+curl "${BASE}/v1/hospitals?state_code=SP&treatment=escorpiao"
 
 # Por cidade
-curl "${BASE}/v1/hospitais?cidade=Campinas&uf=SP"
+curl "${BASE}/v1/hospitals?city=Campinas&state_code=SP"
 
 # Full-text
-curl "${BASE}/v1/hospitais?q=santa+casa&uf=SP"`}
+curl "${BASE}/v1/hospitals?q=santa+casa&state_code=SP"`}
         response={`{
-  "filtros": { "uf": "SP", "municipio": null, "atendimento": "escorpiao" },
-  "total_retornados": 87,
-  "hospitais": [
+  "filters": { "state_code": "SP", "city": null, "treatment": "Scorpionic" },
+  "total_returned": 87,
+  "hospitals": [
     {
       "id": 1,
-      "uf": "SP",
-      "municipio": "Adamantina",
-      "unidade": "Santa Casa de Misericórdia",
-      "endereco": "Rua Joaquim Luiz Viana, 209",
-      "telefones": "(18) 3502-2200",
+      "state_code": "SP",
+      "city": "Adamantina",
+      "name": "Santa Casa de Misericórdia",
+      "address": "Rua Joaquim Luiz Viana, 209",
+      "phones": "(18) 3502-2200",
       "cnes": "2077647",
-      "atendimentos": ["Botrópico", "Crotálico", "Escorpiônico"]
+      "treatments": ["Bothropic", "Crotalic", "Scorpionic"]
     }
   ]
 }`}
       />
 
       <Endpoint
-        method="GET" path="/v1/hospitais/proximos"
-        desc="Hospitais ordenados por distância. Aceita CEP, coordenadas lat/lng ou cidade como origem."
+        method="GET"
+        path="/v1/hospitals/nearby"
+        description="Hospitais ordenados por distância. Aceita CEP, coordenadas lat/lng ou cidade como origem."
         params={[
-          { nome: 'cep',         tipo: 'string', desc: 'CEP de 8 dígitos (resolve lat/lng via BrasilAPI)' },
-          { nome: 'lat',         tipo: 'number', desc: 'Latitude decimal' },
-          { nome: 'lng',         tipo: 'number', desc: 'Longitude decimal' },
-          { nome: 'cidade',      tipo: 'string', desc: 'Nome da cidade (fallback sem distância)' },
-          { nome: 'raio',        tipo: 'number', desc: 'Raio em metros (padrão 50000, máx 200000)' },
-          { nome: 'atendimento', tipo: 'string', desc: 'Filtro por tipo de soro' },
-          { nome: 'limit',       tipo: 'number', desc: 'Máximo de resultados (padrão 20, máx 100)' },
+          { name: 'cep',        type: 'string', description: 'CEP de 8 dígitos (resolve lat/lng via BrasilAPI)' },
+          { name: 'lat',        type: 'number', description: 'Latitude decimal' },
+          { name: 'lng',        type: 'number', description: 'Longitude decimal' },
+          { name: 'city',       type: 'string', description: 'Nome da cidade (fallback sem distância)' },
+          { name: 'state_code', type: 'string', description: 'Restrição opcional por estado' },
+          { name: 'radius_m',   type: 'number', description: 'Raio em metros (padrão 50000, máx 200000)' },
+          { name: 'treatment',  type: 'string', description: 'Filtro por tipo de soro' },
+          { name: 'limit',      type: 'number', description: 'Máximo de resultados (padrão 20, máx 100)' },
         ]}
         example={`# Por CEP
-curl "${BASE}/v1/hospitais/proximos?cep=13280000&atendimento=crotalico"
+curl "${BASE}/v1/hospitals/nearby?cep=13280000&treatment=crotalico"
 
 # Por coordenadas
-curl "${BASE}/v1/hospitais/proximos?lat=-23.5&lng=-46.6&raio=30000"`}
+curl "${BASE}/v1/hospitals/nearby?lat=-23.5&lng=-46.6&radius_m=30000"`}
         response={`{
-  "origem": {
+  "origin": {
     "lat": -22.889, "lng": -48.445,
-    "fonte": "cep",
-    "cep": { "cep": "13280000", "cidade": "Vinhedo", "uf": "SP" }
+    "source": "cep",
+    "cep": { "cep": "13280000", "city": "Vinhedo", "state_code": "SP" }
   },
-  "raio_m": 50000,
-  "total_retornados": 3,
-  "hospitais": [
+  "radius_m": 50000,
+  "total_returned": 3,
+  "hospitals": [
     {
       "id": 42,
-      "municipio": "Botucatu",
-      "unidade": "Hospital das Clínicas - UNESP",
-      "atendimentos": ["Botrópico", "Crotálico"],
+      "city": "Botucatu",
+      "name": "Hospital das Clínicas - UNESP",
+      "treatments": ["Bothropic", "Crotalic"],
       "lat": -22.894, "lng": -48.443,
-      "distancia_m": 612.4,
-      "distancia_km": 0.6
+      "distance_m": 612.4,
+      "distance_km": 0.6
     }
   ]
 }`}
       />
 
       <Endpoint
-        method="GET" path="/v1/hospitais/:id"
-        desc="Todos os dados de um hospital específico, incluindo coordenadas e status de geocoding."
-        example={`curl "${BASE}/v1/hospitais/42"`}
+        method="GET"
+        path="/v1/hospitals/:id"
+        description="Todos os dados de um hospital específico, incluindo coordenadas e status de geocoding."
+        example={`curl "${BASE}/v1/hospitals/42"`}
         response={`{
   "id": 42,
-  "uf": "SP",
-  "municipio": "Botucatu",
-  "unidade": "Hospital das Clínicas da Faculdade de Medicina de Botucatu",
-  "endereco": "Avenida Prof. Mario Rubens Guimarães Montenegro, s/n",
-  "telefones": "(14) 3811-6129",
+  "state_code": "SP",
+  "city": "Botucatu",
+  "name": "Hospital das Clínicas da Faculdade de Medicina de Botucatu",
+  "address": "Avenida Prof. Mario Rubens Guimarães Montenegro, s/n",
+  "phones": "(14) 3811-6129",
   "cnes": "2748223",
-  "atendimentos": ["Botrópico", "Crotálico", "Elapídico", "Laquético"],
+  "treatments": ["Bothropic", "Crotalic", "Elapidic", "Lachetic"],
   "lat": -22.894, "lng": -48.443,
-  "geocode_status": "ok",
-  "geocode_fonte": "nominatim"
+  "geocoding_status": "ok",
+  "geocoding_source": "nominatim"
 }`}
       />
 
@@ -306,25 +319,25 @@ curl "${BASE}/v1/hospitais/proximos?lat=-23.5&lng=-46.6&raio=30000"`}
         <div>
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">JavaScript / TypeScript</h3>
           <Code>{`const res = await fetch(
-  '${BASE}/v1/hospitais/proximos?cep=01310100&atendimento=escorpiao'
+  '${BASE}/v1/hospitals/nearby?cep=01310100&treatment=scorpion'
 );
-const { hospitais } = await res.json();
-console.log(hospitais[0].unidade, hospitais[0].distancia_km + ' km');`}</Code>
+const { hospitals } = await res.json();
+console.log(hospitals[0].name, hospitals[0].distance_km + ' km');`}</Code>
         </div>
         <div>
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Python</h3>
           <Code>{`import requests
 
 r = requests.get(
-    '${BASE}/v1/hospitais',
-    params={'uf': 'SP', 'atendimento': 'escorpiao', 'limit': 50}
+    '${BASE}/v1/hospitals',
+    params={'state_code': 'SP', 'treatment': 'scorpion', 'limit': 50}
 )
-for h in r.json()['hospitais']:
-    print(h['municipio'], '-', h['unidade'])`}</Code>
+for h in r.json()['hospitals']:
+    print(h['city'], '-', h['name'])`}</Code>
         </div>
         <div>
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">cURL</h3>
-          <Code>{`curl "${BASE}/v1/hospitais/proximos?cep=13280000&atendimento=crotalico&limit=5" \\
+          <Code>{`curl "${BASE}/v1/hospitals/nearby?cep=13280000&treatment=crotalico&limit=5" \\
   | python3 -m json.tool`}</Code>
         </div>
       </div>
@@ -332,7 +345,7 @@ for h in r.json()['hospitais']:
       <div className="mt-8 p-5 bg-white border border-slate-200 rounded-2xl text-sm text-slate-500 shadow-sm">
         <div className="flex items-start gap-3">
           <svg className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
           </svg>
           <div>
             <p>

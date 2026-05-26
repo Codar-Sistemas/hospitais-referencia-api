@@ -1,15 +1,15 @@
 """
-Provider BrasilAPI para consulta de CEP.
+BrasilAPI CEP provider.
 
-Gratuito, sem necessidade de API key. Usa a v2 da BrasilAPI que
-combina múltiplas fontes e retorna coordenadas quando disponíveis.
+Free, no API key required. Uses BrasilAPI v2 which aggregates multiple
+sources and returns coordinates when available.
 
 https://brasilapi.com.br/docs#tag/CEP-V2
 """
+
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 import requests
 
@@ -20,45 +20,45 @@ DEFAULT_TIMEOUT_S = 15
 
 
 class BrasilApiCepProvider(CepProvider):
-    """Implementação de CepProvider usando BrasilAPI v2."""
+    """CepProvider backed by BrasilAPI v2."""
 
     name = "brasilapi"
 
     def __init__(
         self,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
         timeout_s: int = DEFAULT_TIMEOUT_S,
     ):
         self._session = session or requests.Session()
         self._timeout_s = timeout_s
 
-    def lookup(self, cep: str) -> Optional[CepLookupResult]:
-        cep_limpo = re.sub(r"\D", "", cep or "")
-        if len(cep_limpo) != 8:
+    def lookup(self, cep: str) -> CepLookupResult | None:
+        clean_cep = re.sub(r"\D", "", cep or "")
+        if len(clean_cep) != 8:
             return None
 
         try:
-            r = self._session.get(
-                BRASILAPI_CEP_URL.format(cep=cep_limpo),
+            response = self._session.get(
+                BRASILAPI_CEP_URL.format(cep=clean_cep),
                 timeout=self._timeout_s,
             )
-            if not r.ok:
+            if not response.ok:
                 return None
-            data = r.json()
+            data = response.json()
         except (requests.RequestException, ValueError):
             return None
 
-        loc = data.get("location", {}) or {}
-        coords = loc.get("coordinates", {}) or {}
-        lat = coords.get("latitude")
-        lng = coords.get("longitude")
+        location = data.get("location", {}) or {}
+        coordinates = location.get("coordinates", {}) or {}
+        lat = coordinates.get("latitude")
+        lng = coordinates.get("longitude")
 
         return CepLookupResult(
-            cep=cep_limpo,
-            logradouro=data.get("street") or None,
-            bairro=data.get("neighborhood") or None,
-            cidade=data.get("city") or None,
-            uf=data.get("state") or None,
+            cep=clean_cep,
+            street=data.get("street") or None,
+            neighborhood=data.get("neighborhood") or None,
+            city=data.get("city") or None,
+            state_code=data.get("state") or None,
             lat=float(lat) if lat else None,
             lng=float(lng) if lng else None,
         )

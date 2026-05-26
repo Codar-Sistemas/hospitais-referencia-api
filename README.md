@@ -26,6 +26,7 @@
 Este projeto agrega, normaliza e publica em formato de API REST os dados oficiais dos **hospitais habilitados a tratar acidentes com animais peçonhentos** (cobras, escorpiões, aranhas, lagartas etc.) no Brasil. Os dados vêm de PDFs publicados pelo Ministério da Saúde, atualizados automaticamente todo dia.
 
 **Interfaces disponíveis:**
+
 - **API REST** — para integração em sistemas, apps e pesquisa
 - **Frontend web** — busca por estado, município, CEP ou coordenadas, com mapa interativo
 - **Visão profissional** — tabela técnica com CNES, grade completa de soros e busca avançada
@@ -141,12 +142,12 @@ sequenceDiagram
 
 **Base URL:** `https://hospitais-referencia-web.vercel.app`
 
-| | |
-|---|---|
-| **Rate limit** | 15 req / min por IP |
-| **Autenticação** | Nenhuma |
-| **CORS** | Liberado (`*`) |
-| **Formato** | JSON (`Content-Type: application/json`) |
+|                  |                                         |
+| ---------------- | --------------------------------------- |
+| **Rate limit**   | 15 req / min por IP                     |
+| **Autenticação** | Nenhuma                                 |
+| **CORS**         | Liberado (`*`)                          |
+| **Formato**      | JSON (`Content-Type: application/json`) |
 
 ---
 
@@ -189,27 +190,27 @@ curl https://hospitais-referencia-web.vercel.app/v1/estados/SP
 
 Busca de hospitais com filtros combinados.
 
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `uf` | string | Sigla do estado (ex: `SP`) |
-| `municipio` | string | Nome do município (accent-insensitive, parcial) |
-| `atendimento` | string | Tipo de soro — ver tabela abaixo |
-| `q` | string | Full-text em unidade + endereço |
-| `limit` | int | Máx 500, padrão 100 |
-| `offset` | int | Paginação |
+| Parâmetro     | Tipo   | Descrição                                       |
+| ------------- | ------ | ----------------------------------------------- |
+| `uf`          | string | Sigla do estado (ex: `SP`)                      |
+| `municipio`   | string | Nome do município (accent-insensitive, parcial) |
+| `atendimento` | string | Tipo de soro — ver tabela abaixo                |
+| `q`           | string | Full-text em unidade + endereço                 |
+| `limit`       | int    | Máx 500, padrão 100                             |
+| `offset`      | int    | Paginação                                       |
 
 **Tipos de atendimento aceitos** (case e accent-insensitive):
 
-| Parâmetro | Animal / Soro |
-|---|---|
-| `botropico` | Jararaca, urutu e espécies do gênero *Bothrops* |
-| `crotalico` | Cascavel (*Crotalus*) |
-| `elapidico` | Coral-verdadeira (*Micrurus*) |
-| `laquetico` | Surucucu (*Lachesis*) |
-| `escorpionico` | Escorpiões (*Tityus*) |
-| `loxoscelico` | Aranha marrom (*Loxosceles*) |
-| `foneutrico` | Aranha armadeira (*Phoneutria*) |
-| `lonomico` | Lagarta-de-fogo (*Lonomia*) |
+| Parâmetro      | Animal / Soro                                   |
+| -------------- | ----------------------------------------------- |
+| `botropico`    | Jararaca, urutu e espécies do gênero _Bothrops_ |
+| `crotalico`    | Cascavel (_Crotalus_)                           |
+| `elapidico`    | Coral-verdadeira (_Micrurus_)                   |
+| `laquetico`    | Surucucu (_Lachesis_)                           |
+| `escorpionico` | Escorpiões (_Tityus_)                           |
+| `loxoscelico`  | Aranha marrom (_Loxosceles_)                    |
+| `foneutrico`   | Aranha armadeira (_Phoneutria_)                 |
+| `lonomico`     | Lagarta-de-fogo (_Lonomia_)                     |
 
 ```bash
 # Hospitais com soro antibotrópico em SP
@@ -226,6 +227,7 @@ curl "https://hospitais-referencia-web.vercel.app/v1/hospitais?uf=MG&limit=20&of
 ```
 
 **Resposta:**
+
 ```json
 [
   {
@@ -236,7 +238,14 @@ curl "https://hospitais-referencia-web.vercel.app/v1/hospitais?uf=MG&limit=20&of
     "endereco": "Avenida Prof. Mario Rubens Guimarães Montenegro, s/n - UNESP",
     "telefones": "(14) 3811-6129",
     "cnes": "2078187",
-    "atendimentos": ["Botrópico", "Crotálico", "Elapídico", "Laquético", "Escorpiônico", "Loxoscélico"],
+    "atendimentos": [
+      "Botrópico",
+      "Crotálico",
+      "Elapídico",
+      "Laquético",
+      "Escorpiônico",
+      "Loxoscélico"
+    ],
     "lat": -22.894,
     "lng": -48.443
   }
@@ -259,14 +268,14 @@ curl https://hospitais-referencia-web.vercel.app/v1/hospitais/42
 
 Retorna hospitais ordenados por distância a partir de um ponto de origem.
 
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `cep` | string | CEP brasileiro (8 dígitos, com ou sem hífen) |
-| `lat` + `lng` | float | Coordenadas geográficas diretamente |
-| `cidade` + `uf` | string | Fallback por nome de cidade (sem distância) |
-| `raio` | int | Raio de busca em metros (padrão: 50.000, máx: 200.000) |
-| `atendimento` | string | Filtro por tipo de soro |
-| `limit` | int | Máx 200, padrão 50 |
+| Parâmetro       | Tipo   | Descrição                                              |
+| --------------- | ------ | ------------------------------------------------------ |
+| `cep`           | string | CEP brasileiro (8 dígitos, com ou sem hífen)           |
+| `lat` + `lng`   | float  | Coordenadas geográficas diretamente                    |
+| `cidade` + `uf` | string | Fallback por nome de cidade (sem distância)            |
+| `raio`          | int    | Raio de busca em metros (padrão: 50.000, máx: 200.000) |
+| `atendimento`   | string | Filtro por tipo de soro                                |
+| `limit`         | int    | Máx 200, padrão 50                                     |
 
 ```bash
 # Por CEP — retorna com distância calculada
@@ -280,6 +289,7 @@ curl "https://hospitais-referencia-web.vercel.app/v1/hospitais/proximos?cidade=C
 ```
 
 **Resposta:**
+
 ```json
 {
   "origem": {
@@ -429,7 +439,7 @@ graph LR
 2. No SQL Editor, execute em ordem:
    - `sql/001_schema.sql`
    - `sql/002_geocoding.sql`
-3. Em *Project Settings → API*, copie as três chaves.
+3. Em _Project Settings → API_, copie as três chaves.
 
 #### 2. Primeira sincronização
 
@@ -458,15 +468,16 @@ vercel --prod
 
 #### 4. Cron automático (GitHub Actions)
 
-Em *Settings → Secrets and variables → Actions*, adicione:
+Em _Settings → Secrets and variables → Actions_, adicione:
 
-| Secret | Descrição |
-|---|---|
-| `SUPABASE_URL` | URL do projeto Supabase |
+| Secret                 | Descrição                           |
+| ---------------------- | ----------------------------------- |
+| `SUPABASE_URL`         | URL do projeto Supabase             |
 | `SUPABASE_SERVICE_KEY` | service_role key (escreve no banco) |
 
 O workflow `.github/workflows/sync.yml` roda às **03:00 UTC** (~00:00 horário de Brasília).  
-Você também pode disparar manualmente em *Actions → sync-hospitais → Run workflow* com opções:
+Você também pode disparar manualmente em _Actions → sync-hospitais → Run workflow_ com opções:
+
 - `uf`: processar apenas um estado
 - `force`: ignorar verificação de mudança e reprocessar mesmo assim
 - `skip_geocode`: pular etapa de geocoding
@@ -477,24 +488,24 @@ Você também pode disparar manualmente em *Actions → sync-hospitais → Run w
 
 O sync lida automaticamente com inconsistências nas publicações do Ministério da Saúde:
 
-| Variação | Como é tratada |
-|---|---|
-| URL do PDF como `.pdf` direto | Detectado pelo scraper (padrão) |
-| URL no formato Plone `/@@download/file` (ex: MG) | Detectado pelo scraper |
-| **Pernambuco publica XLSX** em vez de PDF | `status='nao_suportado'` — segue sem erro |
-| `"Botrópico-Crotálico"` composto (ex: MG) | Expandido para ambos individualmente |
-| Número de colunas diferente entre estados | Parser usa linhas verticais do PDF, não posições fixas |
+| Variação                                         | Como é tratada                                         |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| URL do PDF como `.pdf` direto                    | Detectado pelo scraper (padrão)                        |
+| URL no formato Plone `/@@download/file` (ex: MG) | Detectado pelo scraper                                 |
+| **Pernambuco publica XLSX** em vez de PDF        | `status='nao_suportado'` — segue sem erro              |
+| `"Botrópico-Crotálico"` composto (ex: MG)        | Expandido para ambos individualmente                   |
+| Número de colunas diferente entre estados        | Parser usa linhas verticais do PDF, não posições fixas |
 
 ---
 
 ## Custos e limites do free tier
 
-| Serviço | Limite gratuito | Uso estimado |
-|---|---|---|
-| **Supabase** | 500 MB banco, 5 GB egress/mês | ~3 MB banco |
-| **Vercel Hobby** | 100 GB bandwidth/mês, 100k invocações/dia | Conforme tráfego |
-| **GitHub Actions** | Ilimitado em repos públicos | ~5 min/dia |
-| **Upstash Redis** | 10.000 req/dia no Free | ~req de rate limit |
+| Serviço            | Limite gratuito                           | Uso estimado       |
+| ------------------ | ----------------------------------------- | ------------------ |
+| **Supabase**       | 500 MB banco, 5 GB egress/mês             | ~3 MB banco        |
+| **Vercel Hobby**   | 100 GB bandwidth/mês, 100k invocações/dia | Conforme tráfego   |
+| **GitHub Actions** | Ilimitado em repos públicos               | ~5 min/dia         |
+| **Upstash Redis**  | 10.000 req/dia no Free                    | ~req de rate limit |
 
 Custo total: **R$ 0/mês**. O único risco no Supabase Free é pausar após 7 dias sem atividade — o sync diário garante que isso nunca aconteça.
 
@@ -525,4 +536,3 @@ Contribuições são bem-vindas! Veja como:
 pip install -r requirements.txt
 pytest tests/ -v
 ```
-

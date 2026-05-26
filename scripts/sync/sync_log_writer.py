@@ -53,7 +53,7 @@ def write_sync_log(
 
     try:
         client.upsert("sync_logs", [row], on_conflict="id")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         # Telemetry must never break the sync — just log and continue.
         log(f"sync_logs write failed: {e}", state_code=state_code)
 

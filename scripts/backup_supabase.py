@@ -48,8 +48,14 @@ def fetch_table(url: str, headers: dict, table: str) -> list[dict]:
     rows: list[dict] = []
     offset = 0
     while True:
-        page_headers = {**headers, "Range-Unit": "items", "Range": f"{offset}-{offset + PAGE_SIZE - 1}"}
-        response = requests.get(f"{url}/rest/v1/{table}", headers=page_headers, params={"select": "*"})
+        page_headers = {
+            **headers,
+            "Range-Unit": "items",
+            "Range": f"{offset}-{offset + PAGE_SIZE - 1}",
+        }
+        response = requests.get(
+            f"{url}/rest/v1/{table}", headers=page_headers, params={"select": "*"}
+        )
         if not response.ok:
             raise RuntimeError(f"Failed to fetch {table}: {response.status_code} {response.text}")
         page = response.json()

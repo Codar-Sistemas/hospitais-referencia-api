@@ -17,7 +17,11 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
 ignore = [
   "E501",   # line length — handled by formatter
   "B008",   # function calls in default args — common in FastAPI/Click patterns
+  "SIM103", # return-condition-directly — sometimes explicit if/else is clearer
+  "SIM105", # contextlib.suppress — try/except/pass is fine in best-effort code
   "SIM108", # ternary preference — sometimes if/else is clearer
+  "B905",   # zip without strict= — fine when lengths are known equal
+  "RUF007", # itertools.pairwise — zip(a[:-1], a[1:]) reads fine
 ]
 
 [tool.ruff.lint.per-file-ignores]

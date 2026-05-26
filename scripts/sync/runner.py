@@ -137,7 +137,7 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
                 }
 
             extraction_source = EXTRACTION_SOURCE_PDF_OCR
-            ocr_confidence = int(round(mean_confidence))
+            ocr_confidence = round(mean_confidence)
             log(
                 f"OCR extracted {len(records)} records (mean confidence: {mean_confidence:.1f}%)",
                 state_code=state_code,

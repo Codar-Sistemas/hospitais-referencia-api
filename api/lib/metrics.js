@@ -43,8 +43,7 @@ function track(params) {
     treatment_searched: params.treatment_searched || null,
     search_origin: params.search_origin || null,
     user_state_code: params.user_state_code || null,
-    results_count:
-      typeof params.results_count === 'number' ? params.results_count : null,
+    results_count: typeof params.results_count === 'number' ? params.results_count : null,
     gov_br_unreachable:
       typeof params.gov_br_unreachable === 'boolean' ? params.gov_br_unreachable : null,
   };

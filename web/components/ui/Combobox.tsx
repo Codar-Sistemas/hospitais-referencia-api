@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface ComboboxOption {
   value: string;
@@ -57,11 +58,19 @@ export default function Combobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const listboxId = useId();
+
+  // The portal target is `document.body`, only available on the client.
+  // Safe to skip a mounted-flag: `open` starts as false and only flips to
+  // true via user interaction (onFocus/onChange), so SSR never renders
+  // the portal and we never get a hydration mismatch.
 
   const selectedOption = useMemo(
     () => options.find((opt) => opt.value === value) ?? null,
@@ -78,16 +87,41 @@ export default function Combobox({
 
   // Close on outside click. Listening to mousedown so the click on a
   // dropdown item (which uses onMouseDown) still registers before close.
+  // We accept clicks inside containerRef OR inside the portaled listbox.
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
-      if (!containerRef.current?.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        !containerRef.current?.contains(target) &&
+        !listRef.current?.contains(target)
+      ) {
         setOpen(false);
         setQuery('');
       }
     }
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  // Compute the portal position from the input's bounding rect and keep
+  // it in sync on scroll/resize while open. Using `position: fixed` lets
+  // the dropdown escape any ancestor `overflow: hidden` clipping.
+  useEffect(() => {
+    if (!open) return;
+    function updatePosition() {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (rect) {
+        setPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+      }
+    }
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
   }, [open]);
 
   // Keep highlighted item in view while navigating with the keyboard.
@@ -174,12 +208,18 @@ export default function Combobox({
         </svg>
       </div>
 
-      {open && !disabled && (
+      {open && !disabled && position && createPortal(
         <ul
           ref={listRef}
           id={listboxId}
           role="listbox"
-          className="absolute z-50 mt-1 w-full max-h-64 overflow-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1"
+          style={{
+            position: 'fixed',
+            top: position.top,
+            left: position.left,
+            width: position.width,
+          }}
+          className="z-[60] max-h-64 overflow-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1"
         >
           {filtered.length === 0 ? (
             <li className="px-4 py-2 text-sm text-slate-400 italic">{emptyMessage}</li>
@@ -207,7 +247,8 @@ export default function Combobox({
               </li>
             ))
           )}
-        </ul>
+        </ul>,
+        document.body,
       )}
     </div>
   );

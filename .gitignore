@@ -10,6 +10,7 @@ venv/
 *.pdf
 *.json
 !package.json
+!package-lock.json
 !vercel.json
 !.prettierrc.json
 !tsconfig.json

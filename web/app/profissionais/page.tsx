@@ -1,8 +1,9 @@
 'use client';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Combobox from '@/components/ui/Combobox';
 import { searchHospitals, searchNearby } from '@/lib/api-client';
 import { STATES, TREATMENTS, TREATMENT_TEXT_CLASS } from '@/lib/constants';
+import { fetchCitiesByState } from '@/lib/ibge';
 import type { Hospital } from '@/lib/types';
 
 // Treatment columns to render in the comparison table. Order mirrors the
@@ -29,6 +30,32 @@ export default function Profissionais() {
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // Fetch IBGE city list whenever the state changes; clear the city if it
+  // doesn't exist in the new state.
+  useEffect(() => {
+    if (!stateCode) {
+      setCities([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingCities(true);
+    fetchCitiesByState(stateCode)
+      .then((list) => {
+        if (cancelled) return;
+        setCities(list);
+        if (city && !list.includes(city)) setCity('');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCities(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateCode]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -85,6 +112,30 @@ export default function Profissionais() {
     [],
   );
 
+  const cityOptions = useMemo(
+    () => cities.map((name) => ({ value: name, label: name })),
+    [cities],
+  );
+
+  const radiusOptions = useMemo(
+    () => [
+      { value: '20000', label: '20 km' },
+      { value: '50000', label: '50 km' },
+      { value: '100000', label: '100 km' },
+      { value: '200000', label: '200 km' },
+    ],
+    [],
+  );
+
+  const cepDigits = cep.replace(/\D/g, '').length;
+  const radiusDisabled = cepDigits !== 8;
+  const cityDisabled = !stateCode || loadingCities;
+  const cityPlaceholder = !stateCode
+    ? 'Selecione um estado primeiro'
+    : loadingCities
+      ? 'Carregando cidades...'
+      : 'Selecione uma cidade';
+
   const showDistance = hospitals.some((h) => h.distance_km !== undefined);
 
   return (
@@ -116,11 +167,13 @@ export default function Profissionais() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Município</label>
-            <input
+            <Combobox
               value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Ex: Campinas"
-              className={inputClass}
+              onChange={setCity}
+              options={cityOptions}
+              placeholder="Selecione uma cidade"
+              disabledPlaceholder={cityPlaceholder}
+              disabled={cityDisabled}
             />
           </div>
           <div>
@@ -138,17 +191,14 @@ export default function Profissionais() {
               Raio{' '}
               <span className="text-slate-400 normal-case font-normal">(só com CEP)</span>
             </label>
-            <select
+            <Combobox
               value={radius}
-              onChange={(e) => setRadius(e.target.value)}
-              disabled={cep.replace(/\D/g, '').length !== 8}
-              className={`${inputClass} disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              <option value="20000">20 km</option>
-              <option value="50000">50 km</option>
-              <option value="100000">100 km</option>
-              <option value="200000">200 km</option>
-            </select>
+              onChange={setRadius}
+              options={radiusOptions}
+              placeholder="50 km"
+              disabledPlaceholder="Informe um CEP primeiro"
+              disabled={radiusDisabled}
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tipo de soro</label>

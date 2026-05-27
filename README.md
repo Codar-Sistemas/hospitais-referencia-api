@@ -1,6 +1,6 @@
-# 🏥 Hospitais de Referência — API & Frontend
+# 🏥 MapaSUS — Hospitais de Referência do SUS
 
-> API pública e gratuita com os **hospitais de referência para acidentes por animais peçonhentos no Brasil**, extraídos dos PDFs oficiais do Ministério da Saúde e servidos em JSON estruturado.
+> Plataforma pública e gratuita que organiza, normaliza e republica dados oficiais do **Ministério da Saúde** sobre os hospitais habilitados pelo SUS. A primeira vertical em produção cobre **acidentes por animais peçonhentos** (cobras, escorpiões, aranhas, lagartas). Próximas verticais: doenças raras, oncologia, transplantes.
 
 [![Sync diário](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml)
 [![Lint](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/lint.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/lint.yml)
@@ -25,7 +25,7 @@
 
 ## O que é
 
-Este projeto agrega, normaliza e publica em formato de API REST os dados oficiais dos **hospitais habilitados a tratar acidentes com animais peçonhentos** (cobras, escorpiões, aranhas, lagartas etc.) no Brasil. Os dados vêm de PDFs publicados pelo Ministério da Saúde, atualizados automaticamente todo dia.
+O Ministério da Saúde publica em `gov.br/saude` listas de hospitais habilitados por programa de atendimento, mas em formatos pouco amigáveis a software (PDFs, XLSX dispersos por estado, sem busca, sem geolocalização). O **MapaSUS** preenche essa lacuna: faz scrape diário desses documentos, extrai os dados, geocodifica os endereços e publica tudo via REST com busca por proximidade.
 
 **Interfaces disponíveis:**
 
@@ -34,47 +34,59 @@ Este projeto agrega, normaliza e publica em formato de API REST os dados oficiai
 - **Visão profissional** — tabela técnica com CNES, grade completa de soros, mapa e link direto pro Google Maps
 - **Página de estatísticas** — métricas públicas anônimas de uso (LGPD-compliant)
 
+## Verticais ativas e roadmap
+
+| Vertical                               | Status                | Fonte oficial                                               |
+| -------------------------------------- | --------------------- | ----------------------------------------------------------- |
+| **Animais peçonhentos**                | ✅ Em produção        | 27 PDFs estaduais em `gov.br/saude/.../animais-peconhentos` |
+| **Doenças raras**                      | 🚧 Em desenvolvimento | 2 XLSX nacionais em `gov.br/saude/.../doencas-raras`        |
+| **Oncologia** (alta complexidade)      | 📋 Planejado          | 3 XLSX nacionais em `gov.br/saude/.../cgcan`                |
+| Transplantes, Farmácia Popular, CER, … | 🗺️ Roadmap            | gov.br + sites estaduais                                    |
+
+Cada vertical é independente: tem seu próprio sync, prompt de extração, rotas namespaced (`/v1/{vertical}/hospitals`) e cache no banco. Todas compartilham infraestrutura (DB, geocoding, LLM extractor, rate-limit).
+
 ---
 
 ## Arquitetura geral
 
 ```mermaid
 graph TB
-    subgraph "Fonte de dados"
-        MS["🏛️ Ministério da Saúde<br/>gov.br/saude<br/>PDFs por estado"]
+    subgraph "Fontes oficiais"
+        MS["🏛️ Ministério da Saúde<br/>gov.br/saude<br/>PDFs + XLSX por programa"]
     end
 
-    subgraph "Atualização automática"
-        GHA["⚙️ GitHub Actions<br/>Cron 03:00 UTC / dia"]
-        SYNC["🐍 scripts/syncs/venomous_animals/<br/>Detecta mudança de data<br/>e SHA256 do PDF"]
-        PARSER["📄 scripts/parsing/<br/>pdfplumber + word coords<br/>+ OCR fallback (Tesseract)"]
-        GEO["📍 scripts/geocoding/<br/>Nominatim + BrasilAPI<br/>Cache em Supabase"]
+    subgraph "Atualização automática (GitHub Actions, 03:00 UTC)"
+        SYNC["🐍 scripts/syncs/&lt;vertical&gt;/<br/>Detecta mudança (timestamp + SHA-256)"]
+        TEXT["📄 scripts/parsing/text_parser<br/>pdfplumber (fast path)"]
+        LLM["🧠 scripts/shared/llm_extractor/<br/>Gemini 2.5 → Groq → Tesseract"]
+        GEO["📍 scripts/geocoding/<br/>BrasilAPI + Nominatim<br/>Cache em Supabase"]
     end
 
     subgraph "Banco de dados"
-        SB[("🗄️ Supabase<br/>PostgreSQL 16<br/>+ PostgREST")]
+        SB[("🗄️ Supabase<br/>PostgreSQL 16 + PostgREST<br/>verticals[] + hospital_specialties")]
     end
 
-    subgraph "API"
-        VR["⚡ Vercel Serverless<br/>api/index.js (entry)<br/>lib/ (handlers · services · repos)"]
+    subgraph "API (Vercel Serverless)"
+        VR["⚡ api/index.ts<br/>TypeScript strict<br/>Rotas namespaced + cross-vertical"]
         RL["🔒 Upstash Redis<br/>Rate limit 15 req/min"]
         NOM["📍 Nominatim<br/>CEP geocoding fallback"]
     end
 
     subgraph "Interfaces"
-        WEB["🌐 Frontend Next.js 16<br/>Busca · Mapa Leaflet · IBGE dropdown"]
+        WEB["🌐 Next.js 16 + React 19<br/>Busca · Mapa Leaflet · IBGE dropdown"]
         DEV["👨‍💻 Desenvolvedores<br/>curl / fetch / SDK"]
-        STATS["📊 /stats público<br/>Demanda, resiliência, cobertura"]
+        STATS["📊 /stats público<br/>OCR vs LLM, demanda, resiliência"]
     end
 
-    MS -->|"scraping diário"| GHA
-    GHA --> SYNC
-    SYNC --> PARSER
-    PARSER -->|"upsert hospitals + sync_logs"| SB
+    MS -->|"scraping diário"| SYNC
+    SYNC --> TEXT
+    SYNC -->|"se PDF escaneado"| LLM
+    TEXT -->|"upsert hospitals + sync_logs"| SB
+    LLM -->|"upsert + ocr_confidence"| SB
     SYNC -->|"se há pendentes"| GEO
-    GEO -->|"lat/lng geocodificados"| SB
+    GEO -->|"lat/lng"| SB
 
-    SB -->|"REST (PostgREST)"| VR
+    SB -->|"PostgREST"| VR
     VR --> NOM
     VR <-->|"pipeline INCR+EXPIRE"| RL
     VR --> WEB
@@ -84,77 +96,50 @@ graph TB
 
 ---
 
-## Fluxo de sincronização (diário)
+## Pipeline de extração
+
+O sync tenta cada estratégia na ordem; só desce pra próxima se a anterior falhar. Em produção, **o objetivo é não cair em Tesseract** — a acurácia em tabelas escaneadas em português é cerca de 75%, contra ~98% do LLM.
 
 ```mermaid
-sequenceDiagram
-    participant GHA as GitHub Actions
-    participant GOV as gov.br/saude
-    participant SB as Supabase
-    participant NOM as Nominatim
-
-    GHA->>GOV: GET /hospitais-de-referencia/:state
-    GOV-->>GHA: HTML com data e link do PDF
-
-    GHA->>SB: SELECT updated_at, pdf_hash FROM states WHERE state_code=?
-
-    alt PDF não mudou (data e hash iguais)
-        GHA->>SB: INSERT sync_logs (status='unchanged')
-        GHA-->>GHA: Pula estado
-    else PDF novo ou alterado
-        GHA->>GOV: GET <pdf_url>
-        GOV-->>GHA: PDF binário
-        GHA->>GHA: pdfplumber → extrai tabela<br/>(OCR fallback se imagem)
-        GHA->>SB: UPSERT hospitals ON CONFLICT (state_code, cnes)
-        GHA->>SB: UPDATE states SET pdf_hash, updated_at, total_hospitals
-        GHA->>SB: INSERT sync_logs (status='success', extraction_source, deltas, duration)
-    end
-
-    Note over GHA,NOM: Job geocode roda em seguida se há pendentes
-    GHA->>SB: SELECT * FROM hospitals WHERE geocoding_status='pending'
-    loop Para cada hospital pendente
-        GHA->>NOM: GET /search?q=<endereço formatado>
-        NOM-->>GHA: lat, lng
-        GHA->>SB: UPDATE hospitals SET lat, lng, geocoding_status='ok'
-    end
+graph LR
+    PDF["📄 PDF baixado"] --> TEXT{"Texto<br/>extraível?"}
+    TEXT -->|"sim"| OK1["✅ pdf_text<br/>(determinístico)"]
+    TEXT -->|"não / vazio"| GEMINI{"Gemini<br/>2.5 Flash"}
+    GEMINI -->|"sucesso"| SCORE["📐 Score heurístico<br/>(CNES + treatments<br/>+ nome + endereço)"]
+    SCORE -->|"≥ 70%"| OK2["✅ llm_gemini<br/>(sem aviso)"]
+    SCORE -->|"&lt; 70%"| WARN1["⚠️ llm_gemini<br/>(requires_verification)"]
+    GEMINI -->|"erro / quota"| GROQ{"Groq<br/>Llama 3.2 Vision"}
+    GROQ -->|"sucesso"| SCORE2["📐 Score heurístico"]
+    SCORE2 -->|"≥ 70%"| OK3["✅ llm_groq"]
+    SCORE2 -->|"&lt; 70%"| WARN2["⚠️ llm_groq"]
+    GROQ -->|"erro"| TESS{"Tesseract<br/>(último recurso)"}
+    TESS -->|"qualquer resultado"| WARN3["⚠️ pdf_ocr<br/>(sempre com aviso)"]
+    TESS -->|"sem texto"| FAIL["❌ status=unsupported"]
 ```
 
----
+### Regra do badge "verificação manual"
 
-## Fluxo de uma requisição à API
+| `extraction_source`      | Confidence | Badge na UI                |
+| ------------------------ | ---------- | -------------------------- |
+| `pdf_text`               | n/a        | ✅ Nenhum (determinístico) |
+| `llm_gemini`, `llm_groq` | ≥ 70%      | ✅ Nenhum                  |
+| `llm_gemini`, `llm_groq` | < 70%      | ⚠️ Recomenda verificação   |
+| `pdf_ocr` (Tesseract)    | qualquer   | ⚠️ Sempre (OCR é ruidoso)  |
 
-```mermaid
-sequenceDiagram
-    participant CLI as Cliente
-    participant VR as Vercel (api/index.js)
-    participant UPS as Upstash Redis
-    participant SB as Supabase REST
-    participant NOM as Nominatim
+A regra vive numa coluna `requires_verification BOOLEAN GENERATED ALWAYS AS (...)` em `hospitals` — calculada no banco, indexada parcialmente. Veja `sql/013_extraction_confidence.sql`.
 
-    CLI->>VR: GET /v1/hospitals/nearby?cep=01310100&radius_m=20000
+### Score heurístico de confiança (LLM)
 
-    VR->>UPS: PIPELINE [INCR rl:<ip>, EXPIRE 60s]
-    UPS-->>VR: count=3
+Vision-LLMs não expõem logprobs por token (ao contrário do Tesseract). O score é calculado a partir de sinais estruturais por linha extraída:
 
-    alt count > 15 (rate limit)
-        VR-->>CLI: 429 Too Many Requests<br/>X-RateLimit-Remaining: 0
-    else dentro do limite
-        VR->>SB: SELECT * FROM cep_cache WHERE cep='01310100'
-        alt cache hit com coords
-            SB-->>VR: { lat, lng, city, ... }
-        else cache miss ou sem coords
-            VR->>VR: lookup BrasilAPI
-            opt CEP retornou sem lat/lng
-                VR->>NOM: GET /search?q=street, neighborhood, city, state
-                NOM-->>VR: lat, lng
-            end
-            VR->>SB: UPSERT cep_cache (merge-duplicates)
-        end
-        VR->>SB: RPC nearby_hospitals(p_lat, p_lng, p_radius_m, ...)
-        SB-->>VR: JSON ordenado por distance_m
-        VR-->>CLI: 200 OK<br/>X-RateLimit-Remaining: 12<br/>(+ tracking fire-and-forget em api_metrics)
-    end
-```
+| Sinal                   | Peso | Como é avaliado                                           |
+| ----------------------- | ---- | --------------------------------------------------------- |
+| CNES bem-formado        | 30%  | regex `^\d{7}$` (CNES é por especificação 7 dígitos)      |
+| Treatments reconhecidos | 30%  | normalizador mapeia para o vocabulário canônico em inglês |
+| Nome presente           | 25%  | não-vazio                                                 |
+| Endereço presente       | 15%  | não-vazio                                                 |
+
+Implementação em [`scripts/shared/llm_extractor/metrics.py`](scripts/shared/llm_extractor/metrics.py).
 
 ---
 
@@ -170,15 +155,29 @@ sequenceDiagram
 | **Formato**      | JSON (`Content-Type: application/json`) |
 | **Idioma**       | Identificadores em inglês               |
 
-> **Compatibilidade**: aliases antigos em português (`uf`, `municipio`, `atendimento`, `raio`) continuam funcionando até **2026-08-24** com headers `Deprecation: true` e `Sunset: <data>`. Migre seus clientes para os nomes em inglês.
+> **Compatibilidade**: aliases antigos em português (`uf`, `municipio`, `atendimento`, `raio`) continuam funcionando até **2026-08-24** com headers `Deprecation: true` e `Sunset: <data>`.
 
----
+### Três formatos de rota
+
+```
+# Legado — vertical implícita (animais peçonhentos)
+GET /v1/hospitals?state_code=SP
+
+# Namespaced — vertical explícita (preferida)
+GET /v1/venomous-animals/hospitals?state_code=SP
+GET /v1/doencas-raras/hospitals?state_code=SP            (em breve)
+
+# Cross-vertical — busca em todas as verticais ativas
+GET /v1/search?state_code=SP
+```
+
+Convenção: URLs usam **kebab-case** (`/v1/venomous-animals`), DB e Python module em **snake_case** (`venomous_animals`). O roteador em `api/index.ts` faz a conversão num único lugar.
 
 ### Estados
 
 #### `GET /v1/states`
 
-Lista as 27 UFs com data de atualização e total de hospitais.
+Lista as 27 UFs com data de atualização e total de hospitais (vertical default = animais peçonhentos).
 
 ```bash
 curl https://hospitais-referencia-api.vercel.app/v1/states
@@ -204,15 +203,9 @@ curl https://hospitais-referencia-api.vercel.app/v1/states
 
 Detalhes de uma UF específica.
 
-```bash
-curl https://hospitais-referencia-api.vercel.app/v1/states/SP
-```
-
----
-
 ### Hospitais
 
-#### `GET /v1/hospitals`
+#### `GET /v1/hospitals` · `GET /v1/{vertical}/hospitals`
 
 Busca de hospitais com filtros combinados.
 
@@ -240,13 +233,16 @@ Busca de hospitais com filtros combinados.
 | `Antiarachnidic`    | `antiaracnidico`                        | Antiveneno aracnídico polivalente               |
 
 ```bash
-# Hospitais com soro antibotrópico em SP
+# Hospitais com soro antibotrópico em SP — rota legada
 curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=SP&treatment=Bothropic"
 
-# Aceita também o alias PT
+# Mesma busca via rota namespaced
+curl "https://hospitais-referencia-api.vercel.app/v1/venomous-animals/hospitals?state_code=SP&treatment=Bothropic"
+
+# Aceita também alias PT
 curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=SP&treatment=jararaca"
 
-# Busca por município (aceita sem acento)
+# Busca por município (sem acento)
 curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?city=jundiai"
 
 # Full-text em nome do hospital
@@ -266,7 +262,8 @@ curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=MG&lim
     "treatment": "Bothropic",
     "q": null,
     "limit": 100,
-    "offset": 0
+    "offset": 0,
+    "vertical": "venomous_animals"
   },
   "total_returned": 1,
   "hospitals": [
@@ -283,7 +280,8 @@ curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=MG&lim
       "lng": -48.443,
       "extraction_source": "pdf_text",
       "ocr_confidence": null,
-      "requires_verification": false
+      "requires_verification": false,
+      "verticals": ["venomous_animals"]
     }
   ]
 }
@@ -293,17 +291,11 @@ curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=MG&lim
 
 Hospital específico por ID numérico.
 
-```bash
-curl https://hospitais-referencia-api.vercel.app/v1/hospitals/42
-```
-
----
-
 ### Busca por proximidade
 
-#### `GET /v1/hospitals/nearby`
+#### `GET /v1/hospitals/nearby` · `GET /v1/{vertical}/hospitals/nearby`
 
-Retorna hospitais ordenados por distância a partir de um ponto de origem.
+Hospitais ordenados por distância a partir de um ponto de origem.
 
 | Parâmetro             | Tipo   | Descrição                                              |
 | --------------------- | ------ | ------------------------------------------------------ |
@@ -318,71 +310,62 @@ Retorna hospitais ordenados por distância a partir de um ponto de origem.
 # Por CEP — retorna com distância calculada
 curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?cep=18618970&radius_m=50000&treatment=Lachetic"
 
-# Por coordenadas — ex: centro de São Paulo
+# Por coordenadas
 curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?lat=-23.55&lng=-46.63&radius_m=100000"
 
 # Por nome de cidade (fallback sem distância)
 curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?city=Campinas&state_code=SP"
 ```
 
-**Resposta:**
+> **Geocoding em duas camadas**: a primeira consulta por CEP chama a BrasilAPI. Se ela não retornar lat/lng (caso comum), a API automaticamente geocodifica o endereço estruturado via Nominatim, com fallback progressivo (rua → bairro → cidade). O resultado completo é salvo em `cep_cache`.
+
+### Busca cross-vertical
+
+#### `GET /v1/search`
+
+Busca em **todas as verticais simultaneamente**, retornando hospitais com a lista completa de programas SUS em que estão habilitados.
+
+```bash
+curl "https://hospitais-referencia-api.vercel.app/v1/search?city=curitiba"
+```
 
 ```json
 {
-  "origin": {
-    "lat": -22.889,
-    "lng": -48.445,
-    "source": "cep",
-    "cep": { "cep": "18618970", "city": "Botucatu", "state_code": "SP" },
-    "user_state_code": "SP"
-  },
-  "radius_m": 50000,
-  "total_returned": 3,
+  "filters": { "vertical": "all", "city": "curitiba", "state_code": null, "q": null },
+  "total_returned": 1,
   "hospitals": [
     {
-      "id": 42,
-      "state_code": "SP",
-      "city": "Botucatu",
-      "name": "Hospital das Clínicas da Faculdade de Medicina de Botucatu",
-      "phones": "(14) 3811-6129",
-      "treatments": ["Bothropic", "Crotalic", "Lachetic"],
-      "lat": -22.894,
-      "lng": -48.443,
-      "distance_m": 612.4,
-      "distance_km": 0.6
+      "name": "Hospital de Clínicas da UFPR",
+      "city": "Curitiba",
+      "active_verticals": ["venomous_animals", "doencas_raras", "oncology"],
+      "active_specialties": ["Bothropic", "Crotalic", "Terapia Gênica AME", "Radioterapia"]
     }
   ]
 }
 ```
 
-> **Geocoding em duas camadas**: a primeira consulta por CEP chama a BrasilAPI. Se ela não retornar lat/lng (caso comum), a API automaticamente geocodifica o endereço estruturado via Nominatim. O resultado completo é salvo no Supabase (`cep_cache`) — requisições subsequentes ao mesmo CEP são instantâneas.
-
----
+Útil pro hub do MapaSUS — uma busca, três bases de dados.
 
 ### Estatísticas públicas
 
 #### `GET /v1/stats`
 
-Agregados anônimos de uso, resiliência operacional e cobertura. Atualizado a cada 5 minutos (`Cache-Control: public, max-age=300`).
-
-```bash
-curl https://hospitais-referencia-api.vercel.app/v1/stats
-```
+Agregados anônimos. `Cache-Control: public, max-age=300`.
 
 Retorna:
 
 - `overview` — total de buscas (30d), usuários únicos (IP hasheado SHA-256+salt), média de resultados
-- `demand_by_user_state` — UFs de onde vêm as buscas (origem CEP-based)
+- `demand_by_user_state` — UFs de onde vêm as buscas (CEP-based)
 - `treatment_popularity_30d` — tipos de soro mais buscados
 - `search_timeline_30d` — volume diário
-- `sync_resilience_90d` — sucesso/falha da sincronização com gov.br
-- `coverage_by_state` — total de hospitais e percentual geocodificado por UF
+- `sync_resilience_90d` — sucesso/falha + **breakdown por método** (`ocr_fallback_runs`, `llm_gemini_runs`, `llm_groq_runs`, `llm_fallback_runs`)
+- `coverage_by_state` — total de hospitais, geocoded e contagens por método (`ocr_records`, `llm_records`)
 
 A página pública [`/stats`](https://hospitais-referencia-web.vercel.app/stats) visualiza esses dados.
 
 #### `POST /v1/track`
 
-Endpoint público para telemetria do próprio frontend (search_executed, hospital_clicked, phone_clicked, etc.). Body JSON, máx 4KB. Aceita CORS de qualquer origem mas com rate limit do IP.
+Endpoint para telemetria do frontend (`search_executed`, `hospital_clicked`, `phone_clicked`, etc.). Body JSON, máx 4KB.
 
 ```bash
 curl -X POST https://hospitais-referencia-api.vercel.app/v1/track \
@@ -397,19 +380,14 @@ curl -X POST https://hospitais-referencia-api.vercel.app/v1/track \
 ```mermaid
 graph LR
     REQ["Requisição"] --> CHECK{"Upstash Redis<br/>INCR rl:ip:janela"}
-    CHECK -->|"≤ 15"| OK["✅ Responde normalmente<br/>X-RateLimit-Remaining: N"]
-    CHECK -->|"> 15"| BLOCK["🚫 429 Too Many Requests<br/>X-RateLimit-Remaining: 0"]
-    CHECK -->|"Redis indisponível"| PASSTHROUGH["✅ Fail-open<br/>(não bloqueia)"]
+    CHECK -->|"≤ 15"| OK["✅ Responde normalmente"]
+    CHECK -->|"> 15"| BLOCK["🚫 429 Too Many Requests"]
+    CHECK -->|"Redis indisponível"| PASSTHROUGH["✅ Fail-open"]
 ```
 
-- Janela deslizante de **60 segundos** por IP
-- **15 requisições por minuto** — suficiente para uso humano, impede varreduras automatizadas
-- Headers de controle em toda resposta:
-  - `X-RateLimit-Limit: 15`
-  - `X-RateLimit-Remaining: N`
-  - `X-RateLimit-Reset: <epoch>`
-
-Se você é um desenvolvedor construindo uma aplicação que precisará de mais volume, considere manter um cache local dos dados ou [abrir uma issue](../../issues) para conversarmos sobre seu caso de uso.
+- Janela deslizante de **60 segundos** por IP, **15 req/min**
+- Headers: `X-RateLimit-{Limit, Remaining}`, `X-RateLimit-Window`
+- Fail-open: Redis down não derruba a API
 
 ---
 
@@ -419,187 +397,197 @@ Se você é um desenvolvedor construindo uma aplicação que precisará de mais 
 hospitais-referencia-api/
 │
 ├── api/
-│   └── index.js                 # Vercel serverless ENTRY (dispatcher fino)
+│   └── index.ts                 # Vercel serverless entry (TypeScript strict)
 │
-├── lib/                         # Código compartilhado fora de /api
-│   ├── handlers/                # HTTP: states, hospitals, stats, track, metadata
+├── lib/                         # Backend Node.js, TypeScript strict
+│   ├── handlers/                # HTTP: hospitals, states, stats, track, metadata
 │   ├── services/                # Lógica: hospital, geocoding, search-normalizer
-│   ├── repositories/            # Acesso a dados: hospital, state, cep
+│   ├── repositories/            # PostgREST: hospital, state, cep
 │   ├── middleware/              # cors, rate-limit, metrics
 │   ├── core/                    # supabase, redis, http, errors, metrics
-│   └── providers/               # cep (BrasilAPI), nominatim
+│   ├── providers/               # cep (BrasilAPI), nominatim
+│   └── types/                   # domain.ts, http.ts (Vertical, Hospital, …)
 │
-├── scripts/
+├── scripts/                     # Python 3.12, mypy --strict
 │   ├── syncs/                   # Uma pasta por vertical do MapaSUS
-│   │   └── venomous_animals/ # Scraper gov.br + change detection + upsert + sync_logs
-│   ├── parsing/                 # text_parser, ocr_parser, ocr_engine
+│   │   ├── venomous_animals/    # 27 PDFs estaduais (ativo)
+│   │   ├── rare_diseases/       # 2 XLSX nacionais (em breve)
+│   │   └── oncology/            # 3 XLSX nacionais (planejado)
+│   ├── shared/
+│   │   ├── llm_extractor/       # Provider chain: Gemini → Groq + schema + score
+│   │   │   ├── providers/       # base.py, gemini.py, groq.py
+│   │   │   ├── prompts/         # 1 por vertical
+│   │   │   ├── schemas/         # Pydantic (validação da resposta)
+│   │   │   ├── preprocessing.py # pdf2image + Pillow (resize/sharpen)
+│   │   │   ├── pipeline.py      # orquestrador
+│   │   │   └── metrics.py       # score heurístico de confiança
+│   │   ├── types.py             # TypedDicts (HospitalRecord, StateRow, …)
+│   │   ├── db.py                # Cliente Supabase REST
+│   │   └── logger.py
+│   ├── parsing/                 # text_parser (pdfplumber), ocr_parser/engine (Tesseract)
 │   ├── geocoding/               # runner + address_normalizer
 │   ├── providers/               # Nominatim, BrasilAPI (Python)
-│   ├── shared/                  # db, http, logger, config
-│   ├── backup_supabase.py       # Snapshot JSONL das tabelas
-│   ├── dev-server.js            # Wrapper Node para rodar a API local
-│   ├── seed-from-prod.js        # Popula Supabase local a partir da prod
-│   └── local_jwt.py             # Tokens JWT para dev local
+│   ├── dev-server.ts            # Wrapper local da API (tsx)
+│   ├── seed-from-prod.ts        # Popula Supabase local a partir da prod
+│   └── backup_supabase.py       # Snapshot JSONL antes de migrations
 │
-├── sql/                         # Migrations executadas em ordem
-│   ├── 001_schema.sql           # Tabelas, índices, RLS, seed dos 27 estados
-│   ├── 002_geocoding.sql        # earthdistance, lat/lng, RPC nearby
-│   ├── 003_geocode_cache.sql    # Cache persistente de geocoding
-│   ├── 004_metrics.sql          # api_metrics + views básicas
-│   ├── 005_fonte_extracao.sql   # Rastreabilidade OCR (extraction_source)
-│   ├── 006_rpc_fonte_extracao.sql
-│   ├── 007_rename_to_english.sql # Padronização PT→EN (schema + dados)
-│   └── 008_metrics_phase1.sql   # sync_logs, web_events, 6 views agregadoras
+├── sql/                         # Migrations idempotentes, executadas em ordem
+│   ├── 001 → 008                # Schema base, métricas Phase 1 (sync_logs, web_events)
+│   ├── 009_multi_vertical.sql   # verticals[] + hospital_specialties + v_hospitals_all
+│   ├── 010_rpc_vertical.sql     # nearby_hospitals() ganha p_vertical
+│   ├── 011_rename_*             # Renomeia chave 'peconhentos' → 'animais_peconhentos'
+│   ├── 012_rename_*_to_en.sql   # Renomeia para 'venomous_animals' (en final)
+│   ├── 013_extraction_confidence.sql        # requires_verification baseado em confidence
+│   └── 014_stats_by_extraction_method.sql   # views quebram OCR vs LLM
 │
 ├── web/                         # Frontend Next.js 16 + Tailwind 4 + React 19
-│   ├── app/
-│   │   ├── page.tsx             # Busca: Cidade (IBGE) → CEP → Animal
-│   │   ├── profissionais/       # Tabela técnica + mapa + link Google Maps
-│   │   ├── stats/               # Dashboard público de uso
-│   │   ├── docs/                # Documentação interativa
-│   │   └── termos/              # Termos de uso
-│   ├── components/
-│   │   ├── ui/Combobox.tsx      # Combobox pesquisável (portal + accent-insensitive)
-│   │   ├── hospital/            # HospitalCard, HospitalMap (Leaflet), HospitalList
-│   │   ├── search/              # SearchTabs, SearchByCity (IBGE), SearchByPostalCode, SearchByAnimal
-│   │   ├── PostHogScript.tsx    # Telemetria opcional (NEXT_PUBLIC_POSTHOG_KEY)
-│   │   └── Navbar.tsx
-│   ├── hooks/
-│   │   └── useHospitalSearch.ts # State machine da busca
-│   └── lib/
-│       ├── api-client.ts        # Cliente tipado (translateApiError → PT)
-│       ├── ibge.ts              # Cliente IBGE Localidades (cache por UF)
-│       ├── telemetry.ts         # Fire-and-forget /v1/track + PostHog
-│       ├── types.ts             # Hospital, SearchMode, responses
-│       └── constants.ts         # STATES, TREATMENTS, badge classes
+│   ├── app/                     # /, /profissionais, /stats, /docs, /termos
+│   ├── components/              # ui/Combobox, hospital/HospitalMap, search/SearchTabs, …
+│   ├── hooks/useHospitalSearch.ts
+│   └── lib/                     # api-client, ibge, telemetry, types
 │
-├── tests/                       # Testes Python (smoke + unitários)
+├── tests/                       # Smoke + unitários (pytest + assert)
 │
 ├── .github/workflows/
-│   ├── sync.yml                 # Cron 03:00 UTC: scrape + parse + upsert + geocode
-│   ├── lint.yml                 # ESLint (Node/Web) + Ruff (Python) em PRs
+│   ├── sync.yml                 # Cron 03:00 UTC: scrape + parse + LLM + upsert + geocode
+│   ├── lint.yml                 # tsc + ESLint + Prettier + Ruff + mypy
 │   └── tests.yml                # pytest em mudanças de scripts/ ou tests/
 │
-├── docker-compose.yml           # Stack local: Postgres 16 + PostgREST + API Node
-├── vercel.json                  # Roteamento: /* → api/index.js
+├── .husky/pre-commit            # lint-staged + tsc + mypy
+├── tsconfig.json                # strict + 5 flags extras (web/ tem o mesmo)
+├── pyproject.toml               # Ruff + mypy --strict
 ├── eslint.config.mjs            # ESLint flat config (api/ + lib/)
-├── pyproject.toml               # Ruff lint + format (scripts/ + tests/)
-├── .prettierrc.json             # Formatação JS/TS/JSON/MD
-├── REFACTORING_MAP.md           # Mapa PT→EN (referência histórica)
-├── requirements.txt             # Dependências Python
-└── .env.example                 # Variáveis de ambiente
+├── vercel.json                  # /* → api/index.ts
+├── requirements.txt             # Python deps (pdfplumber, google-genai, groq, pydantic, …)
+├── AGENTS.md                    # Baseline de tipagem + naming + convenções
+├── MAPASUS_MIGRATION.md         # Plano da pivotada para plataforma multi-vertical
+└── REFACTORING_MAP.md           # Histórico Phase 0 (PT → EN)
 ```
 
 ---
 
 ## Setup
 
-### Rodando localmente com Docker
+### Pré-requisitos
 
-A stack inteira — banco, REST e API — sobe em containers. Sem conta em nenhum serviço externo.
+- **Python 3.12+** (use `uv python install 3.12` se ainda não tem)
+- **Node.js 22+**
+- **Supabase CLI** (`brew install supabase/tap/supabase`)
+- **Docker Desktop** (para rodar Supabase local via CLI)
+- **Tesseract + poppler** (somente se quiser testar o fallback Tesseract — `brew install tesseract tesseract-lang poppler`)
 
-```bash
-# Sobe Postgres 16 + PostgREST + API Node (porta 3030)
-docker compose up -d
-
-# Aplica todas as migrations automaticamente na primeira execução
-# (001 → 008 na ordem alfabética)
-
-# Testa
-curl http://localhost:3030/v1/states           # via API Node
-curl http://localhost:3010/states              # PostgREST direto (debug)
-```
-
-Para popular o banco com PDFs reais:
+### Rodando localmente (Supabase CLI + uv)
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# 1. Subir o stack Supabase local (Postgres + PostgREST + Studio)
+supabase start
 
-# Gera JWT local que o PostgREST aceita
-export SUPABASE_URL=http://localhost:3010
-export SUPABASE_REST_URL=http://localhost:3010
-export SUPABASE_SERVICE_KEY=$(python scripts/local_jwt.py service_role)
+# 2. Criar venv Python 3.12 + instalar deps
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt mypy types-requests ruff
 
-python -m scripts.syncs.venomous_animals sync SP            # sync de um estado
-python -m scripts.syncs.venomous_animals geocode --limit 50 # geocoda 50 hospitais
+# 3. Aplicar todas as migrations
+for f in sql/00*.sql sql/01*.sql; do
+  PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f "$f"
+done
+
+# 4. Copiar credenciais locais
+cat > .env.local <<EOF
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_ANON_KEY=$(supabase status -o env | grep '^ANON_KEY=' | cut -d= -f2 | tr -d '"')
+SUPABASE_SERVICE_KEY=$(supabase status -o env | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2 | tr -d '"')
+EOF
+
+# 5. (Opcional) populá-lo com dados reais de produção
+npx tsx scripts/seed-from-prod.ts SP RJ MG
+
+# 6. Subir a API local + frontend
+npm install
+npm run dev                            # API em :3001
+cd web && npm install && npm run dev   # Frontend em :3000
 ```
 
-### Deploy em produção (Supabase + Vercel)
+### Variáveis de ambiente
+
+| Variável                   | Onde                           | Quando precisa                               |
+| -------------------------- | ------------------------------ | -------------------------------------------- |
+| `SUPABASE_URL`             | `.env.local` + GitHub + Vercel | sempre                                       |
+| `SUPABASE_ANON_KEY`        | `.env.local` + Vercel          | API (read path)                              |
+| `SUPABASE_SERVICE_KEY`     | `.env.local` + GitHub          | sync + writes                                |
+| `GEMINI_API_KEY`           | GitHub Actions (secret)        | Extração via Gemini (free tier OK)           |
+| `GROQ_API_KEY`             | GitHub Actions (secret)        | Fallback do Gemini (opcional)                |
+| `UPSTASH_REDIS_REST_URL`   | Vercel                         | Rate limit (fail-open se omitido)            |
+| `UPSTASH_REDIS_REST_TOKEN` | Vercel                         | Idem                                         |
+| `METRICS_IP_SALT`          | Vercel                         | Anonimização LGPD (use 32+ chars aleatórios) |
+| `NEXT_PUBLIC_API_URL`      | Vercel (projeto web)           | Frontend aponta pra API                      |
+| `NEXT_PUBLIC_POSTHOG_KEY`  | Vercel (projeto web)           | Telemetria opcional                          |
+
+### Deploy em produção (Supabase + Vercel + GitHub Actions)
 
 ```mermaid
 graph LR
-    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 008"]
-    B --> C["3️⃣ Copiar credenciais<br/>SUPABASE_URL/ANON/SERVICE"]
-    C --> D["4️⃣ Sync inicial<br/>python -m scripts.syncs.venomous_animals sync"]
-    D --> E["5️⃣ Geocoding<br/>python -m scripts.syncs.venomous_animals geocode"]
-    E --> F["6️⃣ Deploy Vercel<br/>vercel --prod"]
-    F --> G["7️⃣ Secrets GitHub<br/>SUPABASE_URL + SERVICE_KEY"]
-    G --> H["✅ Cron automático<br/>ativo"]
+    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 014"]
+    B --> C["3️⃣ Copiar credenciais"]
+    C --> D["4️⃣ Sync inicial<br/>via Actions ou local"]
+    D --> E["5️⃣ Deploy Vercel<br/>vercel --prod"]
+    E --> F["6️⃣ GitHub Secrets<br/>SUPABASE + GEMINI"]
+    F --> G["✅ Cron automático<br/>03:00 UTC"]
 ```
 
 #### 1. Supabase
 
-1. Crie um projeto em <https://supabase.com> (plano Free).
-2. No SQL Editor, execute todas as migrations em ordem (`sql/001_schema.sql` até `sql/008_metrics_phase1.sql`). Alternativamente, com o Supabase CLI linkado: `supabase db query --linked --file sql/<arquivo>.sql` para cada uma.
-3. Em _Project Settings → API_, copie `URL`, `anon key` e `service_role key`.
-
-#### 2. Primeira sincronização
-
 ```bash
-cp .env.example .env
-# Preencha SUPABASE_URL e SUPABASE_SERVICE_KEY (do passo anterior)
-set -a; source .env; set +a
+# Linkar o projeto
+supabase link --project-ref <PROJECT_REF>
 
-python -m scripts.syncs.venomous_animals sync SP       # teste com um estado
-python -m scripts.syncs.venomous_animals sync          # todos os 27 estados (~5 min)
-python -m scripts.syncs.venomous_animals geocode --limit 5000   # geocodifica (~1s/hospital)
+# Aplicar migrations em ordem
+for f in sql/00*.sql sql/01*.sql; do
+  supabase db query --linked --file "$f"
+done
 ```
 
-#### 3. Deploy da API
+#### 2. Vercel — API + Frontend
 
 ```bash
 npm i -g vercel
-vercel link                          # liga o repo ao projeto Vercel
+vercel link
 
-# Env vars obrigatórias
+# Env vars obrigatórias (API)
 vercel env add SUPABASE_URL production
 vercel env add SUPABASE_ANON_KEY production
 vercel env add SUPABASE_SERVICE_KEY production
 vercel env add UPSTASH_REDIS_REST_URL production
 vercel env add UPSTASH_REDIS_REST_TOKEN production
-vercel env add METRICS_IP_SALT production    # 32+ chars aleatórios
+vercel env add METRICS_IP_SALT production
 
 vercel --prod
-```
 
-> **Nota Vercel Hobby**: o plano gratuito limita a 12 Serverless Functions por deployment. Por isso o código compartilhado mora em `/lib` (fora de `/api`), garantindo apenas 1 function (`api/index.js`).
-
-#### 4. Frontend
-
-```bash
+# Frontend
 cd web
 vercel link
 vercel env add NEXT_PUBLIC_API_URL production
-# (opcional) telemetria PostHog
-vercel env add NEXT_PUBLIC_POSTHOG_KEY production
 vercel --prod
 ```
 
-#### 5. Cron automático (GitHub Actions)
+> **Nota Vercel Hobby**: o plano gratuito limita a 12 Serverless Functions por deployment. Por isso o código compartilhado mora em `/lib` (fora de `/api`), garantindo apenas 1 function (`api/index.ts`).
 
-Em _Settings → Secrets and variables → Actions_, adicione:
+#### 3. GitHub Secrets (Actions)
 
-| Secret                 | Descrição                           |
-| ---------------------- | ----------------------------------- |
-| `SUPABASE_URL`         | URL do projeto Supabase             |
-| `SUPABASE_SERVICE_KEY` | service_role key (escreve no banco) |
+Em _Settings → Environments → production → Environment secrets_, adicione:
+
+| Secret                 | Descrição                                                                 |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `SUPABASE_URL`         | URL do projeto Supabase                                                   |
+| `SUPABASE_ANON_KEY`    | anon key                                                                  |
+| `SUPABASE_SERVICE_KEY` | service_role key (escreve no banco)                                       |
+| `GEMINI_API_KEY`       | Chave AI Studio em https://aistudio.google.com/apikey (free 1500 req/dia) |
+| `GROQ_API_KEY`         | Opcional — fallback. https://console.groq.com (free 14.4k req/dia)        |
 
 O workflow `.github/workflows/sync.yml` roda às **03:00 UTC** (~00:00 horário de Brasília).  
-Você também pode disparar manualmente em _Actions → sync-hospitals → Run workflow_ com inputs:
+Você pode disparar manualmente em _Actions → sync-hospitals → Run workflow_:
 
-- `state_code`: processar apenas um estado
-- `force`: ignorar verificação de mudança e reprocessar mesmo assim
+- `state_code`: processar apenas um estado (ou vazio = todos)
+- `force`: ignorar verificação de mudança e reprocessar
 - `skip_geocoding`: pular etapa de geocoding
 
 ---
@@ -608,45 +596,46 @@ Você também pode disparar manualmente em _Actions → sync-hospitals → Run w
 
 O sync lida automaticamente com inconsistências nas publicações do Ministério da Saúde:
 
-| Variação                                         | Como é tratada                                                                                              |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| URL do PDF como `.pdf` direto                    | Detectado pelo scraper (padrão)                                                                             |
-| URL no formato Plone `/@@download/file` (ex: MG) | Detectado pelo scraper                                                                                      |
-| **Pernambuco publica XLSX** em vez de PDF        | `status='unsupported'` — segue sem erro                                                                     |
-| **PDF escaneado** (ex: Piauí, sem camada texto)  | Fallback OCR via Tesseract; registros marcados `extraction_source='pdf_ocr'` e `requires_verification=true` |
-| `"Botrópico-Crotálico"` composto (ex: MG)        | Expandido para ambos individualmente                                                                        |
-| Número de colunas diferente entre estados        | Parser usa linhas verticais do PDF, não posições fixas                                                      |
-
-Hospitais com `requires_verification=true` são exibidos na UI com aviso vermelho destacado, alertando o usuário que os dados podem conter erros de OCR.
+| Variação                                         | Como é tratada                                                                    |
+| ------------------------------------------------ | --------------------------------------------------------------------------------- |
+| URL do PDF como `.pdf` direto                    | Detectado pelo scraper (padrão)                                                   |
+| URL no formato Plone `/@@download/file` (ex: MG) | Detectado pelo scraper                                                            |
+| **Pernambuco publica XLSX** em vez de PDF        | `status='unsupported'` — segue sem erro                                           |
+| **PDF escaneado** (ex: Piauí)                    | Pipeline LLM (Gemini → Groq); fallback Tesseract com `requires_verification=true` |
+| `"Botrópico-Crotálico"` composto (ex: MG)        | Expandido para ambos individualmente                                              |
+| Número de colunas diferente entre estados        | Parser usa linhas verticais do PDF, não posições fixas                            |
 
 ---
 
-## Observabilidade (Phase 1)
+## Observabilidade
 
-Toda requisição à API é gravada em `api_metrics` (fire-and-forget, IP hasheado SHA-256+salt para conformidade LGPD). Eventos do frontend (cliques, buscas, aberturas de mapa) são gravados em `web_events` via `POST /v1/track`.
+Toda requisição à API é gravada em `api_metrics` (fire-and-forget, IP hasheado SHA-256+salt para LGPD). Eventos do frontend (cliques, buscas, aberturas de mapa) são gravados em `web_events` via `POST /v1/track`.
 
-Cada execução do sync (mesmo as que não fazem nada) é registrada em `sync_logs` com duração, deltas, tipo de erro e `triggered_by` (`cron` / `manual` / `force`). Isso permite responder perguntas como:
+Cada execução do sync (mesmo as que não fazem nada) é registrada em `sync_logs` com duração, deltas, tipo de erro, `triggered_by` (`cron` / `manual` / `force`) e `extraction_source` — isso permite responder perguntas como:
 
 - "Em quantos dos últimos 90 dias o gov.br ficou inacessível?" → `v_sync_resilience_90d`
+- "Quantas extrações foram via LLM vs Tesseract?" → `v_sync_resilience_90d` (campos `llm_fallback_runs`, `ocr_fallback_runs`)
 - "De quais UFs vêm as buscas?" → `v_demand_by_user_state`
 - "Quais animais são mais procurados?" → `v_treatment_popularity_30d`
 
-As 6 views agregadoras alimentam a página pública [`/stats`](https://hospitais-referencia-web.vercel.app/stats).
+As views agregadoras alimentam a página pública [`/stats`](https://hospitais-referencia-web.vercel.app/stats).
 
 ---
 
 ## Custos e limites do free tier
 
-| Serviço              | Limite gratuito                           | Uso estimado         |
-| -------------------- | ----------------------------------------- | -------------------- |
-| **Supabase**         | 500 MB banco, 5 GB egress/mês             | ~5 MB banco          |
-| **Vercel Hobby**     | 12 functions/deploy, 100 GB bandwidth/mês | 1 function (api/)    |
-| **GitHub Actions**   | Ilimitado em repos públicos               | ~5 min/dia           |
-| **Upstash Redis**    | 10.000 req/dia no Free                    | ~req de rate limit   |
-| **Nominatim**        | 1 req/s (free, OSM)                       | Apenas em CEPs novos |
-| **BrasilAPI**        | Generoso, sem chave                       | ~req por CEP novo    |
-| **IBGE Localidades** | Generoso, sem chave                       | Cliente cacheia      |
-| **PostHog** (opt)    | 1M eventos/mês                            | Tráfego web atual    |
+| Serviço               | Limite gratuito                           | Uso estimado                 |
+| --------------------- | ----------------------------------------- | ---------------------------- |
+| **Supabase**          | 500 MB banco, 5 GB egress/mês             | ~5 MB banco                  |
+| **Vercel Hobby**      | 12 functions/deploy, 100 GB bandwidth/mês | 1 function (api/)            |
+| **GitHub Actions**    | Ilimitado em repos públicos               | ~5 min/dia                   |
+| **Upstash Redis**     | 10.000 req/dia no Free                    | Rate limit                   |
+| **Nominatim**         | 1 req/s (free, OSM)                       | Apenas em CEPs novos         |
+| **BrasilAPI**         | Generoso, sem chave                       | ~req por CEP novo            |
+| **IBGE Localidades**  | Generoso, sem chave                       | Cliente cacheia              |
+| **Gemini 2.5 Flash**  | 1.500 req/dia (AI Studio)                 | ~5–15 req/dia (PDFs mudados) |
+| **Groq Llama Vision** | 14.400 req/dia                            | Fallback do Gemini           |
+| **PostHog** (opt)     | 1M eventos/mês                            | Tráfego web atual            |
 
 Custo total: **R$ 0/mês**. O único risco no Supabase Free é pausar após 7 dias sem atividade — o sync diário garante que isso nunca aconteça.
 
@@ -654,46 +643,81 @@ Custo total: **R$ 0/mês**. O único risco no Supabase Free é pausar após 7 di
 
 ## Padrões de desenvolvimento
 
-- **Idioma**: todos os identificadores (tabelas, colunas, variáveis, funções, rotas, query params, JSON fields) em **inglês**. UI visível ao usuário fica em português (público-alvo brasileiro). Veja `REFACTORING_MAP.md` para o histórico de mapeamento PT→EN.
-- **Arquitetura**: clean architecture em camadas (handlers → services → repositories) tanto no backend (`lib/`) quanto no frontend (`hooks/` + `components/`).
-- **Qualidade**: ESLint + Prettier (Node/web), Ruff lint + format (Python), TypeScript strict, CI em todos os PRs.
-- **DRY**: zero duplicação evitável. Combobox reutilizável, cliente IBGE com cache, telemetria como camada única.
-- **LGPD**: IPs hasheados, salt configurável, telemetria opt-in via env var.
+Baseline obrigatória (detalhes em [`AGENTS.md`](AGENTS.md)):
+
+| Camada                      | Tooling                                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend (`api`, `lib`)      | TypeScript `strict: true` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` + `noImplicitOverride` + `noPropertyAccessFromIndexSignature` |
+| Frontend (`web/`)           | Mesma matriz de flags                                                                                                                               |
+| Python (`scripts`, `tests`) | `mypy --strict` + ruff lint/format. Tests com override mais permissivo.                                                                             |
+| SQL                         | Migrations idempotentes + `psql -f` local antes do merge                                                                                            |
+
+### Convenção de naming
+
+| Camada                     | Idioma                      | Exemplo                                |
+| -------------------------- | --------------------------- | -------------------------------------- |
+| DB columns + vertical keys | English, snake_case         | `venomous_animals`, `state_code`       |
+| Python modules / folders   | English, snake_case         | `scripts/syncs/venomous_animals/`      |
+| TypeScript types / vars    | English, camelCase          | `Vertical`, `verticalFilter`           |
+| URL paths                  | English, kebab-case         | `/v1/venomous-animals/hospitals`       |
+| User-facing strings (UI)   | Português — nome MS oficial | "Animais Peçonhentos", "Doenças Raras" |
+
+### Pre-commit hook
+
+`husky + lint-staged + tsc + mypy`. Bloqueia o commit em:
+
+- erros TypeScript em api/, lib/, web/
+- erros mypy em scripts/, tests/
+- ESLint/Prettier não atendidos
+- Ruff lint/format não atendidos
+
+CI repete tudo no PR (`.github/workflows/lint.yml`).
+
+### Comentários
+
+Documentar **por quê**, não **o quê**. Comentário só quando:
+
+- Decisão não-óbvia (rate-limit fail-open, LGPD IP-hash, regra do `private` cache-control)
+- Edge case real motivou código estranho (geocoding em 3 passos por CEP raro)
+- Múltiplos lugares devem mudar juntos (`Vertical` ↔ `KNOWN_VERTICALS` ↔ `URL_TO_DB_VERTICAL`)
 
 ---
 
 ## Fonte dos dados e disclaimer legal
 
-Os dados pertencem ao **Ministério da Saúde do Brasil** e são publicados em:  
+Os dados pertencem ao **Ministério da Saúde do Brasil**. Para a vertical de animais peçonhentos, são publicados em:  
 <https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia>
 
 Este projeto apenas redistribui em formato estruturado e de fácil acesso. Nenhum dado é inventado ou modificado — apenas normalizado (maiúsculas, acentos, tipagem de array, tradução de valores canônicos para inglês para padronização internacional da API).
 
-**⚠️ Esta API é uma ferramenta de referência. Em caso de acidente com animal peçonhento, ligue para o SAMU (192) imediatamente e procure o hospital mais próximo. As informações aqui podem estar desatualizadas.**
+**MapaSUS é uma iniciativa cidadã independente, mantida pela [Codar Sistemas](https://codarsistemas.com.br). Não tem vínculo institucional com o Ministério da Saúde do Brasil.**
+
+> ⚠️ **Esta API é uma ferramenta de referência. Em caso de acidente com animal peçonhento, ligue para o SAMU (192) imediatamente e procure o hospital mais próximo. As informações aqui podem estar desatualizadas.**
 
 ---
 
 ## Contribuindo
 
-Contribuições são bem-vindas! Veja como:
+Contribuições são bem-vindas. Veja como:
 
-1. **Issues**: abra uma issue descrevendo o bug ou sugestão
-2. **Pull Requests**: todos os PRs precisam de CI verde (lint + tests) antes do merge
-3. **Dados incorretos**: se encontrar um hospital com dados errados, abra uma issue — pode ser um problema no PDF original do Ministério da Saúde
+1. **Issues**: abra uma issue descrevendo o bug ou sugestão.
+2. **Pull Requests**: todos os PRs precisam de CI verde (tsc + ESLint + Prettier + Ruff + mypy + pytest).
+3. **Dados incorretos**: se encontrar um hospital com dados errados, abra uma issue — pode ser um problema no PDF original.
 
 ### Rodando os testes
 
 ```bash
-# Python (parser, geocoding helpers, normalize)
-pip install -r requirements.txt
-python -m tests.test_atendimentos
-python -m tests.test_geocode
-python -m tests.test_parser   # requer o PDF de SP em /home/claude/sp.pdf — skip-friendly
+# Python (parser, geocoding, LLM extractor, atendimentos)
+.venv/bin/python -m tests.test_atendimentos
+.venv/bin/python -m tests.test_geocode
+.venv/bin/python -m tests.test_llm_extractor
+.venv/bin/python -m tests.test_parser   # requer PDF de SP; skip-friendly
 
-# JavaScript (lint + format + types)
-npm install
-npm run check                  # ESLint + Prettier (backend) + Ruff (Python)
+# Type-check completo
+npm run typecheck                 # backend
+cd web && npx tsc --noEmit        # frontend
+.venv/bin/python -m mypy scripts/ tests/
 
-cd web && npm install
-npm run lint && npx tsc --noEmit
+# Lint completo
+npm run check
 ```

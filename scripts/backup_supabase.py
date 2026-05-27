@@ -27,6 +27,8 @@ from typing import Any
 
 import requests
 
+from scripts.shared.types import BackupManifest, BackupTableInfo
+
 # Tables to back up — current PT names since this runs BEFORE migration 007.
 # If you've already applied 007 and need backup of EN schema, change to:
 #   states, hospitals, cep_cache, geocode_cache, api_metrics
@@ -36,7 +38,7 @@ TABLES_EN = ["states", "hospitals", "cep_cache", "geocoding_cache", "api_metrics
 PAGE_SIZE = 1000  # PostgREST default cap on rows per request
 
 
-def detect_schema(url: str, headers: dict[str, Any]) -> list[str]:
+def detect_schema(url: str, headers: dict[str, str]) -> list[str]:
     """Probe for the EN table 'states'; if found, assume schema is EN."""
     response = requests.get(
         f"{url}/rest/v1/states", headers=headers, params={"select": "state_code", "limit": "1"}
@@ -44,7 +46,7 @@ def detect_schema(url: str, headers: dict[str, Any]) -> list[str]:
     return TABLES_EN if response.ok else TABLES_PT
 
 
-def fetch_table(url: str, headers: dict[str, Any], table: str) -> list[dict[str, Any]]:
+def fetch_table(url: str, headers: dict[str, str], table: str) -> list[dict[str, Any]]:
     """Paginate through all rows in a table."""
     rows: list[dict[str, Any]] = []
     offset = 0
@@ -67,7 +69,7 @@ def fetch_table(url: str, headers: dict[str, Any], table: str) -> list[dict[str,
     return rows
 
 
-def dump_table(rows: list[dict[str, Any]], path: Path) -> dict[str, Any]:
+def dump_table(rows: list[dict[str, Any]], path: Path) -> BackupTableInfo:
     """Write JSONL and compute SHA-256."""
     sha = hashlib.sha256()
     with path.open("w", encoding="utf-8") as f:
@@ -105,7 +107,7 @@ def main() -> int:
     tables = detect_schema(url, headers)
     print(f"Detected schema: {'EN' if tables == TABLES_EN else 'PT'} ({', '.join(tables)})\n")
 
-    manifest: dict[str, Any] = {
+    manifest: BackupManifest = {
         "timestamp": timestamp,
         "supabase_url": url,
         "schema": "en" if tables == TABLES_EN else "pt",

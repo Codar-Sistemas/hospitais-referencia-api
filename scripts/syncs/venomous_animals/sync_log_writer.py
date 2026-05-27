@@ -9,10 +9,10 @@ long each state's sync takes. Best-effort — never let logging block a sync.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
+from scripts.shared.types import SyncResult
 
 
 def write_sync_log(
@@ -20,7 +20,7 @@ def write_sync_log(
     *,
     state_code: str,
     started_at: datetime,
-    result: dict[str, Any],
+    result: SyncResult,
     triggered_by: str = "manual",
 ) -> None:
     """

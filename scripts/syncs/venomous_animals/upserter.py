@@ -19,12 +19,13 @@ from scripts.shared.config import (
 )
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
+from scripts.shared.types import HospitalRecord
 
 
 def upsert_hospitals(
     client: SupabaseClient,
     state_code: str,
-    records: list[dict[str, Any]],
+    records: list[HospitalRecord],
     extraction_source: str,
     ocr_confidence: int | None,
 ) -> tuple[int, int, int]:

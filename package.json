@@ -34,12 +34,12 @@
       "prettier --write"
     ],
     "scripts/**/*.py": [
-      "ruff check --fix",
-      "ruff format"
+      ".venv/bin/ruff check --fix",
+      ".venv/bin/ruff format"
     ],
     "tests/**/*.py": [
-      "ruff check --fix",
-      "ruff format"
+      ".venv/bin/ruff check --fix",
+      ".venv/bin/ruff format"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"

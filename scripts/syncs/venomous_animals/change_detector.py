@@ -9,11 +9,12 @@ the visible timestamp does not.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+
+from scripts.shared.types import StateRow
 
 
 def needs_update(
-    state_row: dict[str, Any],
+    state_row: StateRow,
     site_updated_at: datetime | None,
     force: bool = False,
 ) -> bool:
@@ -33,5 +34,5 @@ def needs_update(
     return False
 
 
-def pdf_hash_changed(state_row: dict[str, Any], new_hash: str) -> bool:
+def pdf_hash_changed(state_row: StateRow, new_hash: str) -> bool:
     return state_row.get("pdf_hash") != new_hash

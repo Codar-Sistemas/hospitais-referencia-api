@@ -30,7 +30,6 @@ import os
 import sys
 import tempfile
 from datetime import UTC, datetime
-from typing import Any
 
 from scripts.parsing.text_parser import parse_pdf
 from scripts.shared.config import (
@@ -46,6 +45,7 @@ from scripts.shared.config import (
 )
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
+from scripts.shared.types import GeocodingSummary, StateRow, SyncResult
 from scripts.syncs.venomous_animals.change_detector import needs_update, pdf_hash_changed
 from scripts.syncs.venomous_animals.scraper import (
     download_pdf,
@@ -58,7 +58,7 @@ from scripts.syncs.venomous_animals.upserter import upsert_hospitals
 # ---------------------------------------------------------------------------
 # Per-state sync
 # ---------------------------------------------------------------------------
-def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> dict[str, Any]:
+def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> SyncResult:
     rows = client.select("states", state_code=f"eq.{state_code}", select="*")
     if not rows:
         return {
@@ -66,7 +66,9 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
             "status": "skipped",
             "reason": "state not registered",
         }
-    state_row = rows[0]
+    # Narrow the dynamic Supabase row to the typed `StateRow` shape — we own
+    # the `states` schema, so a mismatch here is a real bug worth catching.
+    state_row: StateRow = rows[0]  # type: ignore[assignment]
 
     log(f"Checking {state_row['page_url']} ...", state_code=state_code)
     site_updated_at, pdf_url = fetch_page_metadata(state_row["page_url"])
@@ -199,7 +201,7 @@ def sync_state_safe(
     state_code: str,
     force: bool = False,
     triggered_by: str = "manual",
-) -> dict[str, Any]:
+) -> SyncResult:
     """Wrap sync_state, capture exceptions and persist them on the state row."""
     from scripts.syncs.venomous_animals.sync_log_writer import write_sync_log
 
@@ -241,7 +243,7 @@ def geocode_pending(
     client: SupabaseClient,
     state_code: str | None = None,
     limit: int = 1000,
-) -> dict[str, Any]:
+) -> GeocodingSummary:
     """
     Geocode hospitals with status 'pending'.
     Nominatim caps at 1 req/s -> ~17 minutes for 1000 records.

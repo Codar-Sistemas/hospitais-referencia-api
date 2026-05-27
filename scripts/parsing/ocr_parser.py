@@ -24,10 +24,23 @@ PDFs are Portuguese and cannot change. Output values are English.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TypedDict
 
 from scripts.parsing.ocr_engine import OcrPage, ocr_pdf
 from scripts.parsing.text_parser import normalize_treatments
+from scripts.shared.types import HospitalRecord, ParsedHospitalRow, WordBox
+
+
+class _CityBand(TypedDict):
+    """Y-band where a logical city name lives — collected per page so we
+    can split the OCR words into rows even when Tesseract puts the city
+    on a different line from the rest of the row."""
+
+    y_center: float
+    y_top: float
+    y_bottom: float
+    text: str
+
 
 # Content-classification patterns
 RE_PHONE = re.compile(r"\(\d{2}\)\s*\d{3,5}[-/]?\d{3,5}")
@@ -104,7 +117,7 @@ def _is_footer_word(text: str) -> bool:
     return _strip_accents(text).upper().strip(",:./") in FOOTER_KEYWORDS
 
 
-def _group_lines(words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+def _group_lines(words: list[WordBox]) -> list[list[WordBox]]:
     """Group words into visual rows by Y center."""
     if not words:
         return []
@@ -115,7 +128,7 @@ def _group_lines(words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
 
     sorted_words = sorted(words, key=lambda w: ((w["top"] + w["bottom"]) / 2, w["x0"]))
 
-    lines: list[list[dict[str, Any]]] = []
+    lines: list[list[WordBox]] = []
     for w in sorted_words:
         y_center = (w["top"] + w["bottom"]) / 2
         if lines:
@@ -132,7 +145,7 @@ def _group_lines(words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
 
 
 def _detect_column_boundaries(
-    lines: list[list[dict[str, Any]]], num_columns: int = 6
+    lines: list[list[WordBox]], num_columns: int = 6
 ) -> list[tuple[float, float]]:
     """
     Infer column boundaries via gap detection.
@@ -192,7 +205,7 @@ def _detect_column_boundaries(
     return bands[:num_columns]
 
 
-def _word_to_column(word: dict[str, Any], bands: list[tuple[float, float]]) -> int | None:
+def _word_to_column(word: WordBox, bands: list[tuple[float, float]]) -> int | None:
     x_center = (word["x0"] + word["x1"]) / 2
     for i, (x0, x1) in enumerate(bands):
         if x0 <= x_center <= x1:
@@ -201,8 +214,8 @@ def _word_to_column(word: dict[str, Any], bands: list[tuple[float, float]]) -> i
 
 
 def _line_to_record(
-    line: list[dict[str, Any]], bands: list[tuple[float, float]]
-) -> dict[str, Any] | None:
+    line: list[WordBox], bands: list[tuple[float, float]]
+) -> ParsedHospitalRow | None:
     """Convert a row of words into a 6-column record. Returns None if invalid."""
     if not line:
         return None
@@ -238,26 +251,37 @@ def _line_to_record(
     }
 
 
-def _merge_broken_lines(partial_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _merge_broken_lines(partial_records: list[ParsedHospitalRow]) -> list[ParsedHospitalRow]:
     """
     Scanned PDFs often split a single logical hospital into multiple
     visual lines. Heuristic: if a row has no city but other cells have
     content, it is a continuation of the previous row.
     """
-    merged: list[dict[str, Any]] = []
+    merged: list[ParsedHospitalRow] = []
     for record in partial_records:
         if not record.get("city") and merged:
             previous = merged[-1]
-            for field in ("name", "address", "phones", "cnes", "treatments_raw"):
-                new_value = record.get(field)
-                if new_value:
-                    if previous.get(field):
-                        previous[field] = f"{previous[field]} {new_value}"
-                    else:
-                        previous[field] = new_value
+            merged[-1] = {
+                "city": previous["city"],
+                "name": _concat(previous.get("name"), record.get("name")),
+                "address": _concat(previous.get("address"), record.get("address")),
+                "phones": _concat(previous.get("phones"), record.get("phones")),
+                "cnes": _concat(previous.get("cnes"), record.get("cnes")),
+                "treatments_raw": _concat(
+                    previous.get("treatments_raw"), record.get("treatments_raw")
+                ),
+            }
         else:
             merged.append(record)
     return merged
+
+
+def _concat(previous: str | None, new: str | None) -> str | None:
+    if not new:
+        return previous
+    if not previous:
+        return new
+    return f"{previous} {new}"
 
 
 def _classify_word(text: str) -> str | None:
@@ -326,7 +350,7 @@ def _city_column_position(page: OcrPage) -> tuple[float, float] | None:
     return None
 
 
-def _extract_page_ocr(page: OcrPage) -> list[dict[str, Any]]:
+def _extract_page_ocr(page: OcrPage) -> list[ParsedHospitalRow]:
     """
     Extract records from one OCR page using content-based classification.
     """
@@ -343,7 +367,7 @@ def _extract_page_ocr(page: OcrPage) -> list[dict[str, Any]]:
 
     sorted_words = sorted(page.words, key=lambda w: ((w["top"] + w["bottom"]) / 2, w["x0"]))
 
-    cities: list[dict[str, Any]] = []
+    cities: list[_CityBand] = []
     for w in sorted_words:
         if not (city_band[0] <= w["x0"] <= city_band[1]):
             continue
@@ -373,7 +397,7 @@ def _extract_page_ocr(page: OcrPage) -> list[dict[str, Any]]:
     if not cities:
         return []
 
-    records: list[dict[str, Any]] = []
+    records: list[ParsedHospitalRow] = []
 
     city_right_limit = _estimate_name_column_start(page) or (city_band[1] + 300)
 
@@ -502,7 +526,7 @@ def _is_valid_city(text: str) -> bool:
     return True
 
 
-def parse_pdf_ocr(path: str, state_code: str) -> tuple[list[dict[str, Any]], float]:
+def parse_pdf_ocr(path: str, state_code: str) -> tuple[list[HospitalRecord], float]:
     """
     Parse a scanned PDF via OCR. Returns (records, mean_confidence).
 
@@ -512,18 +536,22 @@ def parse_pdf_ocr(path: str, state_code: str) -> tuple[list[dict[str, Any]], flo
     `requires_verification` downstream.
     """
     all_confidences: list[float] = []
-    records: list[dict[str, Any]] = []
+    records: list[HospitalRecord] = []
 
     for page in ocr_pdf(path):
         for w in page.words:
-            all_confidences.append(w["confidence"])
+            all_confidences.append(w.get("confidence", 0.0))
 
-        for record in _extract_page_ocr(page):
-            if not _is_valid_city(record.get("city", "")):
+        for row in _extract_page_ocr(page):
+            if not _is_valid_city(row.get("city", "")):
                 continue
-            record["state_code"] = state_code
-            record["treatments"] = normalize_treatments(record["treatments_raw"])
-            records.append(record)
+            records.append(
+                {
+                    **row,
+                    "state_code": state_code,
+                    "treatments": normalize_treatments(row["treatments_raw"]),
+                }
+            )
 
     mean_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0.0
     return records, mean_confidence

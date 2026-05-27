@@ -44,7 +44,7 @@ def test_sp(pdf_path: str):
     print(f"✓ Distinct treatments found: {sorted(all_treatments)}")
 
     adamantina = next(r for r in records if r["city"] == "Adamantina")
-    assert "Santa Casa" in adamantina["name"]
+    assert adamantina["name"] is not None and "Santa Casa" in adamantina["name"]
     assert "Bothropic" in adamantina["treatments"]
     print(f"✓ Adamantina OK: {adamantina['name']}")
 

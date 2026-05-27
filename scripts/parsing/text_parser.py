@@ -34,6 +34,7 @@ from scripts.shared.config import (
     TREATMENT_PHONEUTRIC,
     TREATMENT_SCORPIONIC,
 )
+from scripts.shared.types import HospitalRecord, ParsedHospitalRow, WordBox
 
 # Map from Portuguese keyword (accent-stripped, lowercase) found in the
 # source PDF to the canonical English output value written to the DB.
@@ -97,11 +98,11 @@ def normalize_treatments(text: str | None) -> list[str]:
     return [t for t in CANONICAL_TREATMENTS if t in found]
 
 
-def _cell_text(words: list[dict[str, Any]]) -> str:
+def _cell_text(words: list[WordBox]) -> str:
     """Join words inside a cell respecting visual reading order (top, x)."""
     if not words:
         return ""
-    lines: list[list[dict[str, Any]]] = []
+    lines: list[list[WordBox]] = []
     for w in sorted(words, key=lambda w: (w["top"], w["x0"])):
         if lines and abs(w["top"] - lines[-1][0]["top"]) < 4:
             lines[-1].append(w)
@@ -123,7 +124,7 @@ def _merge_edges(edges: Iterable[float], tol: float = 3.0) -> list[float]:
     return out
 
 
-def _extract_page(page: Any) -> list[dict[str, Any]]:
+def _extract_page(page: Any) -> list[ParsedHospitalRow]:
     # Detect horizontal/vertical PDF lines as table boundaries.
     shapes = page.lines + page.rects
     h_edges_raw: set[float] = set()
@@ -160,7 +161,7 @@ def _extract_page(page: Any) -> list[dict[str, Any]]:
     row_bands = list(zip(h_edges[:-1], h_edges[1:]))
     col_bands = list(zip(v_edges[:-1], v_edges[1:]))
 
-    grid: list[list[list[dict[str, Any]]]] = [[[] for _ in col_bands] for _ in row_bands]
+    grid: list[list[list[WordBox]]] = [[[] for _ in col_bands] for _ in row_bands]
     for w in words:
         wy = (w["top"] + w["bottom"]) / 2
         wx = (w["x0"] + w["x1"]) / 2
@@ -169,7 +170,7 @@ def _extract_page(page: Any) -> list[dict[str, Any]]:
         if ri is not None and ci is not None:
             grid[ri][ci].append(w)
 
-    records: list[dict[str, Any]] = []
+    records: list[ParsedHospitalRow] = []
     for row in grid:
         cells = [_cell_text(c) for c in row]
         if not any(cells) or not cells[0]:
@@ -197,15 +198,19 @@ def _extract_page(page: Any) -> list[dict[str, Any]]:
     return records
 
 
-def parse_pdf(path: str, state_code: str) -> list[dict[str, Any]]:
+def parse_pdf(path: str, state_code: str) -> list[HospitalRecord]:
     """Parse a hospital PDF and return a list of records (DB-ready shape)."""
-    out: list[dict[str, Any]] = []
+    out: list[HospitalRecord] = []
     with pdfplumber.open(path) as pdf:
         for page in pdf.pages:
-            for record in _extract_page(page):
-                record["state_code"] = state_code
-                record["treatments"] = normalize_treatments(record["treatments_raw"])
-                out.append(record)
+            for row in _extract_page(page):
+                out.append(
+                    {
+                        **row,
+                        "state_code": state_code,
+                        "treatments": normalize_treatments(row["treatments_raw"]),
+                    }
+                )
     return out
 
 

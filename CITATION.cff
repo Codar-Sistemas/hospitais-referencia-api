@@ -6,7 +6,7 @@ authors:
   - given-names: Felipe
     family-names: França
     affiliation: "Codar Sistemas"
-    orcid: "" # add ORCID if you have one
+    orcid: "https://orcid.org/0009-0007-7751-0526"
 repository-code: "https://github.com/Codar-Sistemas/hospitais-referencia-api"
 url: "https://hospitais-referencia-api.vercel.app"
 license: MIT
@@ -31,6 +31,7 @@ preferred-citation:
     - given-names: Felipe
       family-names: França
       affiliation: "Codar Sistemas"
+      orcid: "https://orcid.org/0009-0007-7751-0526"
   title: "MapaSUS — Hospitais de Referência do SUS"
   year: 2026
   url: "https://github.com/Codar-Sistemas/hospitais-referencia-api"

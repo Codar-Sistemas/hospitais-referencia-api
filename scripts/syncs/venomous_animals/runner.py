@@ -30,6 +30,7 @@ import os
 import sys
 import tempfile
 from datetime import UTC, datetime
+from typing import Any
 
 from scripts.parsing.text_parser import parse_pdf
 from scripts.shared.config import (
@@ -46,14 +47,18 @@ from scripts.shared.config import (
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
 from scripts.syncs.venomous_animals.change_detector import needs_update, pdf_hash_changed
-from scripts.syncs.venomous_animals.scraper import download_pdf, fetch_page_metadata, is_image_based_pdf
+from scripts.syncs.venomous_animals.scraper import (
+    download_pdf,
+    fetch_page_metadata,
+    is_image_based_pdf,
+)
 from scripts.syncs.venomous_animals.upserter import upsert_hospitals
 
 
 # ---------------------------------------------------------------------------
 # Per-state sync
 # ---------------------------------------------------------------------------
-def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> dict:
+def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> dict[str, Any]:
     rows = client.select("states", state_code=f"eq.{state_code}", select="*")
     if not rows:
         return {
@@ -194,7 +199,7 @@ def sync_state_safe(
     state_code: str,
     force: bool = False,
     triggered_by: str = "manual",
-) -> dict:
+) -> dict[str, Any]:
     """Wrap sync_state, capture exceptions and persist them on the state row."""
     from scripts.syncs.venomous_animals.sync_log_writer import write_sync_log
 
@@ -236,7 +241,7 @@ def geocode_pending(
     client: SupabaseClient,
     state_code: str | None = None,
     limit: int = 1000,
-) -> dict:
+) -> dict[str, Any]:
     """
     Geocode hospitals with status 'pending'.
     Nominatim caps at 1 req/s -> ~17 minutes for 1000 records.

@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Iterable
+from typing import Any
 
 import pdfplumber
 
@@ -96,11 +97,11 @@ def normalize_treatments(text: str | None) -> list[str]:
     return [t for t in CANONICAL_TREATMENTS if t in found]
 
 
-def _cell_text(words: list[dict]) -> str:
+def _cell_text(words: list[dict[str, Any]]) -> str:
     """Join words inside a cell respecting visual reading order (top, x)."""
     if not words:
         return ""
-    lines: list[list[dict]] = []
+    lines: list[list[dict[str, Any]]] = []
     for w in sorted(words, key=lambda w: (w["top"], w["x0"])):
         if lines and abs(w["top"] - lines[-1][0]["top"]) < 4:
             lines[-1].append(w)
@@ -122,20 +123,21 @@ def _merge_edges(edges: Iterable[float], tol: float = 3.0) -> list[float]:
     return out
 
 
-def _extract_page(page) -> list[dict]:
+def _extract_page(page: Any) -> list[dict[str, Any]]:
     # Detect horizontal/vertical PDF lines as table boundaries.
     shapes = page.lines + page.rects
-    h_edges, v_edges = set(), set()
+    h_edges_raw: set[float] = set()
+    v_edges_raw: set[float] = set()
     for r in shapes:
         h = r.get("height", 0) or 0
         w = r.get("width", 0) or 0
         if abs(h) < 2 and w > 30:
-            h_edges.add(round(r["top"], 1))
+            h_edges_raw.add(round(r["top"], 1))
         if abs(w) < 2 and h > 10:
-            v_edges.add(round(r["x0"], 1))
+            v_edges_raw.add(round(r["x0"], 1))
 
-    h_edges = _merge_edges(h_edges)
-    v_edges = _merge_edges(v_edges)
+    h_edges: list[float] = _merge_edges(h_edges_raw)
+    v_edges: list[float] = _merge_edges(v_edges_raw)
 
     if len(v_edges) < 7 or len(h_edges) < 2:
         return []
@@ -158,7 +160,7 @@ def _extract_page(page) -> list[dict]:
     row_bands = list(zip(h_edges[:-1], h_edges[1:]))
     col_bands = list(zip(v_edges[:-1], v_edges[1:]))
 
-    grid: list[list[list[dict]]] = [[[] for _ in col_bands] for _ in row_bands]
+    grid: list[list[list[dict[str, Any]]]] = [[[] for _ in col_bands] for _ in row_bands]
     for w in words:
         wy = (w["top"] + w["bottom"]) / 2
         wx = (w["x0"] + w["x1"]) / 2
@@ -167,7 +169,7 @@ def _extract_page(page) -> list[dict]:
         if ri is not None and ci is not None:
             grid[ri][ci].append(w)
 
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
     for row in grid:
         cells = [_cell_text(c) for c in row]
         if not any(cells) or not cells[0]:
@@ -195,9 +197,9 @@ def _extract_page(page) -> list[dict]:
     return records
 
 
-def parse_pdf(path: str, state_code: str) -> list[dict]:
+def parse_pdf(path: str, state_code: str) -> list[dict[str, Any]]:
     """Parse a hospital PDF and return a list of records (DB-ready shape)."""
-    out: list[dict] = []
+    out: list[dict[str, Any]] = []
     with pdfplumber.open(path) as pdf:
         for page in pdf.pages:
             for record in _extract_page(page):

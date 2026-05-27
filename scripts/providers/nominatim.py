@@ -58,9 +58,9 @@ class NominatimProvider(GeocodingProvider):
                 params={
                     "q": query,
                     "format": "jsonv2",
-                    "limit": 1,
+                    "limit": "1",
                     "countrycodes": "br",
-                    "addressdetails": 0,
+                    "addressdetails": "0",
                 },
                 timeout=self._timeout_s,
             )

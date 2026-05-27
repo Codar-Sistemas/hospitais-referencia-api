@@ -59,7 +59,7 @@ def test_geocoder_cache():
         return mock_result
 
     # Replace the internal provider query helper used by geocode_address.
-    geocoder._query_provider = fake_query  # type: ignore[attr-defined]
+    geocoder._query_provider = fake_query  # type: ignore[method-assign]
 
     r1 = geocoder.geocode_address("Rua X, 10", "São Paulo", "SP")
     r2 = geocoder.geocode_address("Rua X, 10", "São Paulo", "SP")
@@ -87,10 +87,12 @@ def test_geocoder_cache():
 def test_invalid_cep():
     print("\nInvalid CEP:")
     geocoder = Geocoder()
-    cases = ["", "abc", "1234", "123-456", None]
+    cases: list[str | None] = ["", "abc", "1234", "123-456", None]
     ok = 0
     for cep in cases:
-        result = geocoder.lookup_cep(cep)
+        # `lookup_cep` is typed as `str` but the implementation guards
+        # `None`/empty inputs — we exercise that on purpose here.
+        result = geocoder.lookup_cep(cep)  # type: ignore[arg-type]
         status = "✓" if result is None else "✗"
         print(f"  {status} lookup_cep({cep!r}) → {result}")
         if result is None:

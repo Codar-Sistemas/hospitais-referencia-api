@@ -99,7 +99,7 @@ def main():
     ]
 
     print("\nEdge cases:")
-    cases_edge = [
+    cases_edge: list[tuple[str, str | None, list[str]]] = [
         ("empty", "", []),
         ("None", None, []),
         ("text without valid types", "Hospital aberto 24h", []),

@@ -11,6 +11,7 @@ Preserves geocoding when possible:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 from scripts.shared.config import (
     EXTRACTION_SOURCE_PDF_OCR,
@@ -23,7 +24,7 @@ from scripts.shared.logger import log
 def upsert_hospitals(
     client: SupabaseClient,
     state_code: str,
-    records: list[dict],
+    records: list[dict[str, Any]],
     extraction_source: str,
     ocr_confidence: int | None,
 ) -> tuple[int, int, int]:
@@ -37,9 +38,9 @@ def upsert_hospitals(
     )
     by_key = {(h["city"] or "", h["name"] or "", h["cnes"] or ""): h for h in existing}
 
-    seen_ids: set = set()
-    to_insert: list[dict] = []
-    to_update: list[tuple[int, dict]] = []
+    seen_ids: set[int] = set()
+    to_insert: list[dict[str, Any]] = []
+    to_update: list[tuple[int, dict[str, Any]]] = []
 
     for record in records:
         key = (record["city"] or "", record["name"] or "", record["cnes"] or "")

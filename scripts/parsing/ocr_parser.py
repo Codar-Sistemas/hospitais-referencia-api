@@ -24,6 +24,7 @@ PDFs are Portuguese and cannot change. Output values are English.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from scripts.parsing.ocr_engine import OcrPage, ocr_pdf
 from scripts.parsing.text_parser import normalize_treatments
@@ -103,7 +104,7 @@ def _is_footer_word(text: str) -> bool:
     return _strip_accents(text).upper().strip(",:./") in FOOTER_KEYWORDS
 
 
-def _group_lines(words: list[dict]) -> list[list[dict]]:
+def _group_lines(words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     """Group words into visual rows by Y center."""
     if not words:
         return []
@@ -114,7 +115,7 @@ def _group_lines(words: list[dict]) -> list[list[dict]]:
 
     sorted_words = sorted(words, key=lambda w: ((w["top"] + w["bottom"]) / 2, w["x0"]))
 
-    lines: list[list[dict]] = []
+    lines: list[list[dict[str, Any]]] = []
     for w in sorted_words:
         y_center = (w["top"] + w["bottom"]) / 2
         if lines:
@@ -131,7 +132,7 @@ def _group_lines(words: list[dict]) -> list[list[dict]]:
 
 
 def _detect_column_boundaries(
-    lines: list[list[dict]], num_columns: int = 6
+    lines: list[list[dict[str, Any]]], num_columns: int = 6
 ) -> list[tuple[float, float]]:
     """
     Infer column boundaries via gap detection.
@@ -191,7 +192,7 @@ def _detect_column_boundaries(
     return bands[:num_columns]
 
 
-def _word_to_column(word: dict, bands: list[tuple[float, float]]) -> int | None:
+def _word_to_column(word: dict[str, Any], bands: list[tuple[float, float]]) -> int | None:
     x_center = (word["x0"] + word["x1"]) / 2
     for i, (x0, x1) in enumerate(bands):
         if x0 <= x_center <= x1:
@@ -199,7 +200,9 @@ def _word_to_column(word: dict, bands: list[tuple[float, float]]) -> int | None:
     return None
 
 
-def _line_to_record(line: list[dict], bands: list[tuple[float, float]]) -> dict | None:
+def _line_to_record(
+    line: list[dict[str, Any]], bands: list[tuple[float, float]]
+) -> dict[str, Any] | None:
     """Convert a row of words into a 6-column record. Returns None if invalid."""
     if not line:
         return None
@@ -235,13 +238,13 @@ def _line_to_record(line: list[dict], bands: list[tuple[float, float]]) -> dict 
     }
 
 
-def _merge_broken_lines(partial_records: list[dict]) -> list[dict]:
+def _merge_broken_lines(partial_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Scanned PDFs often split a single logical hospital into multiple
     visual lines. Heuristic: if a row has no city but other cells have
     content, it is a continuation of the previous row.
     """
-    merged: list[dict] = []
+    merged: list[dict[str, Any]] = []
     for record in partial_records:
         if not record.get("city") and merged:
             previous = merged[-1]
@@ -296,7 +299,7 @@ def _estimate_name_column_start(page: OcrPage) -> float | None:
     ]
     if not candidates:
         return None
-    x0s = sorted(w["x0"] for w in candidates)
+    x0s: list[float] = sorted(float(w["x0"]) for w in candidates)
     return x0s[len(x0s) // 2]
 
 
@@ -323,7 +326,7 @@ def _city_column_position(page: OcrPage) -> tuple[float, float] | None:
     return None
 
 
-def _extract_page_ocr(page: OcrPage) -> list[dict]:
+def _extract_page_ocr(page: OcrPage) -> list[dict[str, Any]]:
     """
     Extract records from one OCR page using content-based classification.
     """
@@ -340,7 +343,7 @@ def _extract_page_ocr(page: OcrPage) -> list[dict]:
 
     sorted_words = sorted(page.words, key=lambda w: ((w["top"] + w["bottom"]) / 2, w["x0"]))
 
-    cities: list[dict] = []
+    cities: list[dict[str, Any]] = []
     for w in sorted_words:
         if not (city_band[0] <= w["x0"] <= city_band[1]):
             continue
@@ -370,7 +373,7 @@ def _extract_page_ocr(page: OcrPage) -> list[dict]:
     if not cities:
         return []
 
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
 
     city_right_limit = _estimate_name_column_start(page) or (city_band[1] + 300)
 
@@ -499,7 +502,7 @@ def _is_valid_city(text: str) -> bool:
     return True
 
 
-def parse_pdf_ocr(path: str, state_code: str) -> tuple[list[dict], float]:
+def parse_pdf_ocr(path: str, state_code: str) -> tuple[list[dict[str, Any]], float]:
     """
     Parse a scanned PDF via OCR. Returns (records, mean_confidence).
 
@@ -509,7 +512,7 @@ def parse_pdf_ocr(path: str, state_code: str) -> tuple[list[dict], float]:
     `requires_verification` downstream.
     """
     all_confidences: list[float] = []
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
 
     for page in ocr_pdf(path):
         for w in page.words:

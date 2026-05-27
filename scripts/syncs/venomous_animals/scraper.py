@@ -63,10 +63,13 @@ def fetch_page_metadata(page_url: str) -> tuple[datetime | None, str | None]:
     #   1. href="...Arquivo.pdf"               (direct link)
     #   2. href="...estado/@@download/file"    (Plone download)
     #   3. href="...arquivo.xlsx"              (PE — now also PDF)
-    pdf_url = None
-    xlsx_url = None
+    pdf_url: str | None = None
+    xlsx_url: str | None = None
     for anchor in soup.find_all("a", href=True):
-        href = anchor["href"]
+        # BeautifulSoup tags expose `href` as `str | AttributeValueList`;
+        # `find_all(href=True)` always yields strings in practice.
+        href_value = anchor["href"]
+        href = href_value if isinstance(href_value, str) else str(href_value[0])
         lower = href.lower()
         if lower.endswith(".pdf") or lower.endswith("/@@download/file"):
             pdf_url = urljoin(page_url, href)

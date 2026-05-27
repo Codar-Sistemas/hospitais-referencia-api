@@ -1,0 +1,9 @@
+# Canonical identity for git history.
+# Unifies multiple emails/spellings under a single author so that
+# `git shortlog -sne` and GitHub contribution graphs reflect the
+# real contributor without rewriting history.
+#
+# Format: Canonical Name <canonical-email> <old-email>
+
+Felipe França <felipe.flfranca@gmail.com> <34171021+felipeflfranca@users.noreply.github.com>
+Felipe França <felipe.flfranca@gmail.com> <felipe.flfranca@gmail.com>

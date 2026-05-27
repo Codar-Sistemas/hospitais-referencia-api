@@ -2,6 +2,19 @@
   "name": "hospitais-referencia-api",
   "version": "1.0.0",
   "description": "Public API for Brazilian reference hospitals treating venomous animal accidents (Ministry of Health data)",
+  "author": {
+    "name": "Felipe França",
+    "email": "felipe.flfranca@gmail.com",
+    "url": "https://github.com/felipeflfranca"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Codar-Sistemas/hospitais-referencia-api.git"
+  },
+  "homepage": "https://hospitais-referencia-api.vercel.app",
+  "bugs": {
+    "url": "https://github.com/Codar-Sistemas/hospitais-referencia-api/issues"
+  },
   "main": "api/index.js",
   "engines": {
     "node": ">=22"

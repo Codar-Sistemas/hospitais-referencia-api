@@ -51,7 +51,7 @@ jobs:
           ARGS="sync"
           if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
           if [ -n "${{ github.event.inputs.state_code }}" ]; then ARGS="$ARGS ${{ github.event.inputs.state_code }}"; fi
-          python -m scripts.syncs.animais_peconhentos $ARGS
+          python -m scripts.syncs.venomous_animals $ARGS
 
       - id: check
         name: Check whether any hospitals are pending geocoding
@@ -91,4 +91,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python -m scripts.syncs.animais_peconhentos geocode --limit 5000
+        run: python -m scripts.syncs.venomous_animals geocode --limit 5000

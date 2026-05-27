@@ -28,9 +28,9 @@ export const DEFAULT_VERTICAL: Vertical = hospitalRepo.DEFAULT_VERTICAL;
 // requires updating: this Set, the `Vertical` type in lib/types/domain.ts,
 // and `URL_TO_DB_VERTICAL` in api/index.ts.
 export const KNOWN_VERTICALS: ReadonlySet<Vertical> = new Set<Vertical>([
-  'animais_peconhentos',
-  'doencas_raras',
-  'oncologia',
+  'venomous_animals',
+  'rare_diseases',
+  'oncology',
 ]);
 
 export function resolveVertical(vertical: string | null | undefined): VerticalOrAll {

@@ -1,5 +1,5 @@
 // Read-only against the production API; writes to the local Supabase with
-// the service key. Every row is tagged `verticals = ['animais_peconhentos']`
+// the service key. Every row is tagged `verticals = ['venomous_animals']`
 // so the multi-vertical schema looks realistic from the first second.
 //
 //   npm run seed -- SP RJ MG
@@ -69,7 +69,7 @@ async function upsertLocal(rows: ProdHospital[]): Promise<number> {
     geocoding_source: h.geocoding_source ?? null,
     geocoded_at: h.geocoded_at ?? null,
     extraction_source: h.extraction_source ?? 'pdf_text',
-    verticals: ['animais_peconhentos'],
+    verticals: ['venomous_animals'],
   }));
 
   const res = await fetch(`${LOCAL_SB}/rest/v1/hospitals`, {
@@ -95,7 +95,7 @@ async function upsertLocal(rows: ProdHospital[]): Promise<number> {
 function printBackfillReminder(): void {
   const sql = `
     INSERT INTO hospital_specialties (hospital_id, vertical, specialty, source_url, metadata)
-    SELECT h.id, 'animais_peconhentos', t, COALESCE(h.extraction_source, 'seed_from_prod'),
+    SELECT h.id, 'venomous_animals', t, COALESCE(h.extraction_source, 'seed_from_prod'),
            jsonb_build_object('seeded_at', NOW())
     FROM hospitals h, unnest(h.treatments) t
     ON CONFLICT DO NOTHING;

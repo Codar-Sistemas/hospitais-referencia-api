@@ -6,7 +6,7 @@
 // Snake_case DB key. URLs replace `_` with `-` (kebab); see
 // URL_TO_DB_VERTICAL in api/index.ts. Keep KNOWN_VERTICALS in
 // lib/services/hospital-service.ts in sync with this union.
-export type Vertical = 'animais_peconhentos' | 'doencas_raras' | 'oncologia';
+export type Vertical = 'venomous_animals' | 'rare_diseases' | 'oncology';
 
 // 'all' is the sentinel for cross-vertical queries (`/v1/search`).
 export type VerticalOrAll = Vertical | 'all';

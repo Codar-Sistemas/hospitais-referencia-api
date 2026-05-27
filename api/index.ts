@@ -29,9 +29,9 @@ const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;
 // DB key is snake_case — this map is the one place that bridges the two.
 // Keep it in sync with `KNOWN_VERTICALS` in hospital-service.ts.
 const URL_TO_DB_VERTICAL: Readonly<Record<string, Vertical>> = {
-  'animais-peconhentos': 'animais_peconhentos',
-  'doencas-raras': 'doencas_raras',
-  oncologia: 'oncologia',
+  'venomous-animals': 'venomous_animals',
+  'rare-diseases': 'rare_diseases',
+  oncologia: 'oncology',
 };
 const VERTICAL_PREFIX = new RegExp(`^/v1/(${Object.keys(URL_TO_DB_VERTICAL).join('|')})(/.*)?$`);
 
@@ -110,7 +110,7 @@ export default async function handler(req: Request, res: ResponseWithMetrics): P
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
   const rawPath = url.pathname.replace(/\/+$/, '') || '/';
   // Strip the vertical prefix so the telemetry STATE_PATH regex matches
-  // /v1/animais-peconhentos/states/SP the same as /v1/states/SP.
+  // /v1/venomous-animals/states/SP the same as /v1/states/SP.
   const { path } = normalizePath(rawPath);
   const stateMatch = STATE_PATH.exec(path);
   const capturedStateCode =

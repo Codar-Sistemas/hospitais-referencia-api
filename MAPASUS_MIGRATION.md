@@ -39,20 +39,22 @@ mapasus-platform/                  ← repo renomeado (hoje: hospitais-referenci
 ├── api/
 │   └── index.js                   ← uma função Vercel, roteia por path
 ├── scripts/
-│   ├── peconhentos/               ← sync atual
-│   ├── raras/                     ← novo
-│   └── oncologia/                 ← novo
+│   └── syncs/
+│       ├── venomous_animals/      ← sync atual
+│       ├── rare_diseases/         ← novo
+│       └── oncology/              ← novo
 ├── sql/                           ← migrations
-│   ├── 009_multi_vertical.sql     ← discriminador + specialty table
-│   ├── 010_raras_seed.sql
-│   └── 011_oncologia_seed.sql
+│   ├── 009_multi_vertical.sql      ← discriminador + specialty table
+│   ├── 010_rpc_vertical.sql        ← p_vertical no nearby_hospitals()
+│   ├── 011_rename_animais_peconhentos.sql
+│   └── 012_rename_verticals_to_en.sql
 ├── web/                           ← Next.js 16 multi-tenant
 │   ├── middleware.ts              ← roteia por host
 │   ├── app/
-│   │   ├── (hub)/                 ← mapasus.com.br
-│   │   ├── (peconhentos)/         ← peconhentos.mapasus.com.br
-│   │   ├── (raras)/               ← raras.mapasus.com.br
-│   │   └── (oncologia)/           ← oncologia.mapasus.com.br
+│   │   ├── (hub)/                  ← mapasus.com.br
+│   │   ├── (venomous-animals)/     ← venomous-animals.mapasus.com.br
+│   │   ├── (rare-diseases)/        ← rare-diseases.mapasus.com.br
+│   │   └── (oncology)/             ← oncology.mapasus.com.br
 │   ├── components/
 │   │   ├── shared/                ← Navbar, Combobox, Map, FAQ — uso comum
 │   │   └── verticals/             ← componentes específicos por vertical
@@ -72,7 +74,7 @@ CREATE INDEX hospitals_verticals_gin ON hospitals USING gin(verticals);
 -- Nova tabela: especialidades por vertical
 CREATE TABLE hospital_specialties (
   hospital_id    UUID NOT NULL REFERENCES hospitals(id) ON DELETE CASCADE,
-  vertical       TEXT NOT NULL,             -- 'peconhentos' | 'raras' | 'oncologia'
+  vertical       TEXT NOT NULL,             -- 'peconhentos' | 'raras' | 'oncology'
   specialty      TEXT NOT NULL,             -- 'soro_bothropic' | 'radioterapia' | 'terapia_genica'
   habilitado_em  DATE,
   portaria       TEXT,                       -- referência normativa
@@ -172,7 +174,7 @@ ON CONFLICT DO NOTHING;
 | ----- | ------------------------------------------------------------------------------------------------ |
 | 2.5.1 | Implementar `scripts/raras/sync.js` — parser do XLSX oficial (formato bem mais simples que PDFs) |
 | 2.5.2 | Implementar geocoding pros novos hospitais (reusa `lib/services/geocoding`)                      |
-| 2.5.3 | Especialidades: `doencas_raras_geral`, `terapia_genica_ame`, etc.                                |
+| 2.5.3 | Especialidades: `rare_diseases_geral`, `terapia_genica_ame`, etc.                                |
 | 2.5.4 | Criar páginas em `(raras)/`: home, busca por estado/cidade, FAQ específico                       |
 | 2.5.5 | Cron diário no Vercel pra sync                                                                   |
 | 2.5.6 | Schema.org Dataset markup específico                                                             |

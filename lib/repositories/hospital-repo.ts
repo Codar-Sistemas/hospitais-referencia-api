@@ -18,12 +18,12 @@ const HOSPITAL_LIST_COLUMNS =
 
 // Backwards-compat default — the legacy `/v1/hospitals` routes (pre-MapaSUS)
 // implicitly target the venomous-animal hospitals.
-export const DEFAULT_VERTICAL: Vertical = 'animais_peconhentos';
+export const DEFAULT_VERTICAL: Vertical = 'venomous_animals';
 
 // `null` / `'all'` disables the filter (used by `/v1/search`).
 function verticalFilter(vertical: VerticalOrAll | null | undefined): string | null {
   if (vertical === null || vertical === 'all') return null;
-  // PostgREST contains-array syntax: verticals @> '{animais_peconhentos}'
+  // PostgREST contains-array syntax: verticals @> '{venomous_animals}'
   return `cs.{"${vertical ?? DEFAULT_VERTICAL}"}`;
 }
 
@@ -89,7 +89,7 @@ export async function searchByCity(filters: SearchByCityFilters): Promise<Hospit
 
 export interface FindByIdOptions {
   // Pass an explicit vertical to deny cross-vertical access (e.g. the
-  // peçonhentos page must not surface an oncology-only hospital).
+  // venomous-animals page must not surface an oncology-only hospital).
   // Default is `null` — any vertical is allowed.
   vertical?: VerticalOrAll | null;
 }

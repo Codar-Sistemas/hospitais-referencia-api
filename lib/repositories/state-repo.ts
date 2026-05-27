@@ -1,4 +1,4 @@
-// Read-only. Writes are owned by scripts/syncs/animais_peconhentos/.
+// Read-only. Writes are owned by scripts/syncs/venomous_animals/.
 
 import { sb } from '../core/supabase.js';
 import type { StateSummary } from '../types/domain.js';

@@ -12,11 +12,11 @@ Flow for each state:
   5. Update the `states` row with the new timestamp, hash and total.
 
 CLI usage:
-  python -m scripts.syncs.animais_peconhentos                     # sync all states
-  python -m scripts.syncs.animais_peconhentos SP                  # sync only SP
-  python -m scripts.syncs.animais_peconhentos --force SP          # force re-sync
-  python -m scripts.syncs.animais_peconhentos geocode             # geocode pending rows
-  python -m scripts.syncs.animais_peconhentos geocode SP          # geocode pending rows in SP
+  python -m scripts.syncs.venomous_animals                     # sync all states
+  python -m scripts.syncs.venomous_animals SP                  # sync only SP
+  python -m scripts.syncs.venomous_animals --force SP          # force re-sync
+  python -m scripts.syncs.venomous_animals geocode             # geocode pending rows
+  python -m scripts.syncs.venomous_animals geocode SP          # geocode pending rows in SP
 
 Required environment variables:
   SUPABASE_URL          Supabase project URL
@@ -45,9 +45,9 @@ from scripts.shared.config import (
 )
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
-from scripts.syncs.animais_peconhentos.change_detector import needs_update, pdf_hash_changed
-from scripts.syncs.animais_peconhentos.scraper import download_pdf, fetch_page_metadata, is_image_based_pdf
-from scripts.syncs.animais_peconhentos.upserter import upsert_hospitals
+from scripts.syncs.venomous_animals.change_detector import needs_update, pdf_hash_changed
+from scripts.syncs.venomous_animals.scraper import download_pdf, fetch_page_metadata, is_image_based_pdf
+from scripts.syncs.venomous_animals.upserter import upsert_hospitals
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ def sync_state_safe(
     triggered_by: str = "manual",
 ) -> dict:
     """Wrap sync_state, capture exceptions and persist them on the state row."""
-    from scripts.syncs.animais_peconhentos.sync_log_writer import write_sync_log
+    from scripts.syncs.venomous_animals.sync_log_writer import write_sync_log
 
     started_at = datetime.now(UTC)
     try:
@@ -316,7 +316,7 @@ def main() -> None:
     geocode_parser.add_argument("--limit", type=int, default=1000)
 
     # Legacy positional / flag at the top level so that
-    # `python -m scripts.syncs.animais_peconhentos SP --force` still works.
+    # `python -m scripts.syncs.venomous_animals SP --force` still works.
     parser.add_argument("state_code_legacy", nargs="?", help=argparse.SUPPRESS)
     parser.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
 

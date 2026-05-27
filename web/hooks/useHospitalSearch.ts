@@ -6,12 +6,12 @@ import type { Hospital, SearchMode } from '@/lib/types';
 
 export interface HospitalSearchInput {
   mode: SearchMode;
-  stateCode?: string;
-  city?: string;
-  cep?: string;
-  treatment?: string;
-  radiusM?: number;
-  limit?: number;
+  stateCode?: string | undefined;
+  city?: string | undefined;
+  cep?: string | undefined;
+  treatment?: string | undefined;
+  radiusM?: number | undefined;
+  limit?: number | undefined;
 }
 
 export interface UseHospitalSearchResult {

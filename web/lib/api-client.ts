@@ -5,7 +5,7 @@ import type {
 } from './types';
 
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || 'https://hospitais-referencia-api.vercel.app';
+  process.env['NEXT_PUBLIC_API_URL'] || 'https://hospitais-referencia-api.vercel.app';
 
 function buildUrl(path: string, params: Record<string, string | number | undefined | null>): string {
   const url = new URL(`${API_BASE}${path}`);
@@ -50,12 +50,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export interface SearchHospitalsParams {
-  stateCode?: string;
-  city?: string;
-  treatment?: string;
-  q?: string;
-  limit?: number;
-  offset?: number;
+  stateCode?: string | undefined;
+  city?: string | undefined;
+  treatment?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
 }
 
 export async function searchHospitals(params: SearchHospitalsParams): Promise<Hospital[]> {
@@ -72,14 +72,14 @@ export async function searchHospitals(params: SearchHospitalsParams): Promise<Ho
 }
 
 export interface SearchNearbyParams {
-  cep?: string;
-  lat?: number;
-  lng?: number;
-  city?: string;
-  stateCode?: string;
-  treatment?: string;
-  radiusM?: number;
-  limit?: number;
+  cep?: string | undefined;
+  lat?: number | undefined;
+  lng?: number | undefined;
+  city?: string | undefined;
+  stateCode?: string | undefined;
+  treatment?: string | undefined;
+  radiusM?: number | undefined;
+  limit?: number | undefined;
 }
 
 export async function searchNearby(params: SearchNearbyParams): Promise<NearbyHospitalsResponse> {

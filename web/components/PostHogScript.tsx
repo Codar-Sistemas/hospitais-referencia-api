@@ -6,8 +6,8 @@
 import Script from 'next/script';
 
 export default function PostHogScript() {
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
+  const key = process.env['NEXT_PUBLIC_POSTHOG_KEY'];
+  const host = process.env['NEXT_PUBLIC_POSTHOG_HOST'] || 'https://us.i.posthog.com';
   if (!key) return null;
   return (
     <Script id="posthog-init" strategy="lazyOnload">

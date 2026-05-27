@@ -8,6 +8,7 @@
 ![Custo](https://img.shields.io/badge/custo-R%240%2Fmês-brightgreen)
 ![Licença dados](https://img.shields.io/badge/dados-Ministério%20da%20Saúde-blue)
 ![Rate limit](https://img.shields.io/badge/rate%20limit-15%20req%2Fmin-orange)
+[![ORCID](https://img.shields.io/badge/ORCID-0009--0007--7751--0526-A6CE39?logo=orcid&logoColor=white)](https://orcid.org/0009-0007-7751-0526)
 
 ---
 

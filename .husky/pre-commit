@@ -1,0 +1,28 @@
+# MapaSUS pre-commit gate.
+#
+# Three layers, fail-fast:
+#   1. lint-staged   — eslint --fix, prettier --write, ruff --fix on
+#                      staged files only (millisecond-fast).
+#   2. tsc --noEmit  — TypeScript is a whole-project check; can't be
+#                      sharded by file. ~3-5s on this codebase.
+#   3. mypy          — same story for Python. ~5-10s.
+#
+# A failed step blocks the commit. Re-stage after auto-fixes and run
+# `git commit` again.
+
+set -e
+
+npx lint-staged
+
+# Whole-project type checks. Skip them if no relevant files changed
+# (staged-files-only would miss cross-file regressions).
+CHANGED_TS=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^(api|lib|web|scripts)/.*\.(ts|tsx)$' | head -1 || true)
+if [ -n "$CHANGED_TS" ]; then
+  npm run typecheck
+  (cd web && npx tsc --noEmit)
+fi
+
+CHANGED_PY=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^(scripts|tests)/.*\.py$' | head -1 || true)
+if [ -n "$CHANGED_PY" ] && [ -x .venv/bin/python ]; then
+  .venv/bin/python -m mypy scripts/ tests/
+fi

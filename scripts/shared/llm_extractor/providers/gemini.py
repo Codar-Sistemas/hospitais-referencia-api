@@ -1,7 +1,12 @@
 """Google Gemini vision provider — uses the supported `google-genai` SDK.
 
-Free tier (2026-02): 1500 req/day, 15 req/min, 1M tokens/min on
-`gemini-2.0-flash`. Get a key at https://aistudio.google.com/apikey.
+Free tier (2026-02): 1500 req/day on `gemini-2.5-flash`, an AI Studio
+key (https://aistudio.google.com/apikey). Cloud-billed keys do NOT
+share the free quota; if you see `limit: 0` in a 429 error, the key
+needs to be re-issued from AI Studio.
+
+Override the model via `GEMINI_MODEL` if a new generation ships with
+a different name (e.g. when Google rotates flash variants).
 """
 
 from __future__ import annotations
@@ -13,14 +18,14 @@ from google.genai import types
 
 from scripts.shared.llm_extractor.providers.base import LlmExtractionError, LlmReply
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 class GeminiProvider:
     name = "llm_gemini"
 
-    def __init__(self, model: str = DEFAULT_MODEL) -> None:
-        self._model = model
+    def __init__(self, model: str | None = None) -> None:
+        self._model = model or os.environ.get("GEMINI_MODEL") or DEFAULT_MODEL
         self._api_key = os.environ.get("GEMINI_API_KEY")
         # Client is constructed lazily so an unconfigured provider can be
         # listed in the chain without raising at import time.

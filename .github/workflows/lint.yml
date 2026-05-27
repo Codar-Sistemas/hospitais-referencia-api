@@ -45,7 +45,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install ruff mypy types-requests
+          cache: 'pip'
+      # mypy --strict needs the real runtime packages installed —
+      # otherwise pydantic.BaseModel resolves to Any and every
+      # subclass fails the no-subclass-any check.
+      - run: pip install -r requirements.txt ruff mypy types-requests
       - run: ruff check scripts/ tests/
       - run: ruff format --check scripts/ tests/
       - run: mypy scripts/ tests/

@@ -24,16 +24,27 @@ const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;
 
 // MapaSUS multi-vertical routing.
 //
-// Paths under `/v1/{vertical}/...` (e.g. `/v1/peconhentos/hospitals`,
-// `/v1/raras/hospitals/nearby`) are rewritten internally to the legacy
-// `/v1/...` shape with `ctx.vertical` set, so the dispatch table stays
-// flat. Legacy `/v1/hospitals` paths keep working as aliases — handlers
-// fall back to the default vertical ('peconhentos') when ctx.vertical
-// is unset, preserving backward compatibility for every integration
-// built against the pre-MapaSUS API.
+// Paths under `/v1/{vertical}/...` (e.g. `/v1/animais-peconhentos/hospitals`,
+// `/v1/doencas-raras/hospitals/nearby`) are rewritten internally to the
+// legacy `/v1/...` shape with `ctx.vertical` set to the corresponding
+// snake_case DB key, so the dispatch table stays flat. Legacy
+// `/v1/hospitals` paths keep working as aliases — handlers fall back to
+// the default vertical ('animais_peconhentos') when ctx.vertical is
+// unset, preserving backward compatibility for every integration built
+// against the pre-MapaSUS API.
 //
-// Keep this regex in sync with KNOWN_VERTICALS in hospital-service.js.
-const VERTICAL_PREFIX = /^\/v1\/(peconhentos|raras|oncologia)(\/.*)?$/;
+// URL paths use kebab-case ('animais-peconhentos'); DB keys and Python
+// modules use snake_case ('animais_peconhentos'). URL_TO_DB_VERTICAL
+// performs the conversion in one place — keep it in sync with
+// KNOWN_VERTICALS in hospital-service.js.
+const URL_TO_DB_VERTICAL = {
+  'animais-peconhentos': 'animais_peconhentos',
+  'doencas-raras': 'doencas_raras',
+  oncologia: 'oncologia',
+};
+const VERTICAL_PREFIX = new RegExp(
+  `^/v1/(${Object.keys(URL_TO_DB_VERTICAL).join('|')})(/.*)?$`,
+);
 
 // Paths that accept POST (everything else is GET-only).
 const POST_ROUTES = new Set(['/v1/track']);
@@ -45,12 +56,12 @@ function isAllowedMethod(method, path) {
 }
 
 // Strip a `/v1/{vertical}` prefix and return `{ path, vertical }`.
-// Legacy paths come back with vertical=null and the original path.
+// `vertical` comes back as the snake_case DB key (or null on legacy paths).
 function normalizePath(rawPath) {
   const m = rawPath.match(VERTICAL_PREFIX);
   if (!m) return { path: rawPath, vertical: null };
   const inner = m[2] || '';
-  return { path: `/v1${inner}`, vertical: m[1] };
+  return { path: `/v1${inner}`, vertical: URL_TO_DB_VERTICAL[m[1]] };
 }
 
 async function dispatch(req, res, url, ctx) {

@@ -8,12 +8,12 @@
 
 ## 1. Por que migrar
 
-| Hoje | Depois |
-|------|--------|
-| 1 projeto: peçonhentos | 1 plataforma: N verticais |
-| Marca: "Hospitais de Referência" | Marca: **MapaSUS** |
+| Hoje                                           | Depois                                                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 1 projeto: peçonhentos                         | 1 plataforma: N verticais                                                                         |
+| Marca: "Hospitais de Referência"               | Marca: **MapaSUS**                                                                                |
 | Domínio: `hospitais-referencia-web.vercel.app` | `peconhentos.mapasus.com.br`, `raras.mapasus...`, `oncologia.mapasus...`, hub em `mapasus.com.br` |
-| Narrativa NIW: "fiz um site" | Narrativa NIW: **"construí a infraestrutura que o MS deveria ter construído"** |
+| Narrativa NIW: "fiz um site"                   | Narrativa NIW: **"construí a infraestrutura que o MS deveria ter construído"**                    |
 
 ## 2. Princípios
 
@@ -105,84 +105,85 @@ ON CONFLICT DO NOTHING;
 
 ### Phase 2.0 — Operacional (você, fora do código) · ~1 dia
 
-| Passo | Ação | Custo |
-|-------|------|-------|
-| 2.0.1 | Registrar `mapasus.com.br`, `mapasus.org.br`, `mapasus.app.br` no Registro.br | ~R$ 120/ano |
-| 2.0.2 | Reservar handles: `@mapasus` no GitHub, Twitter/X, LinkedIn, Instagram | grátis |
-| 2.0.3 | Criar logo/identidade visual (manter verde-esmeralda atual, novo wordmark) | 1-2h Figma/Canva |
-| 2.0.4 | Adicionar domínios no Vercel + DNS no Registro.br | 30 min |
-| 2.0.5 | Disclaimer redigido pelo Claude → revisar legalmente | 1h |
+| Passo | Ação                                                                          | Custo            |
+| ----- | ----------------------------------------------------------------------------- | ---------------- |
+| 2.0.1 | Registrar `mapasus.com.br`, `mapasus.org.br`, `mapasus.app.br` no Registro.br | ~R$ 120/ano      |
+| 2.0.2 | Reservar handles: `@mapasus` no GitHub, Twitter/X, LinkedIn, Instagram        | grátis           |
+| 2.0.3 | Criar logo/identidade visual (manter verde-esmeralda atual, novo wordmark)    | 1-2h Figma/Canva |
+| 2.0.4 | Adicionar domínios no Vercel + DNS no Registro.br                             | 30 min           |
+| 2.0.5 | Disclaimer redigido pelo Claude → revisar legalmente                          | 1h               |
 
 **Critério de saída:** os 3 domínios resolvem para Vercel (mesmo que ainda mostrem o site atual).
 
 ### Phase 2.1 — Repo rename + estrutura · ~0,5 dia
 
-| Passo | Ação |
-|-------|------|
-| 2.1.1 | Renomear repo no GitHub: `hospitais-referencia-api` → `mapasus-platform` |
-| 2.1.2 | Atualizar `package.json` (web + root) — nome `mapasus` |
-| 2.1.3 | Atualizar README com nova narrativa de plataforma |
-| 2.1.4 | Atualizar referências internas (badges, links, CI configs) |
+| Passo | Ação                                                                                 |
+| ----- | ------------------------------------------------------------------------------------ |
+| 2.1.1 | Renomear repo no GitHub: `hospitais-referencia-api` → `mapasus-platform`             |
+| 2.1.2 | Atualizar `package.json` (web + root) — nome `mapasus`                               |
+| 2.1.3 | Atualizar README com nova narrativa de plataforma                                    |
+| 2.1.4 | Atualizar referências internas (badges, links, CI configs)                           |
 | 2.1.5 | Manter `hospitais-referencia-web.vercel.app` apontando pro mesmo deploy (não quebra) |
 
 **Critério de saída:** `git clone mapasus-platform` funciona, CI verde.
 
 ### Phase 2.2 — Migração de schema · ~1 dia
 
-| Passo | Ação |
-|-------|------|
-| 2.2.1 | Backup completo do Supabase de produção (já temos script) |
-| 2.2.2 | Aplicar `sql/009_multi_vertical.sql` no Supabase local |
-| 2.2.3 | Validar: `SELECT vertical, count(*) FROM hospital_specialties GROUP BY vertical` |
-| 2.2.4 | Atualizar repositories: novo método `findByVertical(vertical, filters)` |
+| Passo | Ação                                                                                             |
+| ----- | ------------------------------------------------------------------------------------------------ |
+| 2.2.1 | Backup completo do Supabase de produção (já temos script)                                        |
+| 2.2.2 | Aplicar `sql/009_multi_vertical.sql` no Supabase local                                           |
+| 2.2.3 | Validar: `SELECT vertical, count(*) FROM hospital_specialties GROUP BY vertical`                 |
+| 2.2.4 | Atualizar repositories: novo método `findByVertical(vertical, filters)`                          |
 | 2.2.5 | API existente continua respondendo (`/v1/hospitals` filtra `vertical='peconhentos'` por default) |
-| 2.2.6 | Aplicar em produção |
+| 2.2.6 | Aplicar em produção                                                                              |
 
 **Critério de saída:** API atual continua funcionando. Nova tabela `hospital_specialties` populada com ≥ todos os registros que existiam em `treatments`.
 
 ### Phase 2.3 — API namespacing · ~1 dia
 
-| Passo | Ação |
-|-------|------|
-| 2.3.1 | Adicionar rotas `/v1/peconhentos/hospitals`, `/v1/peconhentos/hospitals/nearby`, `/v1/peconhentos/states` |
+| Passo | Ação                                                                                                          |
+| ----- | ------------------------------------------------------------------------------------------------------------- |
+| 2.3.1 | Adicionar rotas `/v1/peconhentos/hospitals`, `/v1/peconhentos/hospitals/nearby`, `/v1/peconhentos/states`     |
 | 2.3.2 | `/v1/hospitals` antigo vira **alias 301** pra `/v1/peconhentos/hospitals` (não quebra integrações existentes) |
-| 2.3.3 | Adicionar `/v1/search?q=&vertical=all` — busca cross-vertical |
-| 2.3.4 | Atualizar `/v1/stats` para agregar por vertical |
-| 2.3.5 | Atualizar `docs` page com nova estrutura |
+| 2.3.3 | Adicionar `/v1/search?q=&vertical=all` — busca cross-vertical                                                 |
+| 2.3.4 | Atualizar `/v1/stats` para agregar por vertical                                                               |
+| 2.3.5 | Atualizar `docs` page com nova estrutura                                                                      |
 
 **Critério de saída:** ambas as URLs (`/v1/hospitals` e `/v1/peconhentos/hospitals`) retornam o mesmo payload.
 
 ### Phase 2.4 — Web multi-tenant routing · ~1,5 dia
 
-| Passo | Ação |
-|-------|------|
-| 2.4.1 | Criar `web/middleware.ts` com host-based rewrite |
-| 2.4.2 | Reorganizar `app/` em route groups: `(hub)`, `(peconhentos)`, `(raras)`, `(oncologia)` |
-| 2.4.3 | Mover páginas atuais para `(peconhentos)` |
-| 2.4.4 | Criar `(hub)/page.tsx` — landing page MapaSUS |
-| 2.4.5 | Navbar dinâmica por vertical (links + cor de destaque diferem) |
-| 2.4.6 | Configurar `peconhentos.mapasus.com.br` no Vercel |
+| Passo | Ação                                                                                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------- |
+| 2.4.1 | Criar `web/middleware.ts` com host-based rewrite                                                               |
+| 2.4.2 | Reorganizar `app/` em route groups: `(hub)`, `(peconhentos)`, `(raras)`, `(oncologia)`                         |
+| 2.4.3 | Mover páginas atuais para `(peconhentos)`                                                                      |
+| 2.4.4 | Criar `(hub)/page.tsx` — landing page MapaSUS                                                                  |
+| 2.4.5 | Navbar dinâmica por vertical (links + cor de destaque diferem)                                                 |
+| 2.4.6 | Configurar `peconhentos.mapasus.com.br` no Vercel                                                              |
 | 2.4.7 | Configurar redirect 301 de `hospitais-referencia-web.vercel.app` → `peconhentos.mapasus.com.br` (preserva SEO) |
 
 **Critério de saída:** acessar `mapasus.com.br` mostra hub; `peconhentos.mapasus.com.br` mostra busca atual; URL antiga redireciona.
 
 ### Phase 2.5 — Vertical Doenças Raras · ~2 dias
 
-| Passo | Ação |
-|-------|------|
+| Passo | Ação                                                                                             |
+| ----- | ------------------------------------------------------------------------------------------------ |
 | 2.5.1 | Implementar `scripts/raras/sync.js` — parser do XLSX oficial (formato bem mais simples que PDFs) |
-| 2.5.2 | Implementar geocoding pros novos hospitais (reusa `lib/services/geocoding`) |
-| 2.5.3 | Especialidades: `doencas_raras_geral`, `terapia_genica_ame`, etc. |
-| 2.5.4 | Criar páginas em `(raras)/`: home, busca por estado/cidade, FAQ específico |
-| 2.5.5 | Cron diário no Vercel pra sync |
-| 2.5.6 | Schema.org Dataset markup específico |
-| 2.5.7 | Deploy em `raras.mapasus.com.br` |
+| 2.5.2 | Implementar geocoding pros novos hospitais (reusa `lib/services/geocoding`)                      |
+| 2.5.3 | Especialidades: `doencas_raras_geral`, `terapia_genica_ame`, etc.                                |
+| 2.5.4 | Criar páginas em `(raras)/`: home, busca por estado/cidade, FAQ específico                       |
+| 2.5.5 | Cron diário no Vercel pra sync                                                                   |
+| 2.5.6 | Schema.org Dataset markup específico                                                             |
+| 2.5.7 | Deploy em `raras.mapasus.com.br`                                                                 |
 
 **Critério de saída:** busca em `raras.mapasus.com.br` retorna os ~150 centros habilitados.
 
 ### Phase 2.6 — Vertical Oncologia · ~3 dias
 
 Mesma estrutura da 2.5, mas:
+
 - 3 fontes XLSX (alta complexidade, sincrônico, reconstrução mamária)
 - 317 hospitais
 - Especialidades: `oncologia_alta_complexidade`, `radioterapia`, `quimioterapia`, `reconstrucao_mamaria`, etc.
@@ -192,13 +193,13 @@ Mesma estrutura da 2.5, mas:
 
 ### Phase 2.7 — Hub portal + cross-vertical search · ~1,5 dia
 
-| Passo | Ação |
-|-------|------|
-| 2.7.1 | Landing page do hub com 3 cards (uma por vertical) + métrica agregada |
+| Passo | Ação                                                                                              |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| 2.7.1 | Landing page do hub com 3 cards (uma por vertical) + métrica agregada                             |
 | 2.7.2 | Barra de busca cross-vertical no hub ("Curitiba" → mostra peçonhentos + oncologia + raras juntos) |
-| 2.7.3 | Página `/sobre` com narrativa da plataforma + disclaimer de iniciativa independente |
-| 2.7.4 | Página `/imprensa` com press kit (importante pra divulgação NIW) |
-| 2.7.5 | llms.txt e sitemap atualizados pro hub |
+| 2.7.3 | Página `/sobre` com narrativa da plataforma + disclaimer de iniciativa independente               |
+| 2.7.4 | Página `/imprensa` com press kit (importante pra divulgação NIW)                                  |
+| 2.7.5 | llms.txt e sitemap atualizados pro hub                                                            |
 
 **Critério de saída:** mapasus.com.br como entrada única, hub linka para 3 verticais, busca cross-vertical funciona.
 
@@ -234,23 +235,23 @@ Semana 3
 
 ## 7. Riscos e mitigações
 
-| Risco | Probabilidade | Mitigação |
-|-------|---------------|-----------|
-| Vercel Hobby 12-function limit | Baixa | API continua sendo `api/index.js` única; já resolvemos antes |
-| Confusão com MS sobre o nome | Baixa | Disclaimer + identidade visual distinta + `.com.br` |
-| Quebra de SEO atual durante migração | Média | Redirect 301 preserva 95% do link juice; canonicals atualizados |
+| Risco                                            | Probabilidade         | Mitigação                                                                                 |
+| ------------------------------------------------ | --------------------- | ----------------------------------------------------------------------------------------- |
+| Vercel Hobby 12-function limit                   | Baixa                 | API continua sendo `api/index.js` única; já resolvemos antes                              |
+| Confusão com MS sobre o nome                     | Baixa                 | Disclaimer + identidade visual distinta + `.com.br`                                       |
+| Quebra de SEO atual durante migração             | Média                 | Redirect 301 preserva 95% do link juice; canonicals atualizados                           |
 | Dados de raras/oncologia desatualizados na fonte | Alta (problema do MS) | Mesma estratégia atual: data de atualização visível + disclaimer "confirme com a unidade" |
-| XLSX mudar de schema entre meses | Média | Parser tolerante + alertas no Slack/email quando colunas mudam |
+| XLSX mudar de schema entre meses                 | Média                 | Parser tolerante + alertas no Slack/email quando colunas mudam                            |
 
 ## 8. Métricas de sucesso
 
-| Métrica | Atual (peçonhentos) | Meta pós-migração |
-|---------|---------------------|-------------------|
-| Hospitais indexados | ~500 | ~1.000+ |
-| Verticais | 1 | 3 |
-| Buscas/mês | (medir hoje) | 3x atual |
-| Backlinks de imprensa | 0 | ≥ 3 |
-| Citações por LLMs (testar mensalmente) | 0–1 | ≥ 5 |
+| Métrica                                | Atual (peçonhentos) | Meta pós-migração |
+| -------------------------------------- | ------------------- | ----------------- |
+| Hospitais indexados                    | ~500                | ~1.000+           |
+| Verticais                              | 1                   | 3                 |
+| Buscas/mês                             | (medir hoje)        | 3x atual          |
+| Backlinks de imprensa                  | 0                   | ≥ 3               |
+| Citações por LLMs (testar mensalmente) | 0–1                 | ≥ 5               |
 
 ## 9. Para o dossiê NIW
 

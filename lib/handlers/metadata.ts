@@ -1,4 +1,11 @@
-const { json } = require('../core/http');
+/**
+ * Metadata endpoint — returns a static document describing the API. Acts
+ * as a discoverable entry point for clients that don't know what endpoints
+ * exist yet (also useful for monitoring/uptime probes).
+ */
+
+import { json } from '../core/http.js';
+import type { Request, Response } from '../types/http.js';
 
 const METADATA = {
   name: 'hospitais-referencia-api',
@@ -21,11 +28,10 @@ const METADATA = {
     'GET /v1/hospitals/nearby?cep=13280000&radius_m=50000',
     'GET /v1/hospitals/nearby?lat=-23.5&lng=-46.6&treatment=elapidic',
     'GET /v1/hospitals/nearby?city=Campinas&state_code=SP',
+    'GET /v1/search?q=curitiba',
   ],
-};
+} as const;
 
-function getMetadata(req, res) {
+export function getMetadata(_req: Request, res: Response): void {
   json(res, 200, METADATA);
 }
-
-module.exports = { getMetadata };

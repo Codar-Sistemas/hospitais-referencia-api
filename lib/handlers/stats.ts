@@ -25,13 +25,25 @@ interface SearchTimelineRow {
 }
 interface SyncResilienceRow {
   total_runs: number;
+  successful_runs: number;
   failed_runs: number;
-  uptime_pct: number;
+  unchanged_runs: number;
+  ocr_fallback_runs: number;
+  llm_fallback_runs: number;
+  llm_gemini_runs: number;
+  llm_groq_runs: number;
+  success_rate_pct: number | null;
 }
 interface CoverageRow {
   state_code: string;
+  name: string;
   total_hospitals: number;
-  geocoded_pct: number;
+  status: string | null;
+  synced_at: string | null;
+  hospitals_count: number;
+  geocoded_count: number;
+  ocr_records: number;
+  llm_records: number;
 }
 
 export async function getStats(_req: Request, res: Response): Promise<void> {

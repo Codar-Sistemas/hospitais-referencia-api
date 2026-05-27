@@ -1,13 +1,12 @@
-import type {
-  Hospital,
-  HospitalSearchResponse,
-  NearbyHospitalsResponse,
-} from './types';
+import type { Hospital, HospitalSearchResponse, NearbyHospitalsResponse } from './types';
 
 export const API_BASE =
   process.env['NEXT_PUBLIC_API_URL'] || 'https://hospitais-referencia-api.vercel.app';
 
-function buildUrl(path: string, params: Record<string, string | number | undefined | null>): string {
+function buildUrl(
+  path: string,
+  params: Record<string, string | number | undefined | null>,
+): string {
   const url = new URL(`${API_BASE}${path}`);
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === '') continue;
@@ -21,16 +20,21 @@ function buildUrl(path: string, params: Record<string, string | number | undefin
 // to keep inline rather than splitting it into its own module.
 function translateApiError(rawMessage: string): string {
   const lower = rawMessage.toLowerCase();
-  if (lower.includes('rate limit')) return 'Muitas requisições. Aguarde alguns segundos e tente novamente.';
+  if (lower.includes('rate limit'))
+    return 'Muitas requisições. Aguarde alguns segundos e tente novamente.';
   if (lower.includes('cep') && lower.includes('not found')) return 'CEP não encontrado.';
   if (lower.includes('hospital') && lower.includes('not found')) return 'Hospital não encontrado.';
   if (lower.includes('state') && lower.includes('not found')) return 'Estado não encontrado.';
   if (lower.includes('invalid treatment')) return 'Tipo de atendimento inválido.';
   if (lower.includes('invalid id')) return 'Identificador inválido.';
-  if (lower.includes('provide at least one filter')) return 'Informe ao menos um filtro: estado, cidade ou termo de busca.';
-  if (lower.includes('provide at least one of')) return 'Informe ao menos um de: coordenadas, CEP ou cidade.';
-  if (lower.includes('unable to determine a city')) return 'Não foi possível determinar uma cidade para a busca.';
-  if (lower.includes('internal error')) return 'Erro interno do servidor. Tente novamente em instantes.';
+  if (lower.includes('provide at least one filter'))
+    return 'Informe ao menos um filtro: estado, cidade ou termo de busca.';
+  if (lower.includes('provide at least one of'))
+    return 'Informe ao menos um de: coordenadas, CEP ou cidade.';
+  if (lower.includes('unable to determine a city'))
+    return 'Não foi possível determinar uma cidade para a busca.';
+  if (lower.includes('internal error'))
+    return 'Erro interno do servidor. Tente novamente em instantes.';
   return 'Erro ao consultar a API. Verifique sua conexão e tente novamente.';
 }
 
@@ -119,6 +123,9 @@ export interface StatsResponse {
     failed_runs: number;
     unchanged_runs: number;
     ocr_fallback_runs: number;
+    llm_fallback_runs: number;
+    llm_gemini_runs: number;
+    llm_groq_runs: number;
     success_rate_pct: number | null;
   } | null;
   coverage_by_state: {
@@ -130,6 +137,7 @@ export interface StatsResponse {
     hospitals_count: number;
     geocoded_count: number;
     ocr_records: number;
+    llm_records: number;
   }[];
 }
 

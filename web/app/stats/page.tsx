@@ -29,9 +29,7 @@ export default async function StatsPage() {
         <p className="text-xs uppercase tracking-wider text-emerald-700 font-semibold">
           Transparência
         </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">
-          Estatísticas públicas
-        </h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">Estatísticas públicas</h1>
         <p className="text-slate-600 max-w-2xl">
           Dados de uso, cobertura geográfica e resiliência operacional da API. Atualizado a cada 5
           minutos. Dados de IP são anonimizados (SHA-256 + salt).
@@ -127,7 +125,7 @@ export default async function StatsPage() {
           {!resilience ? (
             <p className="text-sm text-slate-400">Sem dados ainda.</p>
           ) : (
-            <div className="grid sm:grid-cols-4 gap-4">
+            <div className="grid sm:grid-cols-5 gap-4">
               <MiniStat label="Execuções totais" value={resilience.total_runs} />
               <MiniStat
                 label="Taxa de sucesso"
@@ -136,15 +134,18 @@ export default async function StatsPage() {
               />
               <MiniStat label="Falhas" value={resilience.failed_runs} accent="red" />
               <MiniStat
-                label="Fallback OCR"
-                value={resilience.ocr_fallback_runs}
-                accent="amber"
+                label="Fallback LLM"
+                value={resilience.llm_fallback_runs}
+                accent="emerald"
               />
+              <MiniStat label="Fallback OCR" value={resilience.ocr_fallback_runs} accent="amber" />
             </div>
           )}
           <p className="text-xs text-slate-400 mt-4 leading-snug">
-            Quando o portal gov.br fica indisponível ou publica PDFs escaneados, o sistema continua
-            servindo dados em cache e, quando necessário, recorre a OCR.
+            Quando o portal gov.br publica PDFs escaneados, o sistema tenta primeiro extrair via LLM
+            (Gemini → Groq); se nenhum provedor estiver disponível, recorre a OCR clássico
+            (Tesseract). Linhas extraídas por OCR sempre exibem aviso de verificação manual; linhas
+            extraídas por LLM só recebem o aviso quando a confiança fica abaixo de 70%.
           </p>
         </Card>
       </section>
@@ -153,9 +154,11 @@ export default async function StatsPage() {
       <section>
         <Card title="Cobertura por estado">
           <div className="text-sm text-slate-500 mb-3">
-            <strong className="text-slate-700 tabular-nums">{totalGeocoded.toLocaleString('pt-BR')}</strong>{' '}
-            de {totalHospitals.toLocaleString('pt-BR')} hospitais com coordenadas
-            ({totalHospitals === 0 ? 0 : Math.round((totalGeocoded / totalHospitals) * 100)}%).
+            <strong className="text-slate-700 tabular-nums">
+              {totalGeocoded.toLocaleString('pt-BR')}
+            </strong>{' '}
+            de {totalHospitals.toLocaleString('pt-BR')} hospitais com coordenadas (
+            {totalHospitals === 0 ? 0 : Math.round((totalGeocoded / totalHospitals) * 100)}%).
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -165,7 +168,18 @@ export default async function StatsPage() {
                   <th className="text-left py-2 px-2">Estado</th>
                   <th className="text-right py-2 px-2">Hospitais</th>
                   <th className="text-right py-2 px-2">Com coords</th>
-                  <th className="text-right py-2 px-2">OCR</th>
+                  <th
+                    className="text-right py-2 px-2"
+                    title="Linhas extraídas por LLM (Gemini/Groq)"
+                  >
+                    LLM
+                  </th>
+                  <th
+                    className="text-right py-2 px-2"
+                    title="Linhas extraídas por OCR clássico (Tesseract)"
+                  >
+                    OCR
+                  </th>
                   <th className="text-left py-2 px-2">Última sync</th>
                 </tr>
               </thead>
@@ -181,6 +195,13 @@ export default async function StatsPage() {
                     </td>
                     <td className="py-2 px-2 text-right tabular-nums text-slate-500">
                       {row.geocoded_count.toLocaleString('pt-BR')}
+                    </td>
+                    <td className="py-2 px-2 text-right tabular-nums">
+                      {row.llm_records > 0 ? (
+                        <span className="text-emerald-700 font-medium">{row.llm_records}</span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="py-2 px-2 text-right tabular-nums">
                       {row.ocr_records > 0 ? (
@@ -246,9 +267,7 @@ function MiniStat({
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4">
-        {title}
-      </h2>
+      <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-4">{title}</h2>
       {children}
     </div>
   );

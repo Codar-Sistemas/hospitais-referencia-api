@@ -2,8 +2,23 @@ pdfplumber>=0.11.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 
-# OCR fallback (usado apenas quando o PDF é escaneado — ex: Piauí)
-# Exige tesseract-ocr e poppler-utils instalados no sistema.
+# Validation of LLM-returned structured data.
+pydantic>=2.7
+
+# Vision LLMs for scanned-PDF extraction. Both providers expose
+# generous free tiers; the pipeline tries them in order before falling
+# back to Tesseract.
+google-genai>=1.0
+groq>=0.11
+
+# Image preprocessing (resize/sharpen/JPEG) before sending to the LLM.
+# Already a transitive dep of pdf2image but pinned explicitly so the
+# import site is honest.
+Pillow>=10.0
+
+# Last-resort OCR (used when no LLM key is configured or every
+# provider fails). Requires tesseract-ocr + poppler-utils installed
+# at the OS level (apt-get install tesseract-ocr tesseract-ocr-por
+# poppler-utils).
 pytesseract>=0.3.10
 pdf2image>=1.16.0
-

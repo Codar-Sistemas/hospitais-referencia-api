@@ -40,8 +40,10 @@ STATE_STATUS_PENDING: Final[Literal["pending"]] = "pending"
 # -------------------------------------------------------------------------
 # Extraction source (column `hospitals.extraction_source`)
 # -------------------------------------------------------------------------
-EXTRACTION_SOURCE_PDF_TEXT = "pdf_text"
-EXTRACTION_SOURCE_PDF_OCR = "pdf_ocr"
+EXTRACTION_SOURCE_PDF_TEXT: Final[Literal["pdf_text"]] = "pdf_text"
+EXTRACTION_SOURCE_PDF_OCR: Final[Literal["pdf_ocr"]] = "pdf_ocr"
+EXTRACTION_SOURCE_LLM_GEMINI: Final[Literal["llm_gemini"]] = "llm_gemini"
+EXTRACTION_SOURCE_LLM_GROQ: Final[Literal["llm_groq"]] = "llm_groq"
 
 # -------------------------------------------------------------------------
 # Geocoding status (column `hospitals.geocoding_status`)

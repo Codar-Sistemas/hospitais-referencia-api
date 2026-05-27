@@ -30,6 +30,10 @@ import os
 import sys
 import tempfile
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scripts.shared.llm_extractor import ExtractionOutcome
 
 from scripts.parsing.text_parser import parse_pdf
 from scripts.shared.config import (
@@ -45,7 +49,7 @@ from scripts.shared.config import (
 )
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
-from scripts.shared.types import GeocodingSummary, StateRow, SyncResult
+from scripts.shared.types import GeocodingSummary, HospitalRecord, StateRow, SyncResult
 from scripts.syncs.venomous_animals.change_detector import needs_update, pdf_hash_changed
 from scripts.syncs.venomous_animals.scraper import (
     download_pdf,
@@ -53,6 +57,72 @@ from scripts.syncs.venomous_animals.scraper import (
     is_image_based_pdf,
 )
 from scripts.syncs.venomous_animals.upserter import upsert_hospitals
+
+
+# ---------------------------------------------------------------------------
+# Image-based PDF extraction — LLM first, Tesseract as last resort
+# ---------------------------------------------------------------------------
+def _try_llm_extraction(pdf_path: str, state_code: str) -> ExtractionOutcome | None:
+    """Run the vision-LLM fallback chain. Returns None when no provider
+    is configured or every provider failed — caller falls back to OCR."""
+    try:
+        from scripts.shared.llm_extractor import (
+            AllProvidersFailedError,
+            extract_venomous_animals_pdf,
+        )
+    except ImportError as e:
+        log(f"LLM extractor unavailable: {e}", state_code=state_code)
+        return None
+
+    log("Trying LLM extraction (Gemini → Groq) ...", state_code=state_code)
+    try:
+        return extract_venomous_animals_pdf(pdf_path, state_code)
+    except AllProvidersFailedError as e:
+        log(f"LLM extraction skipped: {e}", state_code=state_code)
+        return None
+
+
+def _try_ocr_extraction(
+    pdf_path: str,
+    state_code: str,
+) -> tuple[list[HospitalRecord], float] | SyncResult:
+    """Tesseract fallback. Returns a SyncResult dict on terminal errors
+    (OCR unavailable / no records) so the caller can short-circuit."""
+    try:
+        from scripts.parsing.ocr_engine import is_ocr_available
+        from scripts.parsing.ocr_parser import parse_pdf_ocr
+    except ImportError as e:
+        return {
+            "state_code": state_code,
+            "status": STATE_STATUS_UNSUPPORTED,
+            "reason": f"Scanned PDF, OCR unavailable: {e}",
+        }
+
+    if not is_ocr_available():
+        return {
+            "state_code": state_code,
+            "status": STATE_STATUS_UNSUPPORTED,
+            "reason": "Scanned PDF, OCR unavailable (tesseract not installed)",
+        }
+
+    log("Falling back to Tesseract OCR ...", state_code=state_code)
+    try:
+        records, mean_confidence = parse_pdf_ocr(pdf_path, state_code)
+    except Exception as e:
+        return {"state_code": state_code, "status": "error", "reason": f"OCR failed: {e}"}
+
+    if not records:
+        return {
+            "state_code": state_code,
+            "status": STATE_STATUS_UNSUPPORTED,
+            "reason": "Scanned PDF — OCR ran but extracted no records",
+        }
+
+    log(
+        f"OCR extracted {len(records)} records (mean confidence: {mean_confidence:.1f}%)",
+        state_code=state_code,
+    )
+    return records, mean_confidence
 
 
 # ---------------------------------------------------------------------------
@@ -98,57 +168,28 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
         f.write(content)
         tmp_path = f.name
 
-    extraction_source = EXTRACTION_SOURCE_PDF_TEXT
+    extraction_source: str = EXTRACTION_SOURCE_PDF_TEXT
     ocr_confidence: int | None = None
 
     try:
         records = parse_pdf(tmp_path, state_code)
 
-        # If text parsing returned nothing, check whether the PDF is image-
-        # based (scanned). If so, try OCR as a fallback.
+        # Empty result from text extraction + image-based PDF means we
+        # need a vision-aware extractor. Try LLM providers first (higher
+        # accuracy on tables); fall back to Tesseract only if every LLM
+        # provider fails or no API key is configured.
         if not records and is_image_based_pdf(tmp_path):
-            try:
-                from scripts.parsing.ocr_engine import is_ocr_available
-                from scripts.parsing.ocr_parser import parse_pdf_ocr
-            except ImportError as e:
-                return {
-                    "state_code": state_code,
-                    "status": STATE_STATUS_UNSUPPORTED,
-                    "reason": f"Scanned PDF, OCR unavailable: {e}",
-                }
-
-            if not is_ocr_available():
-                return {
-                    "state_code": state_code,
-                    "status": STATE_STATUS_UNSUPPORTED,
-                    "reason": (
-                        "Scanned PDF, OCR unavailable (tesseract not installed in environment)"
-                    ),
-                }
-
-            log("Scanned PDF detected — attempting OCR extraction ...", state_code=state_code)
-            try:
-                records, mean_confidence = parse_pdf_ocr(tmp_path, state_code)
-            except Exception as e:
-                return {
-                    "state_code": state_code,
-                    "status": "error",
-                    "reason": f"OCR failed: {e}",
-                }
-
-            if not records:
-                return {
-                    "state_code": state_code,
-                    "status": STATE_STATUS_UNSUPPORTED,
-                    "reason": "Scanned PDF — OCR ran but extracted no records",
-                }
-
-            extraction_source = EXTRACTION_SOURCE_PDF_OCR
-            ocr_confidence = round(mean_confidence)
-            log(
-                f"OCR extracted {len(records)} records (mean confidence: {mean_confidence:.1f}%)",
-                state_code=state_code,
-            )
+            llm_outcome = _try_llm_extraction(tmp_path, state_code)
+            if llm_outcome is not None:
+                records = llm_outcome.records
+                extraction_source = llm_outcome.provider
+            else:
+                ocr_outcome = _try_ocr_extraction(tmp_path, state_code)
+                if isinstance(ocr_outcome, dict):
+                    return ocr_outcome  # short-circuit error / unsupported
+                records, mean_confidence = ocr_outcome
+                extraction_source = EXTRACTION_SOURCE_PDF_OCR
+                ocr_confidence = round(mean_confidence)
     finally:
         os.unlink(tmp_path)
 
@@ -173,10 +214,12 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
             "synced_at": datetime.now(UTC).isoformat(),
             "pdf_hash": pdf_hash,
             "total_hospitals": len(records),
+            # Anything that didn't come from deterministic text extraction
+            # (OCR, Gemini, Groq) wears the "manual verification" badge.
             "status": (
-                STATE_STATUS_OK_OCR
-                if extraction_source == EXTRACTION_SOURCE_PDF_OCR
-                else STATE_STATUS_OK
+                STATE_STATUS_OK
+                if extraction_source == EXTRACTION_SOURCE_PDF_TEXT
+                else STATE_STATUS_OK_OCR
             ),
             "last_error": None,
         },

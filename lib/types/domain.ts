@@ -1,33 +1,18 @@
-/**
- * Domain types for the MapaSUS platform.
- *
- * These mirror the Postgres schema (see sql/001 through 011) and are the
- * single source of truth consumed by repositories, services and handlers.
- * If you change a column, update the matching type here and let
- * `tsc --noEmit` walk the codebase reporting every mismatch.
- */
+// Mirrors the Postgres schema (sql/001 → 011). Single source of truth
+// consumed by repositories, services and handlers. Changing a column
+// requires updating the matching type here — tsc will then walk every
+// caller.
 
-// ----- Verticals -----------------------------------------------------------
-
-/**
- * Canonical DB key (snake_case) for every MapaSUS vertical. URLs and Python
- * modules use the same identifier, except URLs replace underscores with
- * hyphens (`animais-peconhentos`). Keep `KNOWN_VERTICALS` in
- * lib/services/hospital-service.ts and the regex in api/index.ts in sync
- * with this union.
- */
+// Snake_case DB key. URLs replace `_` with `-` (kebab); see
+// URL_TO_DB_VERTICAL in api/index.ts. Keep KNOWN_VERTICALS in
+// lib/services/hospital-service.ts in sync with this union.
 export type Vertical = 'animais_peconhentos' | 'doencas_raras' | 'oncologia';
 
-/** Sentinel for cross-vertical queries (`/v1/search`). */
+// 'all' is the sentinel for cross-vertical queries (`/v1/search`).
 export type VerticalOrAll = Vertical | 'all';
 
-// ----- Treatments (animais_peconhentos vertical) ---------------------------
-
-/**
- * The 9 canonical antivenom names persisted to `hospitals.treatments`. Stored
- * in English so the same row can be served to multilingual clients without
- * a translation lookup.
- */
+// 9 canonical antivenoms. Stored in English so a multilingual frontend
+// can consume the API directly.
 export type Treatment =
   | 'Bothropic'
   | 'Crotalic'
@@ -39,9 +24,7 @@ export type Treatment =
   | 'Lonomic'
   | 'Antiarachnidic';
 
-// ----- States --------------------------------------------------------------
-
-/** ISO-3166-2:BR — 27 two-letter Brazilian state codes. */
+// ISO-3166-2:BR — 27 two-letter codes.
 export type StateCode =
   | 'AC'
   | 'AL'
@@ -78,12 +61,7 @@ export type ExtractionSource = 'pdf_text' | 'pdf_ocr' | 'xlsx' | 'legacy_backfil
 export type GeocodingStatus = 'pending' | 'failed' | 'ok' | null;
 export type GeocodingSource = 'brasilapi' | 'nominatim' | null;
 
-// ----- Hospital ------------------------------------------------------------
-
-/**
- * A row from the `hospitals` table as returned by PostgREST. Optional fields
- * are nullable in Postgres; required ones are NOT NULL constraints.
- */
+// Row shape returned by PostgREST for the `hospitals` table.
 export interface Hospital {
   id: number;
   state_code: StateCode;
@@ -137,8 +115,6 @@ export interface NearbyHospitalRowWithKm extends NearbyHospitalRow {
   distance_km: number;
 }
 
-// ----- Hospital specialties (Phase 2 multi-vertical) -----------------------
-
 export interface HospitalSpecialty {
   hospital_id: number;
   vertical: Vertical;
@@ -160,8 +136,6 @@ export interface HospitalWithActiveVerticals extends Pick<
   active_specialties: string[];
 }
 
-// ----- State table ---------------------------------------------------------
-
 export interface StateSummary {
   state_code: StateCode;
   name: string;
@@ -175,8 +149,6 @@ export interface StateSummary {
 export interface StateSummaryWithVerification extends StateSummary {
   requires_verification: boolean;
 }
-
-// ----- CEP / geocoding cache ----------------------------------------------
 
 export interface CepRecord {
   cep: string;

@@ -1,7 +1,4 @@
-/**
- * State repository — read-only access to the `states` table. Writes are
- * owned by the sync pipeline (scripts/syncs/animais_peconhentos/).
- */
+// Read-only. Writes are owned by scripts/syncs/animais_peconhentos/.
 
 import { sb } from '../core/supabase.js';
 import type { StateSummary } from '../types/domain.js';
@@ -15,10 +12,8 @@ export async function listStates(): Promise<StateSummary[]> {
   });
 }
 
-/**
- * Accepts any string — the database constraint enforces the 2-letter
- * shape. Service layer is responsible for upper-casing.
- */
+// The DB CHECK constraint enforces the 2-letter shape. Callers should
+// upper-case before passing.
 export async function findByCode(stateCode: string): Promise<StateSummary | null> {
   const rows = await sb<StateSummary>('states', {
     select: '*',

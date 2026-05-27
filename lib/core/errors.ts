@@ -1,12 +1,6 @@
-/**
- * Error hierarchy for the API. Every error thrown by handlers/services/
- * repositories should derive from `ApiError` — the top-level dispatcher in
- * api/index.ts maps the `status` and `type` fields to the HTTP response and
- * the api_metrics row.
- *
- * Anything else (TypeError, unhandled fetch failures, etc.) is treated as
- * a 500 with `error_type='exception'` and logged to stderr.
- */
+// The dispatcher in api/index.ts maps `status` + `type` to the HTTP
+// response and the api_metrics row. Anything not deriving from ApiError
+// is treated as a 500 with error_type='exception'.
 
 export class ApiError extends Error {
   public readonly status: number;

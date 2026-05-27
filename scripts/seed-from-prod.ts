@@ -1,20 +1,12 @@
-/**
- * Seed local Supabase with real data fetched from the production API.
- *
- * Read-only against prod (uses the public /v1/hospitals endpoint), writes
- * locally via the Supabase REST endpoint with the service key. Designed
- * for the Phase 2 multi-vertical work: every row inserted is tagged with
- * `verticals = ['animais_peconhentos']` so the migrated schema looks
- * realistic from the first second.
- *
- *   npm run seed -- SP RJ MG
- *   PROD_API=https://other-deploy.vercel.app npm run seed
- */
+// Read-only against the production API; writes to the local Supabase with
+// the service key. Every row is tagged `verticals = ['animais_peconhentos']`
+// so the multi-vertical schema looks realistic from the first second.
+//
+//   npm run seed -- SP RJ MG
+//   PROD_API=https://other-deploy.vercel.app npm run seed
 
 import type { Hospital, StateCode } from '../lib/types/domain.js';
 
-// Subset of the full Hospital row that the prod API returns and that we
-// care about for seeding.
 type ProdHospital = Pick<
   Hospital,
   | 'state_code'
@@ -98,10 +90,9 @@ async function upsertLocal(rows: ProdHospital[]): Promise<number> {
   return inserted.length;
 }
 
+// hospital_specialties isn't populated by this seed — print the SQL to
+// run afterwards so the multi-vertical API has rows to serve.
 function printBackfillReminder(): void {
-  // The seed leaves verticals tagged but doesn't populate
-  // hospital_specialties — run this SQL afterwards so the multi-vertical
-  // API has rows to serve.
   const sql = `
     INSERT INTO hospital_specialties (hospital_id, vertical, specialty, source_url, metadata)
     SELECT h.id, 'animais_peconhentos', t, COALESCE(h.extraction_source, 'seed_from_prod'),

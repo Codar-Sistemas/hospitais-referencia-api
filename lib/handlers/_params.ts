@@ -1,19 +1,10 @@
-/**
- * Query-string helpers shared by every handler.
- *
- * Two responsibilities:
- *   1. Backward-compat aliases (PT → EN). When a caller still uses
- *      `?uf=SP` we keep accepting it but emit `Deprecation` / `Sunset`
- *      headers so integrations have 90 days to migrate.
- *   2. Strict numeric parsing with sensible defaults, since JS's native
- *      `parseInt('abc')` returns `NaN` instead of throwing.
- */
+// PT → EN backwards-compat. Callers still using `?uf=SP` get
+// `Deprecation` / `Sunset` headers (90 days) but continue to work.
 
 import type { Response } from '../types/http.js';
 
 const DEPRECATION_DAYS = 90;
 
-/** Maps each canonical EN param to the legacy PT aliases we still accept. */
 const PARAM_ALIASES: Readonly<Record<string, readonly string[]>> = {
   state_code: ['uf'],
   city: ['municipio', 'cidade'],
@@ -42,10 +33,7 @@ function getParam(searchParams: URLSearchParams, canonical: string): ParamLookup
   return { value: null, deprecated: false };
 }
 
-/**
- * Reads multiple canonical params at once and adds deprecation headers if
- * any of them came through via a legacy alias.
- */
+// Adds deprecation headers to `res` if any param arrived via legacy alias.
 export function readParams<K extends string>(
   searchParams: URLSearchParams,
   canonicals: readonly K[],

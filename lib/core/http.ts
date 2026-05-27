@@ -1,9 +1,3 @@
-/**
- * JSON response helpers — set the canonical headers (Content-Type, CORS,
- * Cache-Control) and serialise the body in one call. All handlers go
- * through these helpers so the contract stays in one place.
- */
-
 import type { Response } from '../types/http.js';
 
 interface JsonOptions {
@@ -21,8 +15,8 @@ export function json(
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  // `private`: browsers may cache, but Vercel's CDN must NOT — otherwise
-  // every user IP would share the same rate-limit counter.
+  // `private` (not `public`): the Vercel CDN must not share a response
+  // across IPs, otherwise the rate-limit counter becomes meaningless.
   res.setHeader('Cache-Control', status === 200 ? `private, max-age=${cacheSeconds}` : 'no-store');
   res.end(JSON.stringify(body));
 }

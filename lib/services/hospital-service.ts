@@ -1,16 +1,6 @@
-/**
- * Hospital service — orchestrates business rules for every public read
- * path: list/search/find-nearby/cross-vertical search. Handlers in
- * `lib/handlers/hospitals.ts` are thin adapters that translate HTTP
- * params into calls here.
- *
- * Responsibilities:
- *   - input validation (vertical allowlist, treatment alias resolution)
- *   - coordinate resolution (`lat+lng` | `cep` | `city` → coords or fallback)
- *   - error semantics (`ValidationError` for bad input, `NotFoundError` for misses)
- *
- * Pure business logic — no HTTP or DB access lives here.
- */
+// Business rules for the hospital endpoints — input validation, vertical
+// allowlist, treatment alias resolution, coordinate fallback. No HTTP or
+// DB access lives here.
 
 import { NotFoundError, ValidationError } from '../core/errors.js';
 import * as hospitalRepo from '../repositories/hospital-repo.js';
@@ -33,17 +23,10 @@ import { CANONICAL_TREATMENTS, normalizeCity, normalizeTreatment } from './searc
 
 export const DEFAULT_VERTICAL: Vertical = hospitalRepo.DEFAULT_VERTICAL;
 
-/**
- * Verticais conhecidas pela plataforma MapaSUS. Servem de allowlist para
- * recusar paths inventados (`/v1/foo/hospitals`) antes mesmo de tocar o
- * banco. Ao adicionar uma vertical nova, atualize este Set, o tipo
- * `Vertical` em lib/types/domain.ts e o regex em api/index.ts
- * (VERTICAL_PREFIX + URL_TO_DB_VERTICAL).
- *
- * Convenção:
- *   DB key + Python module : snake_case (ex.: 'animais_peconhentos')
- *   URL path               : kebab-case (ex.: '/v1/animais-peconhentos/...')
- */
+// Allowlist of MapaSUS verticals — rejects fabricated paths
+// (`/v1/foo/hospitals`) before they hit the DB. Adding a new vertical
+// requires updating: this Set, the `Vertical` type in lib/types/domain.ts,
+// and `URL_TO_DB_VERTICAL` in api/index.ts.
 export const KNOWN_VERTICALS: ReadonlySet<Vertical> = new Set<Vertical>([
   'animais_peconhentos',
   'doencas_raras',
@@ -74,8 +57,7 @@ function resolveTreatment(rawTreatment: string | null | undefined): Treatment | 
 
 export async function listStates(): Promise<StateSummaryWithVerification[]> {
   const rows = await stateRepo.listStates();
-  // `requires_verification` is computed for the client: any state whose
-  // data came in via OCR needs a human verification badge.
+  // OCR-derived states need a manual-verification badge in the UI.
   return rows.map((r) => ({ ...r, requires_verification: r.status === 'ok_ocr' }));
 }
 
@@ -180,12 +162,8 @@ export interface CrossVerticalSearchResult {
   hospitals: HospitalWithActiveVerticals[];
 }
 
-/**
- * Cross-vertical full-text-ish search. Used by the public `/v1/search`
- * endpoint to surface a hospital regardless of which SUS programme it is
- * habilitado for. Returns rows with `active_verticals` so the UI can
- * badge them with the programmes they participate in.
- */
+// Powers `/v1/search`. Returns rows annotated with `active_verticals`
+// so a single result can advertise every SUS programme it serves.
 export async function searchAcrossVerticals(
   params: CrossVerticalSearchParams,
 ): Promise<CrossVerticalSearchResult> {
@@ -209,11 +187,9 @@ export async function searchAcrossVerticals(
   };
 }
 
-/**
- * Discriminated union of every shape `resolveOrigin` can return. Each
- * branch lists exactly the fields it carries — `exactOptionalPropertyTypes`
- * in tsconfig means we can't sprinkle `cep?: unknown` and quietly omit it.
- */
+// Discriminated union — each branch lists exactly the fields it carries.
+// `exactOptionalPropertyTypes` rejects shared-bag shapes with optional
+// fields, so we model the variants explicitly.
 type ResolvedOrigin =
   | {
       source: 'coords';
@@ -237,9 +213,7 @@ type ResolvedOrigin =
       source: 'city';
     };
 
-/** The two branches that carry latitude/longitude. */
 type ResolvedOriginWithCoords = Extract<ResolvedOrigin, { lat: number; lng: number }>;
-/** The two branches that don't. */
 type ResolvedOriginWithoutCoords = Exclude<ResolvedOrigin, { lat: number; lng: number }>;
 
 interface ResolveOriginParams {
@@ -265,9 +239,8 @@ async function resolveOrigin(params: ResolveOriginParams): Promise<ResolveOrigin
   if (cep) {
     const cepData = await lookupCep(cep);
     if (!cepData) throw new NotFoundError(`CEP '${cep}' not found`);
-    // `user_state_code` captures where the *user* is, regardless of which
-    // UF they're searching hospitals in. Used by analytics for geographic
-    // reach metrics.
+    // Where the *user* is — independent of the UF they're querying.
+    // Powers geographic-reach metrics.
     const user_state_code = cepData.state_code ?? null;
     if (cepData.lat && cepData.lng) {
       return {
@@ -352,8 +325,7 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
     stateCode,
   });
 
-  // Mode 1: we have coordinates — use the nearby_hospitals RPC for
-  // distance-sorted results.
+  // With coords: distance-sorted via nearby_hospitals RPC.
   if (origin.source === 'coords' || origin.source === 'cep') {
     const rows: NearbyHospitalRow[] = await hospitalRepo.findNearby({
       lat: origin.lat,
@@ -375,8 +347,9 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
     };
   }
 
-  // Mode 2: city-based search (no distance ordering). Pull a city out of
-  // either the CEP fallback or the explicit `city` param.
+  // Without coords: city-based search (unordered). Use the CEP's city
+  // fallback if the user gave a CEP without coordinates, else the
+  // explicit `city` param.
   const cepCity =
     origin.source === 'cep_no_coords' && origin.cep && typeof origin.cep === 'object'
       ? (origin.cep as { city?: string | null }).city

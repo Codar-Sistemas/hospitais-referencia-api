@@ -1,17 +1,8 @@
-/**
- * Lookup tables and helpers that translate user-supplied search terms into
- * the canonical English values persisted to the database.
- *
- * Treatments are stored in English so multilingual clients can consume
- * the API directly. The aliases below cover both the technical Portuguese
- * cognates (`botropico`, `crotalico`) and the everyday animal names
- * (`jararaca`, `cascavel`, `armadeira`) — so a search for "picada de
- * cascavel" maps to the Crotalic antivenom.
- */
+// Translates user input ("picada de cascavel", "botropico", "Bothropic")
+// into the canonical English `Treatment` stored in the database.
 
 import type { Treatment } from '../types/domain.js';
 
-/** Canonical English treatment names — what the DB stores and the API returns. */
 export const CANONICAL_TREATMENTS: readonly Treatment[] = [
   'Bothropic',
   'Crotalic',
@@ -24,11 +15,8 @@ export const CANONICAL_TREATMENTS: readonly Treatment[] = [
   'Antiarachnidic',
 ];
 
-/**
- * Accepted input aliases. Keys are lowercase + accent-stripped; values are
- * the canonical English `Treatment`. Includes EN canonicals, PT cognates
- * and common animal names for end-user friendliness.
- */
+// Keys: lowercase + accent-stripped. Covers EN canonicals, PT cognates
+// and the animal/spider/scorpion names lay users actually type.
 export const TREATMENT_ALIASES: Readonly<Record<string, Treatment>> = {
   bothropic: 'Bothropic',
   crotalic: 'Crotalic',
@@ -74,7 +62,6 @@ export const TREATMENT_ALIASES: Readonly<Record<string, Treatment>> = {
 };
 
 export function stripAccents(s: string): string {
-  // Strips diacritical marks: `é` → `e`, `ç` → `c`, etc.
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 

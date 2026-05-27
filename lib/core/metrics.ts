@@ -1,19 +1,13 @@
-/**
- * Observability — records each request into the api_metrics table.
- *
- * Fire-and-forget: the call never blocks nor fails the API response. If
- * Supabase is down, that request's metric is lost — a conscious tradeoff
- * (observable logs, not an audit trail).
- *
- * IP is stored as a truncated SHA-256 (LGPD anonymisation).
- */
+// Fire-and-forget. If Supabase is down the metric is lost — this is
+// observability, not an audit trail. IP stored as truncated SHA-256 (LGPD).
 
 import crypto from 'node:crypto';
 import { SUPABASE_URL, SUPABASE_SERVICE_KEY, REST_BASE } from './supabase.js';
 
-// Fixed salt (via env) — guarantees the same IP always produces the same
-// hash, but it cannot be reversed without the salt. Set a random value
-// in Vercel for production.
+// The salt is fixed (per environment) so the same IP always hashes to the
+// same value — needed for "unique users" aggregations. Set a random
+// METRICS_IP_SALT in Vercel; the fallback below is intentionally weak so
+// dev environments don't accidentally collide with production hashes.
 const IP_SALT: string = process.env['METRICS_IP_SALT'] ?? 'hospitais-referencia-default-salt';
 
 export interface TrackParams {
@@ -29,14 +23,11 @@ export interface TrackParams {
   error_type?: string | null;
   error_message?: string | null;
 
-  // Phase 1 enriched fields — all optional.
   treatment_searched?: string | null;
   search_origin?: string | null;
   user_state_code?: string | null;
   results_count?: number | null;
   gov_br_unreachable?: boolean | null;
-
-  /** Phase 2 — which vertical served the response. */
   vertical?: string | null;
 }
 
@@ -66,7 +57,6 @@ function truncate(s: string | null | undefined, max: number): string | null {
   return String(s).substring(0, max);
 }
 
-/** Persists a single api_metrics row. Fire-and-forget. */
 export function track(params: TrackParams): void {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
 
@@ -105,7 +95,6 @@ export function track(params: TrackParams): void {
   });
 }
 
-/** Persists a single web_events row. Same fire-and-forget contract as track(). */
 export function trackWebEvent(event: WebEventParams): void {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return;
 
@@ -138,13 +127,9 @@ export function trackWebEvent(event: WebEventParams): void {
   });
 }
 
-/**
- * Normalises a route for analytics — replaces dynamic IDs with placeholders
- * so dashboards can group rows by template.
- *
- *   '/v1/hospitals/42' → '/v1/hospitals/:id'
- *   '/v1/states/SP'    → '/v1/states/:state_code'
- */
+// Collapses dynamic segments so dashboards can group by template:
+//   /v1/hospitals/42 → /v1/hospitals/:id
+//   /v1/states/SP    → /v1/states/:state_code
 export function normalizeRoute(path: string): string {
   return path
     .replace(/^\/+|\/+$/g, '/')

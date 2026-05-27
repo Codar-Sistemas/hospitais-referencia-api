@@ -1,11 +1,6 @@
-/**
- * Hospital endpoints — thin HTTP adapters around the hospital-service.
- *
- * `ctx.vertical` is injected by api/index.ts when the request path matches
- * `/v1/{vertical}/...`. Legacy paths (`/v1/hospitals`) leave it `null` and
- * the service layer defaults to 'animais_peconhentos' for backward
- * compatibility.
- */
+// `ctx.vertical` is set by api/index.ts when the path matches
+// `/v1/{vertical}/...`. Legacy paths leave it `null` and the service
+// layer falls back to the default.
 
 import { json } from '../core/http.js';
 import * as service from '../services/hospital-service.js';
@@ -103,9 +98,8 @@ export async function listNearbyHospitals(
     treatment,
     vertical: ctx.vertical,
   });
-  // `user_state_code` only exists on origin branches that came from a CEP
-  // lookup — narrow with `in` so TS doesn't trip on the 'coords'/'city'
-  // variants that never carry it.
+  // Only CEP-derived origin variants carry `user_state_code`; the `in`
+  // check narrows the discriminated union for `noUncheckedIndexedAccess`.
   const userStateCode = 'user_state_code' in result.origin ? result.origin.user_state_code : null;
   res.metrics = {
     treatment_searched: treatment,
@@ -117,10 +111,6 @@ export async function listNearbyHospitals(
   json(res, 200, result);
 }
 
-/**
- * Cross-vertical search — backed by `v_hospitals_all`. The MapaSUS hub
- * calls this when the user hasn't pre-filtered by vertical.
- */
 export async function searchAcrossVerticals(
   _req: Request,
   res: ResponseWithMetrics,

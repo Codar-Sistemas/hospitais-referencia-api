@@ -1,11 +1,3 @@
-/**
- * CEP lookup providers — abstraction over external vendors.
- *
- * To swap providers, pass a different `CepProvider` instance into the
- * geocoding service. Each implementation honours the small contract
- * declared by the `CepProvider` interface below.
- */
-
 import type { StateCode } from '../types/domain.js';
 
 export interface CepLookupResult {
@@ -45,11 +37,8 @@ interface BrasilApiResponse {
   };
 }
 
-/**
- * BrasilAPI v2 — combines multiple CEP sources (Correios + ViaCEP + …)
- * and returns coordinates when available. Free, no key, generous rate
- * limit. https://brasilapi.com.br/docs#tag/CEP-V2
- */
+// https://brasilapi.com.br/docs#tag/CEP-V2 — free, no key, aggregates
+// Correios + ViaCEP + others. Returns coords only for a minority of CEPs.
 export class BrasilApiCepProvider implements CepProvider {
   readonly name = 'brasilapi';
   private readonly userAgent: string;

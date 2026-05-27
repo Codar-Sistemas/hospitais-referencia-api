@@ -1,10 +1,5 @@
-/**
- * `POST /v1/track` — frontend telemetry sink.
- *
- * Accepts a tightly validated event from the web app and writes a row to
- * `web_events`. We never trust client-supplied IP/UA — those come from
- * the request headers, not the body.
- */
+// Frontend telemetry sink. IP/UA always come from request headers, never
+// from the body — clients must not be able to spoof identity.
 
 import { ValidationError } from '../core/errors.js';
 import { json } from '../core/http.js';

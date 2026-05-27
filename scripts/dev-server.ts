@@ -1,33 +1,20 @@
-/**
- * Local dev server — wraps the Vercel-style handler at api/index.ts and
- * exposes it on a plain HTTP port. Use this instead of `vercel dev` when
- * iterating locally against the Supabase CLI stack.
- *
- *   npm run dev                       # PORT=3001 default
- *   PORT=3010 npm run dev
- */
+// Wraps the Vercel-style handler at api/index.ts and exposes it on a
+// plain HTTP port. Env loading (`.env`, `.env.local`) is done by Node's
+// --env-file flags in the `dev` npm script — that happens before any
+// ESM import, so lib/core/supabase.ts captures the right credentials.
+//
+//   npm run dev                       # PORT=3001 default
+//   PORT=3010 npm run dev
 
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
-
-// Env vars are loaded by Node's --env-file flags in the `dev` npm script
-// (see package.json). Files are loaded in this order:
-//   1. .env           (optional — prod-ish defaults)
-//   2. .env.local     (overrides — points everything at the local stack)
-//
-// Loading via Node flags happens BEFORE any ESM import, so the
-// `process.env.SUPABASE_ANON_KEY` capture in lib/core/supabase.ts always
-// sees the local stack credentials.
 
 import handler from '../api/index.js';
 import type { Request, Response } from '../lib/types/http.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
-/**
- * Vercel injects helpers that the bare Node `ServerResponse` doesn't ship
- * with. We polyfill them so the dev server is behaviourally identical to
- * production for the handler — without pulling Express or Fastify.
- */
+// Vercel adds `.status()`, `.json()`, `.send()` to its response. Polyfill
+// them so the handler runs unchanged on bare Node.
 function polyfillResponse(res: ServerResponse): Response {
   const r = res as Response;
   r.status = (code: number) => {
@@ -56,8 +43,6 @@ async function bufferBody(req: IncomingMessage): Promise<string> {
 }
 
 const server = http.createServer((nodeReq: IncomingMessage, nodeRes: ServerResponse) => {
-  // The handler reads URL string + headers and writes through the response.
-  // Cast it to the Vercel shape only after attaching `query` and `body`.
   void (async () => {
     const req = nodeReq as Request;
     const url = new URL(nodeReq.url ?? '/', `http://${nodeReq.headers.host ?? 'localhost'}`);

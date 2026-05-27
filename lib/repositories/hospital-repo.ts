@@ -1,8 +1,5 @@
-/**
- * Hospital repository — the only place that builds PostgREST query strings
- * for the `hospitals` table and the `nearby_hospitals` RPC. Everything
- * upstream (services, handlers) goes through these typed entry points.
- */
+// Sole owner of PostgREST queries against `hospitals` and the
+// `nearby_hospitals` RPC. Services/handlers go through these entry points.
 
 import { sb, sbRpc } from '../core/supabase.js';
 import type {
@@ -19,24 +16,11 @@ import type {
 const HOSPITAL_LIST_COLUMNS =
   'id,state_code,city,name,address,phones,cnes,treatments,lat,lng,extraction_source,ocr_confidence,requires_verification,verticals';
 
-/**
- * Default vertical for backwards compatibility — every legacy API call
- * (the public /v1/hospitals routes from the pre-MapaSUS era) implicitly
- * expects to see the venomous-animal hospitals. Phase 2 ships the new
- * /v1/{vertical}/hospitals routes that pass `vertical` explicitly.
- *
- * The DB key uses the exact gov.br programme name in snake_case
- * ('animais_peconhentos' = "Animais Peçonhentos"). The same value is
- * surfaced on URL paths with hyphens (`/v1/animais-peconhentos/...`);
- * the router in api/index.ts handles the dash↔underscore conversion.
- */
+// Backwards-compat default — the legacy `/v1/hospitals` routes (pre-MapaSUS)
+// implicitly target the venomous-animal hospitals.
 export const DEFAULT_VERTICAL: Vertical = 'animais_peconhentos';
 
-/**
- * Builds the PostgREST `verticals` filter for a vertical scope. Pass
- * `'all'` (or null) to disable the filter and search across every
- * vertical — used by the cross-vertical `/v1/search` endpoint.
- */
+// `null` / `'all'` disables the filter (used by `/v1/search`).
 function verticalFilter(vertical: VerticalOrAll | null | undefined): string | null {
   if (vertical === null || vertical === 'all') return null;
   // PostgREST contains-array syntax: verticals @> '{animais_peconhentos}'
@@ -104,11 +88,9 @@ export async function searchByCity(filters: SearchByCityFilters): Promise<Hospit
 }
 
 export interface FindByIdOptions {
-  /**
-   * Constrain by vertical to deny cross-vertical access (e.g. peçonhentos
-   * page must not surface an oncology-only hospital). Pass `null` to allow
-   * any vertical. Defaults to `null` (allow any).
-   */
+  // Pass an explicit vertical to deny cross-vertical access (e.g. the
+  // peçonhentos page must not surface an oncology-only hospital).
+  // Default is `null` — any vertical is allowed.
   vertical?: VerticalOrAll | null;
 }
 
@@ -158,12 +140,9 @@ export interface CrossVerticalSearchFilters {
   offset: number;
 }
 
-/**
- * Cross-vertical search — backed by the `v_hospitals_all` view. Returns
- * hospitals annotated with the full set of active verticals and
- * specialties, so the frontend can render badges like
- * "peçonhentos + oncologia" without an extra round-trip.
- */
+// Backed by `v_hospitals_all`. Rows carry `active_verticals[]` and
+// `active_specialties[]` so the UI can render multi-vertical badges
+// without an extra round-trip.
 export async function searchAcrossVerticals(
   filters: CrossVerticalSearchFilters,
 ): Promise<HospitalWithActiveVerticals[]> {
@@ -178,7 +157,7 @@ export async function searchAcrossVerticals(
   if (stateCode) params['state_code'] = `eq.${stateCode}`;
   if (cityNormalized) params['city_normalized'] = `ilike.*${cityNormalized}*`;
   if (q) params['or'] = `(name.ilike.*${q}*,address.ilike.*${q}*)`;
-  // Only include hospitals that are active in at least one vertical.
+  // Skip hospitals that aren't habilitado in any vertical yet.
   params['active_verticals'] = 'not.eq.{}';
   return sb<HospitalWithActiveVerticals>('v_hospitals_all', params);
 }

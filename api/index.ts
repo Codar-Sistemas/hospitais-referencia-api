@@ -1,19 +1,6 @@
-/**
- * MapaSUS API — Vercel serverless entry point.
- *
- * Responsibilities (in order):
- *   1. CORS preflight
- *   2. Identity extraction (IP + User-Agent)
- *   3. Path normalisation — strips `/v1/{vertical}/...` prefix and stores
- *      the snake_case vertical in `ctx.vertical`
- *   4. Method allowlist (POST is only valid for /v1/track)
- *   5. IP rate limiting (Upstash, fail-open)
- *   6. Dispatch to the matching handler
- *   7. Fire-and-forget metrics row
- *
- * All real work lives in handlers/services/repositories. This file is
- * intentionally boring so the request lifecycle stays auditable.
- */
+// Vercel serverless entry. Per-request flow: CORS preflight → identity
+// (IP/UA) → path normalisation → method allowlist → rate limit →
+// dispatch → fire-and-forget metrics. Real work lives downstream.
 
 import { ApiError } from '../lib/core/errors.js';
 import { error } from '../lib/core/http.js';
@@ -36,23 +23,11 @@ import type { Request, RequestContext, ResponseWithMetrics } from '../lib/types/
 const STATE_PATH = /^\/v1\/states\/([A-Za-z]{2})$/;
 const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;
 
-/**
- * MapaSUS multi-vertical routing.
- *
- * Paths under `/v1/{vertical}/...` (e.g. `/v1/animais-peconhentos/hospitals`,
- * `/v1/doencas-raras/hospitals/nearby`) are rewritten internally to the
- * legacy `/v1/...` shape with `ctx.vertical` set to the corresponding
- * snake_case DB key, so the dispatch table stays flat. Legacy
- * `/v1/hospitals` paths keep working as aliases — handlers fall back to
- * the default vertical ('animais_peconhentos') when ctx.vertical is
- * unset, preserving backward compatibility for every integration built
- * against the pre-MapaSUS API.
- *
- * URL paths use kebab-case ('animais-peconhentos'); DB keys and Python
- * modules use snake_case ('animais_peconhentos'). `URL_TO_DB_VERTICAL`
- * performs the conversion in one place — keep it in sync with
- * `KNOWN_VERTICALS` in hospital-service.ts.
- */
+// Multi-vertical routing. `/v1/{vertical}/...` paths are rewritten
+// internally to the flat `/v1/...` dispatch table with `ctx.vertical`
+// pre-filled. Legacy paths fall through unchanged. URL is kebab-case,
+// DB key is snake_case — this map is the one place that bridges the two.
+// Keep it in sync with `KNOWN_VERTICALS` in hospital-service.ts.
 const URL_TO_DB_VERTICAL: Readonly<Record<string, Vertical>> = {
   'animais-peconhentos': 'animais_peconhentos',
   'doencas-raras': 'doencas_raras',
@@ -60,7 +35,6 @@ const URL_TO_DB_VERTICAL: Readonly<Record<string, Vertical>> = {
 };
 const VERTICAL_PREFIX = new RegExp(`^/v1/(${Object.keys(URL_TO_DB_VERTICAL).join('|')})(/.*)?$`);
 
-/** Paths that accept POST (everything else is GET-only). */
 const POST_ROUTES = new Set(['/v1/track']);
 
 function isAllowedMethod(method: string | undefined, path: string): boolean {
@@ -74,11 +48,6 @@ interface NormalizedPath {
   vertical: Vertical | null;
 }
 
-/**
- * Strips a `/v1/{vertical}` prefix and returns `{ path, vertical }`.
- * `vertical` comes back as the snake_case DB key (or null on legacy
- * paths).
- */
 function normalizePath(rawPath: string): NormalizedPath {
   const m = rawPath.match(VERTICAL_PREFIX);
   if (!m) return { path: rawPath, vertical: null };
@@ -140,9 +109,8 @@ export default async function handler(req: Request, res: ResponseWithMetrics): P
 
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
   const rawPath = url.pathname.replace(/\/+$/, '') || '/';
-  // Strip any /v1/{vertical} prefix before matching telemetry patterns so
-  // /v1/animais-peconhentos/states/SP captures state_code = SP just like
-  // /v1/states/SP.
+  // Strip the vertical prefix so the telemetry STATE_PATH regex matches
+  // /v1/animais-peconhentos/states/SP the same as /v1/states/SP.
   const { path } = normalizePath(rawPath);
   const stateMatch = STATE_PATH.exec(path);
   const capturedStateCode =
@@ -172,7 +140,6 @@ export default async function handler(req: Request, res: ResponseWithMetrics): P
 
   try {
     await dispatch(req, res, url, ctx);
-    // Handlers attach search context to res.metrics when applicable.
     trackRequest(path, {
       state_code: capturedStateCode,
       error_type: res.statusCode >= 400 ? `http_${res.statusCode}` : null,

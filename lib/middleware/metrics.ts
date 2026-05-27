@@ -1,10 +1,3 @@
-/**
- * Per-request metrics tracker — closes over the request lifecycle data
- * (start time, IP, UA) and exposes a single `trackRequest(route, extras)`
- * call that handlers / the top-level dispatcher use after the response is
- * sent.
- */
-
 import { normalizeRoute, track, type TrackParams } from '../core/metrics.js';
 import type { Request, Response } from '../types/http.js';
 

@@ -1,30 +1,20 @@
-/**
- * Thin Supabase REST/RPC client. Tiny by design — we don't pull the
- * `@supabase/supabase-js` SDK because it bundles auth, realtime, storage
- * and other surfaces we never use on the API side.
- *
- * Reads go through the anon key (RLS-protected). Writes use the service
- * key and bypass RLS — only the sync pipeline and the metrics middleware
- * call those helpers.
- */
+// Thin REST/RPC client. We deliberately avoid `@supabase/supabase-js` —
+// it pulls in auth/realtime/storage that the API never uses.
+// Reads use the anon key (RLS-protected); writes use the service key.
 
 export const SUPABASE_URL: string | undefined = process.env['SUPABASE_URL'];
 const SUPABASE_ANON_KEY: string | undefined = process.env['SUPABASE_ANON_KEY'];
 export const SUPABASE_SERVICE_KEY: string | undefined = process.env['SUPABASE_SERVICE_KEY'];
 
-/**
- * Supabase managed exposes REST at `<url>/rest/v1`; local PostgREST serves
- * straight from `<url>/`. Allow overriding the base via env for local dev.
- */
+// Supabase managed exposes REST at `<url>/rest/v1`; local PostgREST serves
+// straight from `<url>/`. SUPABASE_REST_URL overrides this for local dev.
 export const REST_BASE: string =
   process.env['SUPABASE_REST_URL'] ?? `${SUPABASE_URL ?? ''}/rest/v1`;
 
 export type SbParams = Record<string, string | number | undefined | null>;
 
-/**
- * GET against PostgREST. The generic `<T>` documents the row shape the
- * caller expects — there is no runtime validation, so keep it honest.
- */
+// The generic `<T>` documents the row shape the caller expects — there is
+// no runtime validation, so it must match the actual columns.
 export async function sb<T>(path: string, params: SbParams = {}): Promise<T[]> {
   if (!SUPABASE_ANON_KEY) {
     throw new Error('SUPABASE_ANON_KEY is not configured');
@@ -47,7 +37,6 @@ export async function sb<T>(path: string, params: SbParams = {}): Promise<T[]> {
   return (await r.json()) as T[];
 }
 
-/** Calls a Postgres function via PostgREST's `/rpc/<fn>` endpoint. */
 export async function sbRpc<T>(fn: string, body: Record<string, unknown>): Promise<T[]> {
   if (!SUPABASE_ANON_KEY) {
     throw new Error('SUPABASE_ANON_KEY is not configured');
@@ -68,10 +57,7 @@ export async function sbRpc<T>(fn: string, body: Record<string, unknown>): Promi
   return (await r.json()) as T[];
 }
 
-/**
- * Best-effort insert with the service key. Skips conflicts silently —
- * used by the sync pipeline to seed states/specialties idempotently.
- */
+// Skips conflicts silently — sync pipelines re-run idempotently.
 export async function sbInsert(table: string, data: unknown): Promise<globalThis.Response | null> {
   if (!SUPABASE_SERVICE_KEY) return null;
   return fetch(`${REST_BASE}/${table}`, {
@@ -86,11 +72,9 @@ export async function sbInsert(table: string, data: unknown): Promise<globalThis
   });
 }
 
-/**
- * Upsert with merge semantics — existing rows are overwritten by the new
- * payload. Required when re-running an expensive lookup (e.g. a CEP that
- * now has coordinates) to replace a stale cache entry that had nulls.
- */
+// Merge upsert: existing rows are overwritten by the new payload.
+// Required to enrich stale cache rows — e.g. a CEP previously stored
+// without coordinates that we now resolved via Nominatim.
 export async function sbUpsert(
   table: string,
   data: unknown,

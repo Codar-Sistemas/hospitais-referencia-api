@@ -1,9 +1,3 @@
-/**
- * Metadata endpoint — returns a static document describing the API. Acts
- * as a discoverable entry point for clients that don't know what endpoints
- * exist yet (also useful for monitoring/uptime probes).
- */
-
 import { json } from '../core/http.js';
 import type { Request, Response } from '../types/http.js';
 

@@ -1,15 +1,10 @@
-/**
- * Public aggregated stats — powers the /stats page on the web app.
- *
- * All queries hit pre-built SQL views (see sql/008_metrics_phase1.sql).
- * No PII; safe to cache in the CDN for a few minutes.
- */
+// Queries the read-only views from sql/008_metrics_phase1.sql.
+// No PII; safe for CDN caching.
 
 import { json } from '../core/http.js';
 import { sb } from '../core/supabase.js';
 import type { Request, Response } from '../types/http.js';
 
-/** Each view returns 1 row of denormalised aggregates. */
 interface OverviewRow {
   total_searches: number;
   unique_users: number;

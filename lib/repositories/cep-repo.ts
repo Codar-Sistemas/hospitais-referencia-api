@@ -1,19 +1,9 @@
-/**
- * CEP cache repository.
- *
- * Reads come from the public `cep_cache` table (anon key). Writes use the
- * upsert helper so a stale row with NULL coords is overwritten when we
- * later enrich it via Nominatim.
- */
-
 import { sb, sbUpsert } from '../core/supabase.js';
 import type { CepRecord } from '../types/domain.js';
 
-type CepRow = CepRecord;
-
 export async function findCached(cep: string): Promise<CepRecord | null> {
   try {
-    const rows = await sb<CepRow>('cep_cache', {
+    const rows = await sb<CepRecord>('cep_cache', {
       select: '*',
       cep: `eq.${cep}`,
       limit: '1',
@@ -36,14 +26,12 @@ export async function findCached(cep: string): Promise<CepRecord | null> {
   }
 }
 
-/**
- * Best-effort cache write. Uses upsert (merge-duplicates) so a stale row
- * with NULL coords gets overwritten when we later enrich it via Nominatim.
- */
+// Merge-duplicates so a row previously cached without coords is enriched
+// the next time the same CEP is looked up via Nominatim.
 export async function cache(data: Partial<CepRecord> & { cep: string }): Promise<void> {
   try {
     await sbUpsert('cep_cache', data, 'cep');
   } catch {
-    // intentional no-op — telemetry layer handles failed writes.
+    // Best-effort. Failed cache writes are visible via api_metrics.
   }
 }

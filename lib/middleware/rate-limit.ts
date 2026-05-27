@@ -1,8 +1,5 @@
-/**
- * IP-based rate limiter backed by Upstash Redis. Fail-open: if Upstash is
- * unreachable, requests pass through unthrottled — we'd rather be lax than
- * 503 the whole API on a Redis hiccup.
- */
+// Fail-open: if Upstash is unreachable, requests pass unthrottled. A
+// Redis hiccup must not 503 the API.
 
 import { isConfigured, pipeline } from '../core/redis.js';
 import type { Response } from '../types/http.js';

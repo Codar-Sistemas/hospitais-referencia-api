@@ -1,15 +1,7 @@
-/**
- * Nominatim (OpenStreetMap) geocoding provider.
- *
- * Used as a fallback when BrasilAPI returns a CEP without coordinates
- * (which, in practice, is the vast majority of CEPs).
- *
- * Public Nominatim policy: max 1 req/s and a descriptive User-Agent. We
- * don't sleep here — at API request rate this is well under the cap, and
- * we cache results in Supabase so a repeated CEP costs nothing.
- *
- * Docs: https://nominatim.org/release-docs/develop/api/Search/
- */
+// Public Nominatim policy caps usage at 1 req/s and requires a
+// descriptive User-Agent. We don't sleep here — at API request rate
+// we're well under the cap and results are cached in Supabase.
+// Docs: https://nominatim.org/release-docs/develop/api/Search/
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
@@ -46,10 +38,6 @@ export class NominatimProvider implements GeocodingProvider {
     this.timeoutMs = timeoutMs;
   }
 
-  /**
-   * Geocodes a free-text Brazilian address. Returns `{ lat, lng }` or
-   * `null` on any failure. The caller is responsible for caching.
-   */
   async geocode(query: string): Promise<NominatimGeocodeResult | null> {
     if (!query?.trim()) return null;
 

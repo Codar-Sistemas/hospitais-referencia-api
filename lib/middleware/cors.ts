@@ -1,7 +1,4 @@
-/**
- * CORS — the API is fully public, so we expose it to any origin. Only
- * `GET` and `POST` are wired up (preflight responds the same way).
- */
+// The API is fully public; any origin is allowed.
 
 import type { Request, Response } from '../types/http.js';
 
@@ -12,11 +9,7 @@ export function applyCors(res: Response): void {
   res.setHeader('Access-Control-Max-Age', '600');
 }
 
-/**
- * Short-circuits OPTIONS preflight requests with a 204 + CORS headers,
- * returning `true` to signal the caller that no further processing is
- * required. Returns `false` for any non-OPTIONS request.
- */
+// Returns true when the request was a preflight and has been answered.
 export function handlePreflight(req: Request, res: Response): boolean {
   if (req.method !== 'OPTIONS') return false;
   applyCors(res);

@@ -81,6 +81,9 @@ def upsert_hospitals(
                     "extraction_source": extraction_source,
                     "ocr_confidence": ocr_confidence,
                     "geocoding_status": GEOCODING_STATUS_PENDING,
+                    # Tag the row with this sync's vertical so the public API
+                    # can find it. New verticals must extend this list.
+                    "verticals": ["venomous_animals"],
                 }
             )
 

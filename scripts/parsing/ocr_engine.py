@@ -27,6 +27,8 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from scripts.shared.types import WordBox
+
 # Lazy imports — Tesseract is only required when OCR is actually used.
 try:
     import pytesseract
@@ -66,7 +68,7 @@ class OcrPage:
     page_number: int
     width: float
     height: float
-    words: list[dict]  # {text, x0, x1, top, bottom, confidence}
+    words: list[WordBox]  # {text, x0, x1, top, bottom, confidence}
     mean_confidence: float  # mean confidence of kept (filtered) words
 
     @property
@@ -100,7 +102,7 @@ def ocr_pdf(
             output_type=pytesseract.Output.DICT,
         )
 
-        words: list[dict] = []
+        words: list[WordBox] = []
         confidences: list[int] = []
         n = len(data["text"])
         for i in range(n):

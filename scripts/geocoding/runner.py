@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import os
 import re
+from typing import Any
 
 import requests
 
@@ -86,7 +87,7 @@ class Geocoder:
             if rest_override
             else (f"{self._supabase_url}/rest/v1" if self._supabase_url else None)
         )
-        self._supabase_headers: dict | None = None
+        self._supabase_headers: dict[str, Any] | None = None
         if supabase_url and supabase_key:
             self._supabase_headers = {
                 "apikey": supabase_key,
@@ -99,7 +100,7 @@ class Geocoder:
     # Persistent cache (Supabase `geocoding_cache` table)
     # ------------------------------------------------------------------
 
-    def _db_get(self, query_key: str):
+    def _db_get(self, query_key: str) -> GeocodingResult | None | object:
         """
         Returns:
             _NOT_IN_CACHE  — no row for this key
@@ -219,7 +220,9 @@ class Geocoder:
         """
         cached = self._db_get(query)
         if cached is not _NOT_IN_CACHE:
-            return cached
+            # By construction `_db_get` returns either GeocodingResult, None,
+            # or the _NOT_IN_CACHE sentinel — already filtered above.
+            return cached  # type: ignore[return-value]
 
         result = self._geocoding_provider.geocode(query)
         self._db_set(query, result)

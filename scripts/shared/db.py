@@ -56,10 +56,10 @@ class SupabaseClient:
             )
         return response.json() if response.text else None
 
-    def select(self, table: str, **params: str) -> list[dict]:
+    def select(self, table: str, **params: str) -> list[dict[str, Any]]:
         return self._request("GET", table, params=params) or []
 
-    def upsert(self, table: str, rows: Iterable[dict], on_conflict: str) -> None:
+    def upsert(self, table: str, rows: Iterable[dict[str, Any]], on_conflict: str) -> None:
         headers = {**self.headers, "Prefer": "resolution=merge-duplicates,return=minimal"}
         response = self._session.post(
             f"{self.rest_base}/{table}",
@@ -82,7 +82,7 @@ class SupabaseClient:
         if not response.ok:
             raise RuntimeError(f"Delete {table} failed: {response.status_code} {response.text}")
 
-    def update(self, table: str, match: dict, values: dict) -> None:
+    def update(self, table: str, match: dict[str, Any], values: dict[str, Any]) -> None:
         headers = {**self.headers, "Prefer": "return=minimal"}
         params = {k: f"eq.{v}" for k, v in match.items()}
         response = self._session.patch(

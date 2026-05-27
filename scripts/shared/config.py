@@ -27,17 +27,23 @@ def supabase_service_key() -> str | None:
 # -------------------------------------------------------------------------
 # State sync status (column `states.status`)
 # -------------------------------------------------------------------------
-STATE_STATUS_OK = "ok"
-STATE_STATUS_OK_OCR = "ok_ocr"
-STATE_STATUS_ERROR = "error"
-STATE_STATUS_UNSUPPORTED = "unsupported"
-STATE_STATUS_PENDING = "pending"
+# Typed as Final[Literal[...]] so callsites that assign into a
+# `SyncResult["status"]` keep the literal type intact.
+from typing import Final, Literal  # noqa: E402  (groupped with the constants)
+
+STATE_STATUS_OK: Final[Literal["ok"]] = "ok"
+STATE_STATUS_OK_OCR: Final[Literal["ok_ocr"]] = "ok_ocr"
+STATE_STATUS_ERROR: Final[Literal["error"]] = "error"
+STATE_STATUS_UNSUPPORTED: Final[Literal["unsupported"]] = "unsupported"
+STATE_STATUS_PENDING: Final[Literal["pending"]] = "pending"
 
 # -------------------------------------------------------------------------
 # Extraction source (column `hospitals.extraction_source`)
 # -------------------------------------------------------------------------
-EXTRACTION_SOURCE_PDF_TEXT = "pdf_text"
-EXTRACTION_SOURCE_PDF_OCR = "pdf_ocr"
+EXTRACTION_SOURCE_PDF_TEXT: Final[Literal["pdf_text"]] = "pdf_text"
+EXTRACTION_SOURCE_PDF_OCR: Final[Literal["pdf_ocr"]] = "pdf_ocr"
+EXTRACTION_SOURCE_LLM_GEMINI: Final[Literal["llm_gemini"]] = "llm_gemini"
+EXTRACTION_SOURCE_LLM_GROQ: Final[Literal["llm_groq"]] = "llm_groq"
 
 # -------------------------------------------------------------------------
 # Geocoding status (column `hospitals.geocoding_status`)

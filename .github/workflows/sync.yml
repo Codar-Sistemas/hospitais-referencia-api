@@ -2,7 +2,7 @@ name: sync-hospitals
 
 on:
   schedule:
-    - cron: '0 3 * * *'   # daily 03:00 UTC = 00:00 Brasília
+    - cron: '0 3 * * *' # daily 03:00 UTC = 00:00 Brasília
   workflow_dispatch:
     inputs:
       state_code:
@@ -47,11 +47,15 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # Both LLM keys are optional. If a key is missing, that provider
+          # is skipped and the chain falls through to Tesseract.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           ARGS="sync"
           if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
           if [ -n "${{ github.event.inputs.state_code }}" ]; then ARGS="$ARGS ${{ github.event.inputs.state_code }}"; fi
-          python -m scripts.sync $ARGS
+          python -m scripts.syncs.venomous_animals $ARGS
 
       - id: check
         name: Check whether any hospitals are pending geocoding
@@ -91,4 +95,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python -m scripts.sync geocode --limit 5000
+        run: python -m scripts.syncs.venomous_animals geocode --limit 5000

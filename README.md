@@ -46,7 +46,7 @@ graph TB
 
     subgraph "Atualização automática"
         GHA["⚙️ GitHub Actions<br/>Cron 03:00 UTC / dia"]
-        SYNC["🐍 scripts/sync/<br/>Detecta mudança de data<br/>e SHA256 do PDF"]
+        SYNC["🐍 scripts/syncs/venomous_animals/<br/>Detecta mudança de data<br/>e SHA256 do PDF"]
         PARSER["📄 scripts/parsing/<br/>pdfplumber + word coords<br/>+ OCR fallback (Tesseract)"]
         GEO["📍 scripts/geocoding/<br/>Nominatim + BrasilAPI<br/>Cache em Supabase"]
     end
@@ -430,12 +430,15 @@ hospitais-referencia-api/
 │   └── providers/               # cep (BrasilAPI), nominatim
 │
 ├── scripts/
-│   ├── sync/                    # Scraper gov.br + change detection + upsert + sync_logs
+│   ├── syncs/                   # Uma pasta por vertical do MapaSUS
+│   │   └── venomous_animals/ # Scraper gov.br + change detection + upsert + sync_logs
 │   ├── parsing/                 # text_parser, ocr_parser, ocr_engine
 │   ├── geocoding/               # runner + address_normalizer
 │   ├── providers/               # Nominatim, BrasilAPI (Python)
 │   ├── shared/                  # db, http, logger, config
 │   ├── backup_supabase.py       # Snapshot JSONL das tabelas
+│   ├── dev-server.js            # Wrapper Node para rodar a API local
+│   ├── seed-from-prod.js        # Popula Supabase local a partir da prod
 │   └── local_jwt.py             # Tokens JWT para dev local
 │
 ├── sql/                         # Migrations executadas em ordem
@@ -518,8 +521,8 @@ export SUPABASE_URL=http://localhost:3010
 export SUPABASE_REST_URL=http://localhost:3010
 export SUPABASE_SERVICE_KEY=$(python scripts/local_jwt.py service_role)
 
-python -m scripts.sync sync SP            # sync de um estado
-python -m scripts.sync geocode --limit 50 # geocoda 50 hospitais
+python -m scripts.syncs.venomous_animals sync SP            # sync de um estado
+python -m scripts.syncs.venomous_animals geocode --limit 50 # geocoda 50 hospitais
 ```
 
 ### Deploy em produção (Supabase + Vercel)
@@ -528,8 +531,8 @@ python -m scripts.sync geocode --limit 50 # geocoda 50 hospitais
 graph LR
     A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 008"]
     B --> C["3️⃣ Copiar credenciais<br/>SUPABASE_URL/ANON/SERVICE"]
-    C --> D["4️⃣ Sync inicial<br/>python -m scripts.sync sync"]
-    D --> E["5️⃣ Geocoding<br/>python -m scripts.sync geocode"]
+    C --> D["4️⃣ Sync inicial<br/>python -m scripts.syncs.venomous_animals sync"]
+    D --> E["5️⃣ Geocoding<br/>python -m scripts.syncs.venomous_animals geocode"]
     E --> F["6️⃣ Deploy Vercel<br/>vercel --prod"]
     F --> G["7️⃣ Secrets GitHub<br/>SUPABASE_URL + SERVICE_KEY"]
     G --> H["✅ Cron automático<br/>ativo"]
@@ -548,9 +551,9 @@ cp .env.example .env
 # Preencha SUPABASE_URL e SUPABASE_SERVICE_KEY (do passo anterior)
 set -a; source .env; set +a
 
-python -m scripts.sync sync SP       # teste com um estado
-python -m scripts.sync sync          # todos os 27 estados (~5 min)
-python -m scripts.sync geocode --limit 5000   # geocodifica (~1s/hospital)
+python -m scripts.syncs.venomous_animals sync SP       # teste com um estado
+python -m scripts.syncs.venomous_animals sync          # todos os 27 estados (~5 min)
+python -m scripts.syncs.venomous_animals geocode --limit 5000   # geocodifica (~1s/hospital)
 ```
 
 #### 3. Deploy da API

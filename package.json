@@ -4,26 +4,63 @@
   "description": "Public API for Brazilian reference hospitals treating venomous animal accidents (Ministry of Health data)",
   "main": "api/index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node --env-file-if-exists=.env --env-file=.env.local --import tsx scripts/dev-server.ts",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint api/ lib/",
     "lint:fix": "eslint api/ lib/ --fix",
-    "format": "prettier --write \"api/**/*.{js,json,md}\" \"lib/**/*.{js,json,md}\" \"*.{json,md,yml,yaml}\"",
-    "format:check": "prettier --check \"api/**/*.{js,json,md}\" \"lib/**/*.{js,json,md}\" \"*.{json,md,yml,yaml}\"",
+    "format": "prettier --write \"api/**/*.{js,ts,json,md}\" \"lib/**/*.{js,ts,json,md}\" \"*.{json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"api/**/*.{js,ts,json,md}\" \"lib/**/*.{js,ts,json,md}\" \"*.{json,md,yml,yaml}\"",
     "lint:py": "ruff check scripts/ tests/",
     "lint:py:fix": "ruff check scripts/ tests/ --fix",
+    "typecheck:py": "mypy scripts/ tests/",
     "format:py": "ruff format scripts/ tests/",
     "format:py:check": "ruff format --check scripts/ tests/",
-    "check": "npm run lint && npm run format:check && npm run lint:py && npm run format:py:check"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run lint:py && npm run format:py:check",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "{api,lib}/**/*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "scripts/{dev-server,seed-from-prod}.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "web/**/*.{ts,tsx,js,jsx,json,md,css}": [
+      "prettier --write"
+    ],
+    "scripts/**/*.py": [
+      ".venv/bin/ruff check --fix",
+      ".venv/bin/ruff format"
+    ],
+    "tests/**/*.py": [
+      ".venv/bin/ruff check --fix",
+      ".venv/bin/ruff format"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@types/node": "^25.9.1",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "@vercel/node": "^5.8.5",
+    "dotenv": "^17.4.2",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",
-    "prettier": "^3.4.2"
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
+    "prettier": "^3.4.2",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0"
   },
   "license": "MIT"
 }

@@ -13,11 +13,14 @@ const links = [
 export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [lastPathname, setLastPathname] = useState(pathname);
 
-  // Close drawer on route change.
-  useEffect(() => {
+  // Close drawer on route change — adjust state during render
+  // (React 19 / set-state-in-effect compliant pattern).
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
 
   // Lock body scroll while drawer is open.
   useEffect(() => {

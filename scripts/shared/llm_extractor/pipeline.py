@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pydantic import ValidationError
 
 from scripts.parsing.text_parser import normalize_treatments
+from scripts.shared.llm_extractor.metrics import compute_extraction_confidence
 from scripts.shared.llm_extractor.preprocessing import PreprocessConfig, pdf_to_images
 from scripts.shared.llm_extractor.providers.base import LlmExtractionError, LlmProvider
 from scripts.shared.llm_extractor.schemas.hospital_table import HospitalTableLLM
@@ -29,11 +30,13 @@ from scripts.shared.types import HospitalRecord
 @dataclass(frozen=True)
 class ExtractionOutcome:
     """What a successful run produced — used by the caller to record
-    `extraction_source` and run telemetry."""
+    `extraction_source`, decide whether the records need the manual-
+    verification badge, and feed run telemetry."""
 
     records: list[HospitalRecord]
     provider: str
     model: str
+    confidence: int  # 0-100 — heuristic, comparable to Tesseract's value
 
 
 class AllProvidersFailedError(Exception):
@@ -83,11 +86,18 @@ def extract_hospitals(
             attempts.append((provider.name, "invalid JSON or schema"))
             continue
 
+        confidence = compute_extraction_confidence(records)
         log(
-            f"{provider.name} ({reply.model}) extracted {len(records)} rows",
+            f"{provider.name} ({reply.model}) extracted {len(records)} rows "
+            f"(confidence: {confidence}%)",
             state_code=state_code,
         )
-        return ExtractionOutcome(records=records, provider=provider.name, model=reply.model)
+        return ExtractionOutcome(
+            records=records,
+            provider=provider.name,
+            model=reply.model,
+            confidence=confidence,
+        )
 
     raise AllProvidersFailedError(attempts)
 

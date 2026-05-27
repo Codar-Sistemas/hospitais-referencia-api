@@ -183,6 +183,10 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
             if llm_outcome is not None:
                 records = llm_outcome.records
                 extraction_source = llm_outcome.provider
+                # Reuse the existing `ocr_confidence` column for the LLM
+                # heuristic score (0-100, same scale as Tesseract). Drives
+                # the `requires_verification` generated column.
+                ocr_confidence = llm_outcome.confidence
             else:
                 ocr_outcome = _try_ocr_extraction(tmp_path, state_code)
                 if isinstance(ocr_outcome, dict):

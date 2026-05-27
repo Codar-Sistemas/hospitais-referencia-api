@@ -22,6 +22,19 @@ const stats = require('../lib/handlers/stats');
 const STATE_PATH = /^\/v1\/states\/([A-Za-z]{2})$/;
 const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;
 
+// MapaSUS multi-vertical routing.
+//
+// Paths under `/v1/{vertical}/...` (e.g. `/v1/peconhentos/hospitals`,
+// `/v1/raras/hospitals/nearby`) are rewritten internally to the legacy
+// `/v1/...` shape with `ctx.vertical` set, so the dispatch table stays
+// flat. Legacy `/v1/hospitals` paths keep working as aliases — handlers
+// fall back to the default vertical ('peconhentos') when ctx.vertical
+// is unset, preserving backward compatibility for every integration
+// built against the pre-MapaSUS API.
+//
+// Keep this regex in sync with KNOWN_VERTICALS in hospital-service.js.
+const VERTICAL_PREFIX = /^\/v1\/(peconhentos|raras|oncologia)(\/.*)?$/;
+
 // Paths that accept POST (everything else is GET-only).
 const POST_ROUTES = new Set(['/v1/track']);
 
@@ -31,24 +44,36 @@ function isAllowedMethod(method, path) {
   return false;
 }
 
+// Strip a `/v1/{vertical}` prefix and return `{ path, vertical }`.
+// Legacy paths come back with vertical=null and the original path.
+function normalizePath(rawPath) {
+  const m = rawPath.match(VERTICAL_PREFIX);
+  if (!m) return { path: rawPath, vertical: null };
+  const inner = m[2] || '';
+  return { path: `/v1${inner}`, vertical: m[1] };
+}
+
 async function dispatch(req, res, url, ctx) {
-  const path = url.pathname.replace(/\/+$/, '');
+  const rawPath = url.pathname.replace(/\/+$/, '');
+  const { path, vertical } = normalizePath(rawPath);
+  ctx.vertical = vertical; // null on legacy paths → service defaults to peconhentos
 
   if (path === '/v1/track') return track.postTrack(req, res, ctx.ip, ctx.userAgent);
 
   if (path === '' || path === '/' || path === '/v1') return metadata.getMetadata(req, res);
   if (path === '/v1/stats') return stats.getStats(req, res);
   if (path === '/v1/states') return states.listStates(req, res);
-  if (path === '/v1/hospitals') return hospitals.listHospitals(req, res, url);
-  if (path === '/v1/hospitals/nearby') return hospitals.listNearbyHospitals(req, res, url);
+  if (path === '/v1/search') return hospitals.searchAcrossVerticals(req, res, url);
+  if (path === '/v1/hospitals') return hospitals.listHospitals(req, res, url, ctx);
+  if (path === '/v1/hospitals/nearby') return hospitals.listNearbyHospitals(req, res, url, ctx);
 
   const stateMatch = path.match(STATE_PATH);
   if (stateMatch) return states.getState(req, res, stateMatch[1].toUpperCase());
 
   const hospitalMatch = path.match(HOSPITAL_PATH);
-  if (hospitalMatch) return hospitals.getHospital(req, res, hospitalMatch[1]);
+  if (hospitalMatch) return hospitals.getHospital(req, res, hospitalMatch[1], ctx);
 
-  throw new ApiError(404, `Route not found: ${path}`, 'not_found');
+  throw new ApiError(404, `Route not found: ${rawPath}`, 'not_found');
 }
 
 module.exports = async (req, res) => {
@@ -64,7 +89,10 @@ module.exports = async (req, res) => {
   const trackRequest = createTracker({ req, res, ip, userAgent, startTime });
 
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const path = url.pathname.replace(/\/+$/, '') || '/';
+  const rawPath = url.pathname.replace(/\/+$/, '') || '/';
+  // Strip any /v1/{vertical} prefix before matching telemetry patterns so
+  // /v1/peconhentos/states/SP captures state_code = SP just like /v1/states/SP.
+  const { path } = normalizePath(rawPath);
   const stateMatch = path.match(STATE_PATH);
   const capturedStateCode = stateMatch
     ? stateMatch[1].toUpperCase()

@@ -2,7 +2,7 @@
 -- 007_rename_to_english.sql
 -- =========================================================================
 -- Phase 0 standardization: rename all Portuguese identifiers to English.
--- See REFACTORING_MAP.md for the full mapping rationale.
+-- See docs/internal/REFACTORING_MAP.md for the full mapping rationale.
 --
 -- IMPORTANT:
 --   - This migration must be deployed atomically with the updated Python

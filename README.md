@@ -462,8 +462,7 @@ hospitais-referencia-api/
 ├── vercel.json                  # /* → api/index.ts
 ├── requirements.txt             # Python deps (pdfplumber, google-genai, groq, pydantic, …)
 ├── AGENTS.md                    # Baseline de tipagem + naming + convenções
-├── MAPASUS_MIGRATION.md         # Plano da pivotada para plataforma multi-vertical
-└── REFACTORING_MAP.md           # Histórico Phase 0 (PT → EN)
+└── docs/internal/              # Docs de processo (plano de migração, mapa de refactor)
 ```
 
 ---

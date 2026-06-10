@@ -1,0 +1,36 @@
+{
+  "title": "MapaSUS — Hospitais de Referência do SUS",
+  "description": "Public, free REST API that normalises and republishes Brazilian Ministry of Health hospital data (animais peçonhentos vertical in production; doenças raras and oncologia in development), built on a serverless architecture with an LLM-based extraction pipeline (Gemini → Groq → Tesseract fallback chain) that bridges the gap between government PDF publications and machine-readable health-system data.",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
+  "language": "por",
+  "creators": [
+    {
+      "name": "França, Felipe",
+      "affiliation": "Codar Sistemas",
+      "orcid": "0009-0007-7751-0526"
+    }
+  ],
+  "keywords": [
+    "public-health",
+    "SUS",
+    "Brazil",
+    "open-data",
+    "llm-extraction",
+    "serverless",
+    "venomous-animals"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/Codar-Sistemas/hospitais-referencia-api",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    },
+    {
+      "identifier": "https://hospitais-referencia-api.vercel.app",
+      "relation": "isIdenticalTo",
+      "resource_type": "software"
+    }
+  ]
+}

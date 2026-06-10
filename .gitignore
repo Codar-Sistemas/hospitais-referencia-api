@@ -14,6 +14,7 @@ venv/
 !vercel.json
 !.prettierrc.json
 !tsconfig.json
+!.zenodo.json
 .DS_Store
 
 # Supabase CLI

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import EmergencyBanner from '@/components/EmergencyBanner';
+import Footer from '@/components/Footer';
+import SamuBadge from '@/components/SamuBadge';
 import HubSearch from '@/components/hub/HubSearch';
 import { SITE_URL } from '@/lib/site';
 import { THEME_CARD_ACCENT, VERTICALS } from '@/lib/verticals';
@@ -57,13 +59,7 @@ export default function Hub() {
             <span className="font-bold text-slate-800 text-lg tracking-tight">MapaSUS</span>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href="tel:192"
-              className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-100 transition-colors"
-            >
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-              SAMU 192
-            </a>
+            <SamuBadge />
             <a
               href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
               target="_blank"
@@ -178,26 +174,7 @@ export default function Hub() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8 mt-auto">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-emerald-600 rounded flex items-center justify-center text-white text-xs font-bold">
-              +
-            </div>
-            <span className="font-medium text-slate-500">MapaSUS</span>
-          </div>
-          <p className="text-center">Dados: Ministério da Saúde · Atualização automática diária</p>
-          <div className="flex items-center gap-4">
-            <Link href="/termos" className="hover:text-slate-600 transition-colors">
-              Termos de uso
-            </Link>
-            <Link href="/docs" className="hover:text-slate-600 transition-colors">
-              API
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       <script
         type="application/ld+json"

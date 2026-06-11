@@ -26,7 +26,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Platform-wide pages.
   entries.push(
-    { url: `${baseUrl}/stats`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${baseUrl}/estatisticas`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
     { url: `${baseUrl}/docs`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/termos`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
   );

@@ -4,21 +4,23 @@
 // On a vertical subdomain (e.g. peconhentos.mapasus.com.br) we rewrite the
 // request to the matching `app/[vertical]` route so the URL stays clean while
 // the right vertical renders:
-//   peconhentos.mapasus.com.br/            → /venomous-animals
-//   peconhentos.mapasus.com.br/profissionais → /venomous-animals/profissionais
+//   peconhentos.mapasus.com.br/            → /animais-peconhentos
+//   peconhentos.mapasus.com.br/profissionais → /animais-peconhentos/profissionais
 //
 // The apex host (mapasus.com.br) and the current vercel.app / localhost hosts
 // have no subdomain mapping, so they pass through untouched: `/` serves the hub
-// and `/venomous-animals` is reachable via its clean path. Platform-wide pages
-// (/stats, /docs, /termos) are never prefixed — they live at the root on every
-// host.
+// and `/animais-peconhentos` is reachable via its clean path. Platform-wide
+// pages (/estatisticas, /docs, /termos) are never prefixed — they live at the
+// root on every host.
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SUBDOMAIN_TO_SLUG } from '@/lib/verticals';
 
 // Paths that stay at the root on every host (not vertical-scoped).
-const GLOBAL_PREFIXES = ['/stats', '/docs', '/termos', '/sobre'];
+// '/stats' stays listed so the next.config 308 to '/estatisticas' fires
+// instead of the subdomain rewrite swallowing it first.
+const GLOBAL_PREFIXES = ['/estatisticas', '/stats', '/docs', '/termos', '/sobre'];
 
 export function proxy(request: NextRequest) {
   const host = (request.headers.get('host') ?? '').toLowerCase().split(':')[0] ?? '';

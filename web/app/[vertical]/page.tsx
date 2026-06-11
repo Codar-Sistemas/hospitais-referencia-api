@@ -30,7 +30,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
   const [city, setCity] = useState('');
   const [cep, setCep] = useState('');
 
-  const { hospitals, error, searched, isPending, search } = useHospitalSearch(v.slug);
+  const { hospitals, error, searched, isPending, search } = useHospitalSearch(v.apiSlug);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();

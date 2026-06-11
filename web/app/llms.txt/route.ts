@@ -18,11 +18,11 @@ A plataforma agrega os documentos publicados em gov.br/saude, extrai as tabelas 
 ## Site
 
 - [Hub MapaSUS](${SITE}/): porta de entrada da plataforma, busca cross-vertical e lista das verticais
-- [Animais peçonhentos — busca por cidade, CEP ou animal](${SITE}/venomous-animals): hospitais com soro antiofídico/antiveneno
-- [Doenças raras — serviços habilitados pelo SUS](${SITE}/rare-diseases): SRDR, atenção especializada e terapia gênica
-- [Oncologia — CACON e UNACON](${SITE}/oncology): alta complexidade, radioterapia, reconstrução mamária
-- [Consulta para profissionais](${SITE}/venomous-animals/profissionais): tabela técnica com CNES, telefone e mapa (disponível em cada vertical)
-- [Estatísticas públicas](${SITE}/stats): demanda agregada, resiliência do sync, cobertura geográfica
+- [Animais peçonhentos — busca por cidade, CEP ou animal](${SITE}/animais-peconhentos): hospitais com soro antiofídico/antiveneno
+- [Doenças raras — serviços habilitados pelo SUS](${SITE}/doencas-raras): SRDR, atenção especializada e terapia gênica
+- [Oncologia — CACON e UNACON](${SITE}/oncologia): alta complexidade, radioterapia, reconstrução mamária
+- [Consulta para profissionais](${SITE}/animais-peconhentos/profissionais): tabela técnica com CNES, telefone e mapa (disponível em cada vertical)
+- [Estatísticas públicas](${SITE}/estatisticas): demanda agregada, resiliência do sync, cobertura geográfica
 - [Documentação da API](${SITE}/docs): exemplos curl, parâmetros, formato de resposta
 - [Termos de uso](${SITE}/termos)
 

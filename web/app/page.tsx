@@ -164,12 +164,23 @@ export default function Hub() {
             partir das publicações oficiais do Ministério da Saúde.
           </p>
           <p className="mt-3 text-xs text-slate-400 leading-relaxed">
-            O MapaSUS é uma iniciativa cidadã independente, mantida pela{' '}
-            <a href="https://codarsistemas.com.br" className="text-emerald-600 hover:underline">
+            O MapaSUS é uma iniciativa cidadã independente, desenvolvida e mantida voluntariamente
+            pela{' '}
+            <a
+              href="https://codarsistemas.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 hover:underline"
+            >
               Codar Sistemas
             </a>
-            . Não tem vínculo institucional com o Ministério da Saúde do Brasil. Em caso de
-            emergência, ligue para o SAMU (192).
+            . Não possui vínculo institucional com o Ministério da Saúde nem com qualquer órgão
+            público — é um projeto da sociedade civil que facilita o acesso a informações que já são
+            públicas. Em caso de emergência, ligue imediatamente para o{' '}
+            <a href="tel:192" className="text-red-600 font-semibold hover:underline">
+              SAMU: 192
+            </a>
+            .
           </p>
         </div>
       </section>

@@ -37,6 +37,33 @@ export async function sb<T>(path: string, params: SbParams = {}): Promise<T[]> {
   return (await r.json()) as T[];
 }
 
+// Read via the service key. Used by read-only endpoints that aggregate
+// internal tables (e.g. /v1/stats over api_metrics / sync_logs): those views
+// are `security_invoker = on`, so anon would lack access to the raw tables.
+// service_role bypasses RLS and the key stays server-side (never reaches the
+// browser). The response carries aggregates only — no PII — and is CDN-cached.
+export async function sbService<T>(path: string, params: SbParams = {}): Promise<T[]> {
+  if (!SUPABASE_SERVICE_KEY) {
+    throw new Error('SUPABASE_SERVICE_KEY is not configured');
+  }
+  const url = new URL(`${REST_BASE}/${path}`);
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') {
+      url.searchParams.set(k, String(v));
+    }
+  }
+  const r = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    },
+  });
+  if (!r.ok) {
+    throw new Error(`Supabase error ${r.status}: ${await r.text()}`);
+  }
+  return (await r.json()) as T[];
+}
+
 export async function sbRpc<T>(fn: string, body: Record<string, unknown>): Promise<T[]> {
   if (!SUPABASE_ANON_KEY) {
     throw new Error('SUPABASE_ANON_KEY is not configured');

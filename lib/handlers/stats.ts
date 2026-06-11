@@ -2,7 +2,7 @@
 // No PII; safe for CDN caching.
 
 import { json } from '../core/http.js';
-import { sb } from '../core/supabase.js';
+import { sbService } from '../core/supabase.js';
 import type { Request, Response } from '../types/http.js';
 
 interface OverviewRow {
@@ -48,12 +48,12 @@ interface CoverageRow {
 
 export async function getStats(_req: Request, res: Response): Promise<void> {
   const [overview, demand, treatments, timeline, resilience, coverage] = await Promise.all([
-    sb<OverviewRow>('v_search_stats_30d', { select: '*', limit: '1' }),
-    sb<DemandRow>('v_demand_by_user_state', { select: '*' }),
-    sb<TreatmentPopularityRow>('v_treatment_popularity_30d', { select: '*' }),
-    sb<SearchTimelineRow>('v_search_timeline_30d', { select: '*' }),
-    sb<SyncResilienceRow>('v_sync_resilience_90d', { select: '*', limit: '1' }),
-    sb<CoverageRow>('v_coverage_by_state', { select: '*' }),
+    sbService<OverviewRow>('v_search_stats_30d', { select: '*', limit: '1' }),
+    sbService<DemandRow>('v_demand_by_user_state', { select: '*' }),
+    sbService<TreatmentPopularityRow>('v_treatment_popularity_30d', { select: '*' }),
+    sbService<SearchTimelineRow>('v_search_timeline_30d', { select: '*' }),
+    sbService<SyncResilienceRow>('v_sync_resilience_90d', { select: '*', limit: '1' }),
+    sbService<CoverageRow>('v_coverage_by_state', { select: '*' }),
   ]);
 
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');

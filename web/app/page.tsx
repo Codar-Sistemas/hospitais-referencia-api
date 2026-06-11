@@ -101,10 +101,21 @@ export default function Hub() {
             Os estabelecimentos de referência do <span className="text-emerald-600">SUS</span>,
             fáceis de encontrar
           </h1>
-          <p className="mt-5 text-slate-500 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            O Ministério da Saúde publica as listas de hospitais habilitados por programa em PDFs e
-            planilhas dispersos. O MapaSUS organiza, normaliza e republica esses dados com busca por
-            cidade, CEP e proximidade — atualizados automaticamente todos os dias.
+          <p className="mt-5 text-slate-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            Digite sua <strong className="text-slate-800">cidade</strong> e encontre em segundos os
+            hospitais habilitados pelo SUS perto de você:{' '}
+            <strong className="text-slate-800">soro antiveneno</strong> para acidentes com cobras,
+            escorpiões e aranhas, <strong className="text-slate-800">doenças raras</strong> e{' '}
+            <strong className="text-slate-800">oncologia</strong> — com endereço, telefone e mapa.
+          </p>
+          <p className="mt-3 text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            Numa emergência real, saber para onde ir salva tempo: acione o{' '}
+            <a href="tel:192" className="font-semibold text-red-600 hover:underline">
+              SAMU (192)
+            </a>{' '}
+            e use o MapaSUS para localizar a unidade de referência mais próxima. Dentro de cada
+            área, busque também por CEP e proximidade. Dados oficiais do Ministério da Saúde,
+            atualizados todos os dias.
           </p>
           <HubSearch />
         </div>

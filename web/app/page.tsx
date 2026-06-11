@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import EmergencyNotice from '@/components/EmergencyNotice';
+import EmergencyBanner from '@/components/EmergencyBanner';
 import HubSearch from '@/components/hub/HubSearch';
 import { SITE_URL } from '@/lib/site';
-import { VERTICALS, type VerticalTheme } from '@/lib/verticals';
+import { THEME_CARD_ACCENT, VERTICALS } from '@/lib/verticals';
 
 export const metadata: Metadata = {
   title: 'MapaSUS — Estabelecimentos de Referência do SUS',
@@ -18,29 +18,6 @@ export const metadata: Metadata = {
     siteName: 'MapaSUS',
     locale: 'pt_BR',
     type: 'website',
-  },
-};
-
-// Per-theme accent classes. Full CSS-variable theming is a follow-up; for now
-// each vertical card carries its own static accent.
-const ACCENT: Record<VerticalTheme, { dot: string; ring: string; text: string; hover: string }> = {
-  venom: {
-    dot: 'bg-emerald-500',
-    ring: 'hover:border-emerald-300 hover:ring-emerald-100',
-    text: 'text-emerald-700',
-    hover: 'group-hover:text-emerald-600',
-  },
-  rare: {
-    dot: 'bg-violet-500',
-    ring: 'hover:border-violet-300 hover:ring-violet-100',
-    text: 'text-violet-700',
-    hover: 'group-hover:text-violet-600',
-  },
-  oncology: {
-    dot: 'bg-sky-500',
-    ring: 'hover:border-sky-300 hover:ring-sky-100',
-    text: 'text-sky-700',
-    hover: 'group-hover:text-sky-600',
   },
 };
 
@@ -99,6 +76,8 @@ export default function Hub() {
         </div>
       </header>
 
+      <EmergencyBanner />
+
       {/* Hero */}
       <section className="bg-white border-b border-slate-100">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
@@ -115,7 +94,6 @@ export default function Hub() {
             planilhas dispersos. O MapaSUS organiza, normaliza e republica esses dados com busca por
             cidade, CEP e proximidade — atualizados automaticamente todos os dias.
           </p>
-          <EmergencyNotice label="Emergência? Ligue para o SAMU: 192" />
           <HubSearch />
         </div>
       </section>
@@ -127,7 +105,7 @@ export default function Hub() {
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {VERTICALS.map((v) => {
-            const accent = ACCENT[v.theme];
+            const accent = THEME_CARD_ACCENT[v.theme];
             const isLive = v.status === 'live';
             const inner = (
               <>

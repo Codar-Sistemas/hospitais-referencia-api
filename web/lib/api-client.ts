@@ -159,6 +159,15 @@ export async function searchAcrossVerticals(
 
 export interface StatsResponse {
   generated_at: string;
+  /** Per-vertical footprint (hospitals + last sync). Empty until the prod DB
+   * has migration 020 — the page renders the section only when present. */
+  by_vertical: {
+    vertical: string;
+    hospitals_count: number;
+    geocoded_count: number;
+    last_sync_status: string | null;
+    last_sync_at: string | null;
+  }[];
   overview: {
     total_searches: number;
     searches_with_results: number;

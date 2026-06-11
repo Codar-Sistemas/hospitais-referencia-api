@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { fetchStats, type StatsResponse } from '@/lib/api-client';
 import { TREATMENT_LABEL_BY_VALUE } from '@/lib/constants';
+import { THEME_DOT_CLASS, VERTICAL_BY_DB_KEY } from '@/lib/verticals';
 
 export const metadata: Metadata = {
   title: 'Estatísticas',
@@ -19,12 +21,21 @@ export const revalidate = 300;
 // within `revalidate` once the API responds again.
 const EMPTY_STATS: StatsResponse = {
   generated_at: new Date(0).toISOString(),
+  by_vertical: [],
   overview: null,
   demand_by_user_state: [],
   treatment_popularity_30d: [],
   search_timeline_30d: [],
   sync_resilience_90d: null,
   coverage_by_state: [],
+};
+
+// PT labels + pill colors for sync_logs.status values.
+const SYNC_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  success: { label: 'Sincronizado', className: 'bg-emerald-50 text-emerald-700' },
+  unchanged: { label: 'Sem mudanças', className: 'bg-slate-100 text-slate-600' },
+  failed: { label: 'Falhou', className: 'bg-red-50 text-red-700' },
+  unsupported: { label: 'Não suportado', className: 'bg-amber-50 text-amber-700' },
 };
 
 export default async function StatsPage() {
@@ -36,6 +47,8 @@ export default async function StatsPage() {
   }
   const overview = data.overview;
   const resilience = data.sync_resilience_90d;
+  // `?? []` guards against an older API build that predates `by_vertical`.
+  const byVertical = data.by_vertical ?? [];
   const maxDemand = Math.max(...data.demand_by_user_state.map((r) => r.searches), 1);
   const maxTreatment = Math.max(...data.treatment_popularity_30d.map((r) => r.searches), 1);
   const maxTimeline = Math.max(...data.search_timeline_30d.map((r) => r.searches), 1);
@@ -63,6 +76,61 @@ export default async function StatsPage() {
         <Stat label="Hospitais cadastrados" value={totalHospitals} />
         <Stat label="UFs com cobertura" value={`${statesCovered}/27`} />
       </section>
+
+      {/* Per-vertical footprint — rendered only when the API exposes it
+          (migration 020). One card per health area: hospitals, geocoding
+          coverage and the last sync run's outcome. */}
+      {byVertical.length > 0 && (
+        <section>
+          <Card title="Por área de saúde">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {byVertical.map((row) => {
+                const v = VERTICAL_BY_DB_KEY[row.vertical];
+                if (!v) return null;
+                const sync = SYNC_STATUS_LABEL[row.last_sync_status ?? ''] ?? null;
+                return (
+                  <Link
+                    key={row.vertical}
+                    href={`/${v.slug}`}
+                    className="group rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                      <span className="text-sm font-semibold text-slate-800 group-hover:text-slate-900">
+                        {v.label}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-2xl font-bold text-slate-900">
+                      {row.hospitals_count.toLocaleString('pt-BR')}
+                      <span className="ml-1.5 text-xs font-medium text-slate-400">hospitais</span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {row.geocoded_count.toLocaleString('pt-BR')} geocodificados (
+                      {row.hospitals_count > 0
+                        ? Math.round((row.geocoded_count / row.hospitals_count) * 100)
+                        : 0}
+                      %)
+                    </p>
+                    {sync && row.last_sync_at && (
+                      <p className="mt-3 flex items-center gap-1.5 text-xs">
+                        <span className={`px-1.5 py-0.5 rounded font-medium ${sync.className}`}>
+                          {sync.label}
+                        </span>
+                        <span className="text-slate-400">
+                          {new Date(row.last_sync_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                        </span>
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+        </section>
+      )}
 
       {/* Demand by user state */}
       <section className="grid lg:grid-cols-2 gap-8">

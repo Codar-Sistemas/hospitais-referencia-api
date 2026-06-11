@@ -2,6 +2,12 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import DocsSidebar from '@/components/docs/DocsSidebar';
 import { API_URL } from '@/lib/site';
+import {
+  LIVE_VERTICALS,
+  THEME_BADGE_CLASS,
+  THEME_CARD_ACCENT,
+  THEME_DOT_CLASS,
+} from '@/lib/verticals';
 
 export const metadata: Metadata = {
   title: 'API Docs',
@@ -267,52 +273,13 @@ function LegendTable({ rows }: { rows: { term: string; meaning: string }[] }) {
   );
 }
 
-type VTheme = 'venom' | 'rare' | 'oncology';
-
-const VERTICAL_CARDS: {
-  label: string;
-  slug: string;
-  param: string;
-  paramKind: string;
-  theme: VTheme;
-}[] = [
-  {
-    label: 'Animais peçonhentos',
-    slug: 'venomous-animals',
-    param: 'treatment',
-    paramKind: 'tipo de soro',
-    theme: 'venom',
-  },
-  {
-    label: 'Doenças raras',
-    slug: 'rare-diseases',
-    param: 'disease',
-    paramKind: 'área de doença',
-    theme: 'rare',
-  },
-  {
-    label: 'Oncologia',
-    slug: 'oncology',
-    param: 'disease',
-    paramKind: 'tipo de serviço',
-    theme: 'oncology',
-  },
-];
-
-const THEME_DOT: Record<VTheme, string> = {
-  venom: 'bg-emerald-500',
-  rare: 'bg-violet-500',
-  oncology: 'bg-sky-500',
-};
-const THEME_PILL: Record<VTheme, string> = {
-  venom: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  rare: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
-  oncology: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
-};
-const THEME_CARD: Record<VTheme, string> = {
-  venom: 'hover:border-emerald-300',
-  rare: 'hover:border-violet-300',
-  oncology: 'hover:border-sky-300',
+// Docs-only copy per vertical: which query param filters specialties and how
+// to describe it. Label, slug and theme come from the registry — a new live
+// vertical shows up in the docs automatically (with a sensible default note).
+const FILTER_NOTES: Record<string, { param: string; paramKind: string }> = {
+  'venomous-animals': { param: 'treatment', paramKind: 'tipo de soro' },
+  'rare-diseases': { param: 'disease', paramKind: 'área de doença' },
+  oncology: { param: 'disease', paramKind: 'tipo de serviço' },
 };
 
 const ROUTE_FORMATS: { name: string; badge?: string; desc: string; routes: string[] }[] = [
@@ -441,28 +408,35 @@ export default function Docs() {
 
             {/* Vertical cards */}
             <div className="grid gap-3 sm:grid-cols-3 mb-6">
-              {VERTICAL_CARDS.map((v) => (
-                <div
-                  key={v.slug}
-                  className={`bg-white rounded-2xl border border-slate-200 p-4 shadow-sm transition-colors ${THEME_CARD[v.theme]}`}
-                >
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className={`w-2.5 h-2.5 rounded-full ${THEME_DOT[v.theme]}`} />
-                    <span className="font-semibold text-slate-900 text-sm leading-tight">
-                      {v.label}
-                    </span>
-                  </div>
-                  <code
-                    className={`inline-block text-[11px] font-mono px-2 py-0.5 rounded-full ${THEME_PILL[v.theme]}`}
+              {LIVE_VERTICALS.map((v) => {
+                const note = FILTER_NOTES[v.slug] ?? {
+                  param: 'disease',
+                  paramKind: v.diseaseFilterLabel.toLowerCase(),
+                };
+                return (
+                  <div
+                    key={v.slug}
+                    className={`bg-white rounded-2xl border border-slate-200 p-4 shadow-sm transition-colors ${THEME_CARD_ACCENT[v.theme].ring}`}
                   >
-                    {v.slug}
-                  </code>
-                  <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
-                    Filtro: <code className="font-mono text-slate-700 font-medium">{v.param}</code>{' '}
-                    <span className="text-slate-400">({v.paramKind})</span>
-                  </p>
-                </div>
-              ))}
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className={`w-2.5 h-2.5 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                      <span className="font-semibold text-slate-900 text-sm leading-tight">
+                        {v.label}
+                      </span>
+                    </div>
+                    <code
+                      className={`inline-block text-[11px] font-mono px-2 py-0.5 rounded-full ${THEME_BADGE_CLASS[v.theme]}`}
+                    >
+                      {v.slug}
+                    </code>
+                    <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
+                      Filtro:{' '}
+                      <code className="font-mono text-slate-700 font-medium">{note.param}</code>{' '}
+                      <span className="text-slate-400">({note.paramKind})</span>
+                    </p>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Route formats */}

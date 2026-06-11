@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import SamuBadge from '@/components/SamuBadge';
 import { LIVE_VERTICALS, THEME_DOT_CLASS } from '@/lib/verticals';
 
 // Stats and docs are platform-wide (the API is one namespaced service, the
@@ -173,13 +174,7 @@ export default function Navbar({ vertical, label }: NavbarProps) {
         </nav>
 
         {/* Desktop SAMU badge */}
-        <a
-          href="tel:192"
-          className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-100 transition-colors"
-        >
-          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-          SAMU 192
-        </a>
+        <SamuBadge className="hidden md:flex" />
 
         {/* Mobile hamburger */}
         <button

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import EmergencyBanner from '@/components/EmergencyBanner';
+import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import { API_URL, SITE_URL } from '@/lib/site';
 import { getVertical, LIVE_VERTICALS, type Vertical } from '@/lib/verticals';
@@ -145,41 +145,7 @@ export default async function VerticalLayout({
       <Navbar vertical={v.slug} label={v.label} />
       <EmergencyBanner />
       <main className="flex-1">{children}</main>
-      <footer className="border-t border-slate-200 bg-white py-8 mt-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <Link href="/" className="flex items-center gap-2 hover:text-slate-600 transition-colors">
-            <div className="w-6 h-6 bg-accent-600 rounded flex items-center justify-center text-white text-xs font-bold">
-              +
-            </div>
-            <span className="font-medium text-slate-500">MapaSUS · {v.label}</span>
-          </Link>
-          <p className="text-center">
-            Dados:{' '}
-            <a
-              href={v.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-600 hover:underline"
-            >
-              Ministério da Saúde
-            </a>{' '}
-            · Atualização automática diária
-          </p>
-          <div className="flex items-center gap-4">
-            <Link href="/termos" className="hover:text-slate-600 transition-colors">
-              Termos de uso
-            </Link>
-            <a
-              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-slate-600 transition-colors"
-            >
-              GitHub ↗
-            </a>
-          </div>
-        </div>
-      </footer>
+      <Footer verticalLabel={v.label} sourceUrl={v.sourceUrl} className="mt-12" />
     </div>
   );
 }

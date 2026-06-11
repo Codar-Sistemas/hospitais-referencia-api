@@ -165,57 +165,59 @@ export default function Navbar({ vertical, label }: NavbarProps = {}) {
           </div>
         </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {links.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                pathname === href
-                  ? 'bg-accent-50 text-accent-700 font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
+        {/* Right side: nav links + SAMU (+ GitHub on platform pages), then
+            the mobile hamburger. One group so everything right-aligns. */}
+        <div className="flex items-center gap-3">
+          <nav className="hidden md:flex items-center gap-1">
+            {links.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  pathname === href
+                    ? 'bg-accent-50 text-accent-700 font-semibold'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
 
-        {/* Desktop SAMU badge (+ GitHub on platform pages, matching the hub) */}
-        <div className="hidden md:flex items-center gap-3">
-          <SamuBadge />
-          {!vertical && (
-            <a
-              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
-            >
-              GitHub ↗
-            </a>
-          )}
-        </div>
+          <div className="hidden md:flex items-center gap-3">
+            <SamuBadge />
+            {!vertical && (
+              <a
+                href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                GitHub ↗
+              </a>
+            )}
+          </div>
 
-        {/* Mobile hamburger */}
-        <button
-          type="button"
-          aria-label="Abrir menu"
-          aria-expanded={isOpen}
-          aria-controls="mobile-drawer"
-          onClick={() => setIsOpen(true)}
-          className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            aria-label="Abrir menu"
+            aria-expanded={isOpen}
+            aria-controls="mobile-drawer"
+            onClick={() => setIsOpen(true)}
+            className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer + backdrop */}

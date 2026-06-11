@@ -12,6 +12,9 @@ interface SearchByCityProps {
   onCityChange: (value: string) => void;
   onStateCodeChange: (value: string) => void;
   onTreatmentChange: (value: string) => void;
+  /** Hide the treatment combobox for verticals without a treatment
+   * vocabulary (e.g. rare-diseases). Defaults to shown. */
+  showTreatmentFilter?: boolean;
 }
 
 export default function SearchByCity({
@@ -21,6 +24,7 @@ export default function SearchByCity({
   onCityChange,
   onStateCodeChange,
   onTreatmentChange,
+  showTreatmentFilter = true,
 }: SearchByCityProps) {
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,10 +44,7 @@ export default function SearchByCity({
     [],
   );
 
-  const cityOptions = useMemo(
-    () => cities.map((name) => ({ value: name, label: name })),
-    [cities],
-  );
+  const cityOptions = useMemo(() => cities.map((name) => ({ value: name, label: name })), [cities]);
 
   // Fetch IBGE city list whenever the state changes. Clears the selected
   // city if it doesn't exist in the new state's list.
@@ -77,7 +78,11 @@ export default function SearchByCity({
       : 'Selecione uma cidade';
 
   return (
-    <div className="col-span-full grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div
+      className={`col-span-full grid grid-cols-1 gap-4 ${
+        showTreatmentFilter ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+      }`}
+    >
       <div>
         <label className={FIELD_LABEL_CLASS}>Estado *</label>
         <Combobox
@@ -98,15 +103,17 @@ export default function SearchByCity({
           disabled={cityDisabled}
         />
       </div>
-      <div>
-        <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
-        <Combobox
-          value={treatment}
-          onChange={onTreatmentChange}
-          options={treatmentOptions}
-          placeholder="Todos os tipos"
-        />
-      </div>
+      {showTreatmentFilter && (
+        <div>
+          <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
+          <Combobox
+            value={treatment}
+            onChange={onTreatmentChange}
+            options={treatmentOptions}
+            placeholder="Todos os tipos"
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -31,8 +31,20 @@ export interface Vertical {
   theme: VerticalTheme;
   /** The vertical's treatment/specialty options (PT labels, EN canonical values). */
   treatments: ReadonlyArray<TreatmentOption>;
-  /** Hero copy for the vertical home. */
-  hero: { eyebrow: string; titleLead: string; titleAccent: string; subtitle: string };
+  /** Hero copy for the vertical home. `emergencyNote` renders the red pill
+   * under the subtitle — omit it for non-emergency verticals. */
+  hero: {
+    eyebrow: string;
+    titleLead: string;
+    titleAccent: string;
+    subtitle: string;
+    emergencyNote?: string;
+  };
+  /** "Como funciona" cards on the vertical home (3 expected). */
+  howItWorks: ReadonlyArray<{ title: string; body: string }>;
+  /** FAQ entries — rendered as <details> blocks AND as FAQPage JSON-LD,
+   * so answers must be plain text (no markup). */
+  faq: ReadonlyArray<{ question: string; answer: string }>;
   /** Per-vertical SEO. `canonical` is derived as `/${slug}`. */
   metadata: { title: string; description: string; keywords: string[] };
   /** One-line description for the hub card. */
@@ -59,7 +71,49 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
       titleAccent: 'e antiveneno no Brasil',
       subtitle:
         'Encontre a unidade de referência mais próxima em caso de acidente com animais peçonhentos.',
+      emergencyNote: 'Em emergência, ligue para o SAMU: 192',
     },
+    howItWorks: [
+      {
+        title: '1. Dados oficiais',
+        body: 'Os PDFs publicados pelo Ministério da Saúde para cada estado são monitorados todos os dias. Quando um arquivo muda, a base é atualizada automaticamente.',
+      },
+      {
+        title: '2. Busca inteligente',
+        body: 'Localize a unidade de referência mais próxima por cidade, CEP ou tipo de animal. Resultados ordenados por distância quando coordenadas estão disponíveis.',
+      },
+      {
+        title: '3. Pronto para emergência',
+        body: 'Cada hospital traz telefone, endereço, CNES e a lista exata de soros disponíveis (botrópico, crotálico, elapídico, escorpiônico e outros).',
+      },
+    ],
+    faq: [
+      {
+        question: 'O que são animais peçonhentos?',
+        answer:
+          'Animais peçonhentos são aqueles que produzem veneno e possuem um mecanismo para inoculá-lo, como cobras (jararaca, cascavel, coral, surucucu), escorpiões, aranhas (armadeira, marrom) e lagartas (Lonomia). No Brasil, acidentes com esses animais são tratados como urgência médica no SUS.',
+      },
+      {
+        question: 'O que devo fazer em caso de acidente?',
+        answer:
+          'Ligue imediatamente para o SAMU (192). Mantenha a pessoa acidentada calma e em repouso, com o membro afetado elevado se possível. Não faça torniquete, não corte a região, não chupe o veneno. Lave o local com água e sabão e procure o hospital de referência mais próximo — esta ferramenta ajuda você a identificá-lo.',
+      },
+      {
+        question: 'De onde vêm os dados?',
+        answer:
+          'Os dados vêm dos PDFs oficiais publicados pelo Ministério da Saúde em gov.br/saude. Eles são lidos automaticamente todos os dias e estruturados para facilitar a busca. Nenhum dado é inventado — apenas normalizado.',
+      },
+      {
+        question: 'Quais tipos de soro existem?',
+        answer:
+          'Os principais são: soro antibotrópico (jararaca, urutu), soro anticrotálico (cascavel), soro antielapídico (coral-verdadeira), soro antilaquético (surucucu), soro antiescorpiônico, soro antiloxoscélico (aranha marrom), soro antifoneutrico (aranha armadeira) e soro antilonômico (lagarta-de-fogo). Nem todo hospital tem todos os tipos — esta ferramenta mostra exatamente quais cada unidade disponibiliza.',
+      },
+      {
+        question: 'A API é gratuita?',
+        answer:
+          'Sim. A API REST é pública, gratuita, sem autenticação e documentada na rota /docs. Há rate limit de 15 requisições por minuto por IP para proteger contra abusos. Para casos de uso institucional com volume maior, abra uma issue no GitHub do projeto.',
+      },
+    ],
     metadata: {
       title: 'Hospitais de Referência para Animais Peçonhentos | Brasil',
       description:
@@ -92,25 +146,76 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     subdomain: 'raras.mapasus.com.br',
     label: 'Doenças Raras',
     shortLabel: 'Raras',
-    status: 'coming-soon',
+    status: 'live',
     theme: 'rare',
     treatments: [],
     hero: {
-      eyebrow: 'Em breve',
-      titleLead: 'Centros de referência',
-      titleAccent: 'em doenças raras',
+      eyebrow: 'Dados oficiais do Ministério da Saúde',
+      titleLead: 'Centros de referência em',
+      titleAccent: 'doenças raras no SUS',
       subtitle:
-        'Os serviços habilitados pelo SUS para diagnóstico e tratamento de doenças raras, em construção.',
+        'Encontre os Serviços de Referência, de Atenção Especializada e de Terapia Gênica habilitados pelo SUS para diagnóstico e tratamento de doenças raras.',
     },
+    howItWorks: [
+      {
+        title: '1. Dados oficiais',
+        body: 'As planilhas de estabelecimentos habilitados publicadas pelo Ministério da Saúde são monitoradas todos os dias. Quando um arquivo muda, a base é atualizada automaticamente.',
+      },
+      {
+        title: '2. Busca inteligente',
+        body: 'Localize o serviço habilitado mais próximo por cidade ou CEP. Resultados ordenados por distância quando coordenadas estão disponíveis.',
+      },
+      {
+        title: '3. Informações completas',
+        body: 'Cada serviço traz endereço, telefone e CNES, enriquecidos diretamente do Cadastro Nacional de Estabelecimentos de Saúde (CNES).',
+      },
+    ],
+    faq: [
+      {
+        question: 'O que são doenças raras?',
+        answer:
+          'Doenças raras são aquelas que afetam até 65 pessoas a cada 100 mil habitantes. Existem entre 6 e 8 mil tipos conhecidos — cerca de 80% têm origem genética. No Brasil, estima-se que 13 milhões de pessoas convivam com alguma doença rara, e o SUS oferece diagnóstico e tratamento em serviços especializados habilitados pelo Ministério da Saúde.',
+      },
+      {
+        question: 'O que é um Serviço de Referência em Doenças Raras?',
+        answer:
+          'É um estabelecimento de saúde habilitado pelo Ministério da Saúde para diagnóstico, tratamento e acompanhamento de pessoas com doenças raras, com equipe multidisciplinar e exames especializados. Há também Serviços de Atenção Especializada, com escopo complementar. A habilitação é formalizada por portaria e publicada pelo Ministério.',
+      },
+      {
+        question: 'O que é o serviço de terapia gênica?',
+        answer:
+          'É a categoria de habilitação mais recente: centros autorizados a aplicar terapias gênicas pelo SUS, como o tratamento da atrofia muscular espinhal (AME). Por exigirem infraestrutura e treinamento específicos, poucos hospitais no país possuem essa habilitação.',
+      },
+      {
+        question: 'De onde vêm os dados?',
+        answer:
+          'Das planilhas oficiais de estabelecimentos habilitados publicadas pelo Ministério da Saúde em gov.br/saude, lidas automaticamente todos os dias. Endereços, telefones e coordenadas são complementados com o Cadastro Nacional de Estabelecimentos de Saúde (CNES). Nenhum dado é inventado — apenas normalizado.',
+      },
+      {
+        question: 'A API é gratuita?',
+        answer:
+          'Sim. A API REST é pública, gratuita, sem autenticação e documentada na rota /docs. Há rate limit de 15 requisições por minuto por IP para proteger contra abusos.',
+      },
+    ],
     metadata: {
-      title: 'Centros de Referência em Doenças Raras no SUS | MapaSUS',
+      title: 'Centros de Referência em Doenças Raras no SUS | Brasil',
       description:
-        'Diretório dos serviços de referência habilitados pelo SUS para doenças raras no Brasil. Em construção.',
-      keywords: ['doenças raras', 'SUS', 'centro de referência', 'ministério da saúde'],
+        'Encontre os serviços habilitados pelo SUS para doenças raras e terapia gênica. Busca por cidade ou CEP. Dados oficiais do Ministério da Saúde.',
+      keywords: [
+        'doenças raras',
+        'SUS',
+        'centro de referência',
+        'serviço de referência em doenças raras',
+        'terapia gênica',
+        'AME',
+        'ministério da saúde',
+        'CNES',
+      ],
     },
     cardDescription:
-      'Os serviços habilitados pelo SUS para diagnóstico e tratamento de doenças raras. Em construção.',
-    sourceUrl: 'https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/d/doencas-raras',
+      'Os serviços habilitados pelo SUS para diagnóstico e tratamento de doenças raras, incluindo terapia gênica.',
+    sourceUrl:
+      'https://www.gov.br/saude/pt-br/composicao/saes/doencas-raras/politica-de-saude/estabelecimentos-habilitados',
   },
   {
     slug: 'oncology',
@@ -128,6 +233,8 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
       subtitle:
         'Os hospitais habilitados pelo SUS para tratamento oncológico de alta complexidade, em construção.',
     },
+    howItWorks: [],
+    faq: [],
     metadata: {
       title: 'Centros de Alta Complexidade em Oncologia no SUS | MapaSUS',
       description:

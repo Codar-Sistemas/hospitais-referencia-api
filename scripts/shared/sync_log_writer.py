@@ -1,15 +1,18 @@
 """
-Writes one row per state per sync run into the sync_logs table.
+Writes one row per sync run into the sync_logs table.
 
 Captures the operational details required for the public /stats dashboard:
 how often gov.br fetches succeed, how often OCR fallback kicks in, and how
-long each state's sync takes. Best-effort — never let logging block a sync.
+long each run takes. Per-UF runs (venomous_animals) log one row per state;
+national-source runs (rare_diseases) log a single row with state_code='BR'.
+Best-effort — never let logging block a sync.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from scripts.shared.config import VERTICAL_VENOMOUS_ANIMALS
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
 from scripts.shared.types import SyncResult
@@ -22,12 +25,13 @@ def write_sync_log(
     started_at: datetime,
     result: SyncResult,
     triggered_by: str = "manual",
+    vertical: str = VERTICAL_VENOMOUS_ANIMALS,
 ) -> None:
     """
-    Persist a sync_log row reflecting the outcome of a single state's run.
+    Persist a sync_log row reflecting the outcome of a single run.
 
-    `result` is whatever sync_state / sync_state_safe returned. We normalize
-    its loose shape into the strict sync_logs schema.
+    `result` is whatever the vertical's sync returned. We normalize its
+    loose shape into the strict sync_logs schema.
     """
     finished_at = datetime.now(UTC)
     duration_ms = int((finished_at - started_at).total_seconds() * 1000)
@@ -39,6 +43,7 @@ def write_sync_log(
         "started_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),
         "state_code": state_code,
+        "vertical": vertical,
         "status": status,
         "extraction_source": result.get("extraction_source"),
         "records_inserted": result.get("inserted"),

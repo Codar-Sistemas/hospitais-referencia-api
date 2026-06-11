@@ -57,6 +57,21 @@ jobs:
           if [ -n "${{ github.event.inputs.state_code }}" ]; then ARGS="$ARGS ${{ github.event.inputs.state_code }}"; fi
           python -m scripts.syncs.venomous_animals $ARGS
 
+      # National source (2 XLSX files) — skipped when a specific state was
+      # requested. continue-on-error: a rare-diseases failure is recorded in
+      # sync_logs/vertical_sources (our own observability) and must not block
+      # the venomous geocoding pass below.
+      - name: Sync rare diseases (national XLSX)
+        if: github.event.inputs.state_code == ''
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS="sync"
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
+          python -m scripts.syncs.rare_diseases $ARGS
+
       - id: check
         name: Check whether any hospitals are pending geocoding
         if: github.event.inputs.skip_geocoding != 'true'

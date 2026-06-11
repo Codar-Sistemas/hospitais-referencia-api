@@ -10,14 +10,17 @@ import { useHospitalSearch } from '@/hooks/useHospitalSearch';
 import { getVertical } from '@/lib/verticals';
 import type { SearchMode } from '@/lib/types';
 
-// NOTE: the hero reads from the registry, but the "Como funciona" + FAQ blocks
-// below are still venomous-animals-specific. They only render for the single
-// live vertical today; per-vertical FAQ content is a follow-up for when a
-// second vertical goes live.
 export default function VerticalHome({ params }: { params: Promise<{ vertical: string }> }) {
   const { vertical } = use(params);
   // The layout already validated the slug (dynamicParams=false + notFound).
   const v = getVertical(vertical)!;
+
+  // The "by animal/treatment" tab only exists for verticals with a
+  // treatment vocabulary (venomous). Others search by city/CEP alone.
+  const hasTreatments = v.treatments.length > 0;
+  const modes: ReadonlyArray<SearchMode> = hasTreatments
+    ? ['city', 'cep', 'animal']
+    : ['city', 'cep'];
 
   const [mode, setMode] = useState<SearchMode>('city');
   const [stateCode, setStateCode] = useState('');
@@ -31,6 +34,16 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
     e.preventDefault();
     search({ mode, stateCode, city, cep, treatment: treatment || undefined });
   }
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: v.faq.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: { '@type': 'Answer', text: answer },
+    })),
+  };
 
   return (
     <div>
@@ -48,29 +61,31 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
           <p className="mt-4 text-slate-500 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
             {v.hero.subtitle}
           </p>
-          <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-full">
-            <svg
-              className="w-4 h-4 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            Em emergência, ligue para o SAMU: 192
-          </div>
+          {v.hero.emergencyNote && (
+            <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-full">
+              <svg
+                className="w-4 h-4 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              {v.hero.emergencyNote}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Search */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <SearchTabs mode={mode} onChange={setMode} />
+          <SearchTabs mode={mode} onChange={setMode} modes={modes} />
 
           <form onSubmit={handleSearch} className="p-5 sm:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -88,6 +103,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
                   treatment={treatment}
                   onCepChange={setCep}
                   onTreatmentChange={setTreatment}
+                  showTreatmentFilter={hasTreatments}
                 />
               )}
               {mode === 'city' && (
@@ -98,6 +114,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
                   onCityChange={setCity}
                   onStateCodeChange={setStateCode}
                   onTreatmentChange={setTreatment}
+                  showTreatmentFilter={hasTreatments}
                 />
               )}
             </div>
@@ -156,174 +173,65 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
       </div>
 
       {/* ----------------------------------------------------------------
-          Below-the-fold SEO content. Server-rendered (despite the parent
-          being a Client Component) so crawlers see real H2/H3 hierarchy,
-          and AI engines pick up the FAQPage schema.
+          Below-the-fold SEO content, driven by the vertical registry.
+          Server-rendered (despite the parent being a Client Component) so
+          crawlers see real H2/H3 hierarchy and the FAQPage schema.
           ---------------------------------------------------------------- */}
-      <section aria-labelledby="como-funciona" className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
-        <h2 id="como-funciona" className="text-2xl font-bold text-slate-900 mb-6">
-          Como funciona
-        </h2>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-2">1. Dados oficiais</h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Os PDFs publicados pelo Ministério da Saúde para cada estado são monitorados todos os
-              dias. Quando um arquivo muda, a base é atualizada automaticamente.
-            </p>
-          </article>
-          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-2">2. Busca inteligente</h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Localize a unidade de referência mais próxima por cidade, CEP ou tipo de animal.
-              Resultados ordenados por distância quando coordenadas estão disponíveis.
-            </p>
-          </article>
-          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-2">3. Pronto para emergência</h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Cada hospital traz telefone, endereço, CNES e a lista exata de soros disponíveis
-              (botrópico, crotálico, elapídico, escorpiônico e outros).
-            </p>
-          </article>
-        </div>
-      </section>
+      {v.howItWorks.length > 0 && (
+        <section aria-labelledby="como-funciona" className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <h2 id="como-funciona" className="text-2xl font-bold text-slate-900 mb-6">
+            Como funciona
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {v.howItWorks.map(({ title, body }) => (
+              <article
+                key={title}
+                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"
+              >
+                <h3 className="font-semibold text-slate-900 mb-2">{title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
-      <section aria-labelledby="faq" className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
-        <h2 id="faq" className="text-2xl font-bold text-slate-900 mb-6">
-          Perguntas frequentes
-        </h2>
-        <div className="space-y-4">
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              O que são animais peçonhentos?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Animais peçonhentos são aqueles que produzem veneno e possuem um mecanismo para
-              inoculá-lo, como cobras (jararaca, cascavel, coral, surucucu), escorpiões, aranhas
-              (armadeira, marrom) e lagartas (Lonomia). No Brasil, acidentes com esses animais são
-              tratados como urgência médica no SUS.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              O que devo fazer em caso de acidente?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Ligue imediatamente para o SAMU (192). Mantenha a pessoa acidentada calma e em
-              repouso, com o membro afetado elevado se possível. Não faça torniquete, não corte a
-              região, não chupe o veneno. Lave o local com água e sabão e procure o hospital de
-              referência mais próximo — esta ferramenta ajuda você a identificá-lo.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              De onde vêm os dados?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Os dados vêm dos PDFs oficiais publicados pelo Ministério da Saúde em{' '}
-              <a
-                href="https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-600 hover:underline"
+      {v.faq.length > 0 && (
+        <section aria-labelledby="faq" className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
+          <h2 id="faq" className="text-2xl font-bold text-slate-900 mb-6">
+            Perguntas frequentes
+          </h2>
+          <div className="space-y-4">
+            {v.faq.map(({ question, answer }) => (
+              <details
+                key={question}
+                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"
               >
-                gov.br/saude
-              </a>
-              . Eles são lidos automaticamente todos os dias e estruturados para facilitar a busca.
-              Nenhum dado é inventado — apenas normalizado.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              Quais tipos de soro existem?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Os principais são: soro antibotrópico (jararaca, urutu), soro anticrotálico
-              (cascavel), soro antielapídico (coral-verdadeira), soro antilaquético (surucucu), soro
-              antiescorpiônico, soro antiloxoscélico (aranha marrom), soro antifoneutrico (aranha
-              armadeira) e soro antilonômico (lagarta-de-fogo). Nem todo hospital tem todos os tipos
-              — esta ferramenta mostra exatamente quais cada unidade disponibiliza.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              A API é gratuita?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Sim. A API REST é pública, gratuita, sem autenticação e documentada em{' '}
-              <Link href="/docs" className="text-emerald-600 hover:underline">
-                /docs
-              </Link>
-              . Há rate limit de 15 requisições por minuto por IP para proteger contra abusos. Para
-              casos de uso institucional com volume maior,{' '}
-              <a
-                href="https://github.com/Codar-Sistemas/hospitais-referencia-api/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-600 hover:underline"
-              >
-                abra uma issue
-              </a>
-              .
-            </p>
-          </details>
-        </div>
-      </section>
+                <summary className="font-semibold text-slate-900 cursor-pointer">
+                  {question}
+                </summary>
+                <p className="mt-3 text-sm text-slate-600 leading-relaxed">{answer}</p>
+              </details>
+            ))}
+          </div>
+          <p className="mt-6 text-xs text-slate-400">
+            Documentação completa da API em{' '}
+            <Link href="/docs" className="text-emerald-600 hover:underline">
+              /docs
+            </Link>
+            .
+          </p>
+        </section>
+      )}
 
       {/* FAQPage JSON-LD — makes the questions citable by AI engines and
           enables rich snippets in Google search results. */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
+      {v.faq.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
     </div>
   );
 }
-
-const faqJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'O que são animais peçonhentos?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Animais peçonhentos são aqueles que produzem veneno e possuem um mecanismo para inoculá-lo, como cobras (jararaca, cascavel, coral, surucucu), escorpiões, aranhas (armadeira, marrom) e lagartas (Lonomia). No Brasil, acidentes com esses animais são tratados como urgência médica no SUS.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'O que devo fazer em caso de acidente com animal peçonhento?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Ligue imediatamente para o SAMU (192). Mantenha a pessoa acidentada calma e em repouso, com o membro afetado elevado se possível. Não faça torniquete, não corte a região, não chupe o veneno. Lave o local com água e sabão e procure o hospital de referência mais próximo.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'De onde vêm os dados dos hospitais de referência?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Os dados vêm dos PDFs oficiais publicados pelo Ministério da Saúde do Brasil em gov.br/saude. Eles são lidos automaticamente todos os dias e estruturados para facilitar a busca. Nenhum dado é inventado — apenas normalizado.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Quais tipos de soro antiofídico e antiveneno existem?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Os principais são: soro antibotrópico (jararaca, urutu), soro anticrotálico (cascavel), soro antielapídico (coral-verdadeira), soro antilaquético (surucucu), soro antiescorpiônico, soro antiloxoscélico (aranha marrom), soro antifoneutrico (aranha armadeira) e soro antilonômico (lagarta-de-fogo).',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'A API de hospitais de referência é gratuita?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Sim. A API REST é pública, gratuita, sem autenticação e documentada na rota /docs. Há rate limit de 15 requisições por minuto por IP para proteger contra abusos.',
-      },
-    },
-  ],
-};

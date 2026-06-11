@@ -9,6 +9,9 @@ interface SearchByPostalCodeProps {
   treatment: string;
   onCepChange: (value: string) => void;
   onTreatmentChange: (value: string) => void;
+  /** Hide the treatment combobox for verticals without a treatment
+   * vocabulary (e.g. rare-diseases). Defaults to shown. */
+  showTreatmentFilter?: boolean;
 }
 
 export default function SearchByPostalCode({
@@ -16,6 +19,7 @@ export default function SearchByPostalCode({
   treatment,
   onCepChange,
   onTreatmentChange,
+  showTreatmentFilter = true,
 }: SearchByPostalCodeProps) {
   const treatmentOptions = useMemo(
     () =>
@@ -39,15 +43,17 @@ export default function SearchByPostalCode({
           className={INPUT_CLASS}
         />
       </div>
-      <div>
-        <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
-        <Combobox
-          value={treatment}
-          onChange={onTreatmentChange}
-          options={treatmentOptions}
-          placeholder="Todos os tipos"
-        />
-      </div>
+      {showTreatmentFilter && (
+        <div>
+          <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
+          <Combobox
+            value={treatment}
+            onChange={onTreatmentChange}
+            options={treatmentOptions}
+            placeholder="Todos os tipos"
+          />
+        </div>
+      )}
     </>
   );
 }

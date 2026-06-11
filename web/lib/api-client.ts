@@ -8,8 +8,12 @@ import type {
 
 import { API_URL } from './site';
 
-// Re-exported for telemetry.ts and callers that import it from here.
-export const API_BASE = API_URL;
+// Fetch base for actual API calls. A local/preview deploy can point the
+// client at a different API via NEXT_PUBLIC_API_URL (e.g. http://localhost:3001);
+// otherwise the canonical public API is used. This is intentionally separate
+// from the DOCUMENTED API URL (`API_URL`), which always stays canonical.
+// Re-exported for telemetry.ts and other callers.
+export const API_BASE = process.env['NEXT_PUBLIC_API_URL'] || API_URL;
 
 function buildUrl(
   path: string,

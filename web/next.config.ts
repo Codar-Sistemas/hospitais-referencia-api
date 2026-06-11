@@ -8,10 +8,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
-  // Preserve the single indexed URL that moved under the venomous-animals
-  // vertical. (`/` intentionally changed from the venomous search to the hub.)
+  // Host-level redirects (www / old vercel.app → mapasus.com.br) are handled
+  // natively by Vercel once mapasus.com.br is set as the project's Primary
+  // Domain — it 308s every non-primary host to the primary. Doing it here
+  // instead would redirect the live vercel.app URL to mapasus.com.br even
+  // BEFORE its DNS resolves, taking the site offline. So only the path-level
+  // redirect lives here.
   async redirects() {
     return [
+      // Preserve the single indexed URL that moved under the venomous-animals
+      // vertical. (`/` intentionally changed from the venomous search to the hub.)
       {
         source: '/profissionais',
         destination: '/venomous-animals/profissionais',

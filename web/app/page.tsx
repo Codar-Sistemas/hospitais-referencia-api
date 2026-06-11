@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import EmergencyNotice from '@/components/EmergencyNotice';
 import HubSearch from '@/components/hub/HubSearch';
 import { SITE_URL } from '@/lib/site';
 import { VERTICALS, type VerticalTheme } from '@/lib/verticals';
@@ -78,14 +79,23 @@ export default function Hub() {
             </div>
             <span className="font-bold text-slate-800 text-lg tracking-tight">MapaSUS</span>
           </div>
-          <a
-            href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            GitHub ↗
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="tel:192"
+              className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-100 transition-colors"
+            >
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+              SAMU 192
+            </a>
+            <a
+              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              GitHub ↗
+            </a>
+          </div>
         </div>
       </header>
 
@@ -105,6 +115,7 @@ export default function Hub() {
             planilhas dispersos. O MapaSUS organiza, normaliza e republica esses dados com busca por
             cidade, CEP e proximidade — atualizados automaticamente todos os dias.
           </p>
+          <EmergencyNotice label="Emergência? Ligue para o SAMU: 192" />
           <HubSearch />
         </div>
       </section>

@@ -206,9 +206,141 @@ export default function Docs() {
         </div>
       </div>
 
-      {/* Treatment types */}
+      {/* Verticals & routing */}
+      <div className="mb-8">
+        <h2 className="text-lg font-bold text-slate-900 mb-2">Verticais e rotas</h2>
+        <p className="text-sm text-slate-600 leading-relaxed mb-4">
+          A API cobre vários programas do SUS (&ldquo;verticais&rdquo;). Toda rota de hospitais
+          existe em três formatos:
+        </p>
+        <Code>{`# Legado — vertical implícita (animais peçonhentos)
+GET /v1/hospitals?state_code=SP
+
+# Namespaced — vertical explícita (recomendado)
+GET /v1/venomous-animals/hospitals?state_code=SP
+GET /v1/rare-diseases/hospitals?state_code=SP&disease=gene_therapy
+GET /v1/oncology/hospitals?state_code=SP&disease=cacon
+
+# Cross-vertical — uma busca em todas as verticais ativas
+GET /v1/search?city=Salvador`}</Code>
+        <div className="overflow-x-auto rounded-xl border border-slate-200 mt-4">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">
+                  Vertical
+                </th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">
+                  Slug (URL)
+                </th>
+                <th className="text-left px-4 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">
+                  Filtro especializado
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {[
+                {
+                  label: 'Animais peçonhentos',
+                  slug: 'venomous-animals',
+                  filter: 'treatment (tipo de soro)',
+                },
+                {
+                  label: 'Doenças raras',
+                  slug: 'rare-diseases',
+                  filter: 'disease (área de doença)',
+                },
+                {
+                  label: 'Oncologia',
+                  slug: 'oncology',
+                  filter: 'disease (tipo de serviço)',
+                },
+              ].map((v) => (
+                <tr key={v.slug}>
+                  <td className="px-4 py-2.5 text-slate-700 font-medium">{v.label}</td>
+                  <td className="px-4 py-2.5 font-mono text-emerald-700">{v.slug}</td>
+                  <td className="px-4 py-2.5 text-slate-600">{v.filter}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed mt-3">
+          Convenção: URLs em <strong>kebab-case</strong> (<code>/v1/rare-diseases</code>). O
+          parâmetro <code>disease</code> só existe nas verticais baseadas em habilitação (raras,
+          oncologia); a vertical default usa <code>treatment</code>. Uma chave inválida retorna{' '}
+          <code>400</code> listando os valores aceitos.
+        </p>
+      </div>
+
+      {/* disease filter values */}
+      <div className="mb-8 bg-violet-50 border border-violet-200 rounded-2xl p-5">
+        <h3 className="font-semibold text-violet-900 mb-1 text-sm">
+          Valores do filtro <code className="font-mono">disease</code>
+        </h3>
+        <p className="text-xs text-violet-700 mb-4">
+          Chaves canônicas aceitas por <code className="font-mono">?disease=</code> em cada vertical
+          de habilitação.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <div className="text-xs font-bold text-violet-800 mb-2 uppercase tracking-wide">
+              Doenças raras
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                'congenital_anomalies',
+                'intellectual_disability',
+                'inborn_metabolism_errors',
+                'inflammatory_diseases',
+                'infectious_diseases',
+                'autoimmune_diseases',
+                'other_non_genetic',
+                'genetic_counseling',
+                'gene_therapy',
+              ].map((k) => (
+                <code
+                  key={k}
+                  className="bg-white border border-violet-100 text-violet-800 text-[11px] px-1.5 py-0.5 rounded font-mono"
+                >
+                  {k}
+                </code>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-sky-800 mb-2 uppercase tracking-wide">
+              Oncologia
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                'cacon',
+                'unacon',
+                'radiotherapy',
+                'hematology',
+                'pediatric_oncology',
+                'clinical_oncology',
+                'oncology_surgery',
+                'synchronous_treatment',
+                'breast_reconstruction',
+              ].map((k) => (
+                <code
+                  key={k}
+                  className="bg-white border border-sky-100 text-sky-800 text-[11px] px-1.5 py-0.5 rounded font-mono"
+                >
+                  {k}
+                </code>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Treatment types (venomous vertical) */}
       <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl p-5">
-        <h3 className="font-semibold text-amber-900 mb-1 text-sm">Tipos de atendimento</h3>
+        <h3 className="font-semibold text-amber-900 mb-1 text-sm">
+          Tipos de atendimento (animais peçonhentos)
+        </h3>
         <p className="text-xs text-amber-700 mb-4">
           O parâmetro{' '}
           <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono">treatment</code> aceita o
@@ -272,15 +404,21 @@ export default function Docs() {
 
       <Endpoint
         method="GET"
-        path="/v1/hospitals"
-        description="Busca hospitais com filtros combinados. Requer ao menos state_code, city ou q."
+        path="/v1/{vertical}/hospitals"
+        description="Busca hospitais de uma vertical com filtros combinados. Requer ao menos state_code, city ou q. Sem o prefixo /{vertical} a busca recai na vertical default (animais peçonhentos)."
         params={[
           { name: 'state_code', type: 'string', description: 'Sigla do estado (ex: SP, RJ)' },
           { name: 'city', type: 'string', description: 'Nome da cidade (busca parcial)' },
           {
             name: 'treatment',
             type: 'string',
-            description: 'Tipo de soro (canônico em inglês ou alias popular)',
+            description: 'Tipo de soro (vertical peçonhentos; canônico em inglês ou alias popular)',
+          },
+          {
+            name: 'disease',
+            type: 'string',
+            description:
+              'Área/serviço (verticais de habilitação: raras, oncologia) — ver valores acima',
           },
           { name: 'q', type: 'string', description: 'Full-text em name + address' },
           {
@@ -290,27 +428,30 @@ export default function Docs() {
           },
           { name: 'offset', type: 'number', description: 'Paginação' },
         ]}
-        example={`# Por estado e animal
-curl "${BASE}/v1/hospitals?state_code=SP&treatment=escorpiao"
+        example={`# Peçonhentos — por estado e animal
+curl "${BASE}/v1/venomous-animals/hospitals?state_code=SP&treatment=escorpiao"
 
-# Por cidade
-curl "${BASE}/v1/hospitals?city=Campinas&state_code=SP"
+# Oncologia — CACON em SP
+curl "${BASE}/v1/oncology/hospitals?state_code=SP&disease=cacon"
 
-# Full-text
-curl "${BASE}/v1/hospitals?q=santa+casa&state_code=SP"`}
+# Doenças raras — terapia gênica
+curl "${BASE}/v1/rare-diseases/hospitals?disease=gene_therapy"`}
         response={`{
-  "filters": { "state_code": "SP", "city": null, "treatment": "Scorpionic" },
-  "total_returned": 87,
+  "filters": { "state_code": "SP", "disease": "cacon", "vertical": "oncology" },
+  "total_returned": 14,
   "hospitals": [
     {
-      "id": 1,
+      "id": 1203,
       "state_code": "SP",
-      "city": "Adamantina",
-      "name": "Santa Casa de Misericórdia",
-      "address": "Rua Joaquim Luiz Viana, 209",
-      "phones": "(18) 3502-2200",
-      "cnes": "2077647",
-      "treatments": ["Bothropic", "Crotalic", "Scorpionic"]
+      "city": "São Paulo",
+      "name": "Instituto do Câncer do Estado de São Paulo",
+      "address": "Av. Dr. Arnaldo, 251",
+      "phones": "(11) 3893-2000",
+      "cnes": "2792080",
+      "treatments": [],
+      "specialties": [
+        { "specialty": "cacon", "qualification_codes": ["17.13"] }
+      ]
     }
   ]
 }`}
@@ -335,18 +476,27 @@ curl "${BASE}/v1/hospitals?q=santa+casa&state_code=SP"`}
             type: 'number',
             description: 'Raio em metros (padrão 50000, máx 200000)',
           },
-          { name: 'treatment', type: 'string', description: 'Filtro por tipo de soro' },
+          {
+            name: 'treatment',
+            type: 'string',
+            description: 'Filtro por tipo de soro (peçonhentos)',
+          },
+          {
+            name: 'disease',
+            type: 'string',
+            description: 'Filtro por área/serviço (raras, oncologia)',
+          },
           {
             name: 'limit',
             type: 'number',
             description: 'Máximo de resultados (padrão 20, máx 100)',
           },
         ]}
-        example={`# Por CEP
-curl "${BASE}/v1/hospitals/nearby?cep=13280000&treatment=crotalico"
+        example={`# Peçonhentos por CEP
+curl "${BASE}/v1/venomous-animals/hospitals/nearby?cep=13280000&treatment=crotalico"
 
-# Por coordenadas
-curl "${BASE}/v1/hospitals/nearby?lat=-23.5&lng=-46.6&radius_m=30000"`}
+# Oncologia por CEP — radioterapia mais próxima
+curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`}
         response={`{
   "origin": {
     "lat": -22.889, "lng": -48.445,
@@ -386,6 +536,38 @@ curl "${BASE}/v1/hospitals/nearby?lat=-23.5&lng=-46.6&radius_m=30000"`}
   "lat": -22.894, "lng": -48.443,
   "geocoding_status": "ok",
   "geocoding_source": "nominatim"
+}`}
+      />
+
+      <Endpoint
+        method="GET"
+        path="/v1/search"
+        description="Busca cross-vertical: um único hospital pode aparecer com TODOS os programas SUS em que é habilitado. Útil para o hub (uma cidade, todas as áreas). Requer ao menos state_code, city ou q."
+        params={[
+          { name: 'state_code', type: 'string', description: 'Sigla do estado' },
+          { name: 'city', type: 'string', description: 'Nome da cidade (busca parcial)' },
+          { name: 'q', type: 'string', description: 'Full-text em name + address' },
+          {
+            name: 'limit',
+            type: 'number',
+            description: 'Máximo de resultados (padrão 50, máx 200)',
+          },
+          { name: 'offset', type: 'number', description: 'Paginação' },
+        ]}
+        example={`curl "${BASE}/v1/search?city=Salvador"`}
+        response={`{
+  "filters": { "city": "salvador", "vertical": "all" },
+  "total_returned": 11,
+  "hospitals": [
+    {
+      "id": 980,
+      "state_code": "BA",
+      "city": "Salvador",
+      "name": "Hospital Universitário Professor Edgard Santos",
+      "active_verticals": ["oncology", "rare_diseases"],
+      "active_specialties": ["unacon", "breast_reconstruction", "rare_diseases_reference"]
+    }
+  ]
 }`}
       />
 

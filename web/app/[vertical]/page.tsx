@@ -169,7 +169,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
           </form>
         </div>
 
-        {searched && <HospitalList hospitals={hospitals} />}
+        {searched && <HospitalList hospitals={hospitals} showTreatments={hasTreatments} />}
       </div>
 
       {/* ----------------------------------------------------------------

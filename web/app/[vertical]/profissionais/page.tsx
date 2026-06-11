@@ -26,6 +26,12 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
   // The layout already validated the slug (dynamicParams=false + notFound).
   const v = getVertical(vertical)!;
 
+  // Verticals without a treatment vocabulary (e.g. rare-diseases) drop the
+  // serum filter + grid columns — a hospital shared with the venomous
+  // vertical would otherwise surface snake-serum data out of context.
+  const hasTreatments = v.treatments.length > 0;
+  const tableTreatments = hasTreatments ? TABLE_TREATMENTS : [];
+
   const [stateCode, setStateCode] = useState('');
   const [treatment, setTreatment] = useState('');
   const [city, setCity] = useState('');
@@ -222,17 +228,19 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
               disabled={radiusDisabled}
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Tipo de soro
-            </label>
-            <Combobox
-              value={treatment}
-              onChange={setTreatment}
-              options={treatmentOptions}
-              placeholder="Todos"
-            />
-          </div>
+          {hasTreatments && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                Tipo de soro
+              </label>
+              <Combobox
+                value={treatment}
+                onChange={setTreatment}
+                options={treatmentOptions}
+                placeholder="Todos"
+              />
+            </div>
+          )}
           <div className="flex items-end">
             <button
               type="submit"
@@ -271,9 +279,11 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
               <span className="text-slate-900 font-bold">{hospitals.length}</span> resultado
               {hospitals.length !== 1 ? 's' : ''}
             </p>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <span className="text-emerald-600 font-bold">✓</span> = atende
-            </div>
+            {hasTreatments && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <span className="text-emerald-600 font-bold">✓</span> = atende
+              </div>
+            )}
           </div>
 
           <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
@@ -295,7 +305,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide">
                     Telefone
                   </th>
-                  {TABLE_TREATMENTS.map((t) => (
+                  {tableTreatments.map((t) => (
                     <th
                       key={t.value}
                       className={`px-2 py-3 font-semibold text-xs uppercase tracking-wide whitespace-nowrap text-center ${
@@ -343,7 +353,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                         '—'
                       )}
                     </td>
-                    {TABLE_TREATMENTS.map((t) => (
+                    {tableTreatments.map((t) => (
                       <td key={t.value} className="px-2 py-3 text-center">
                         {h.treatments.includes(t.value) ? (
                           <span

@@ -9,10 +9,11 @@
 // route all appear automatically — no per-surface edits.
 //
 // INVARIANT (mirrors the backend's `Vertical` ↔ `KNOWN_VERTICALS` ↔
-// `URL_TO_DB_VERTICAL` discipline): `slug` is the kebab-case URL segment used
-// by both this app's `app/[vertical]` routes AND the backend's namespaced
-// routes `/v1/{slug}/...`; `dbKey` is the snake_case database key. Keep them in
-// sync with the backend whenever a vertical is added or renamed.
+// `URL_TO_DB_VERTICAL` discipline): `apiSlug` is the kebab-case EN segment of
+// the backend's namespaced routes `/v1/{apiSlug}/...` and `dbKey` is the
+// snake_case database key — keep BOTH in sync with the backend whenever a
+// vertical is added or renamed. `slug` is this site's public PT-BR path
+// (`app/[vertical]`, sitemap, canonicals) and is free to differ.
 //
 // This module must stay free of React / next-og / DOM imports so it is safe to
 // import from `proxy.ts`, which is deployed separately from the render runtime.
@@ -22,8 +23,12 @@ import { TREATMENTS } from './constants';
 import { ONCOLOGY_FILTER_OPTIONS, RARE_DISEASE_FILTER_OPTIONS } from './specialties';
 
 export interface Vertical {
-  /** URL slug, kebab-case. Drives `app/[vertical]` and `/v1/{slug}` API routes. */
+  /** Public PT-BR URL slug, kebab-case, unaccented (SEO: the audience searches
+   * in Portuguese). Drives `app/[vertical]` routes, sitemap and canonicals. */
   slug: string;
+  /** API route slug, kebab-case EN. Drives `/v1/{apiSlug}/...` calls — the
+   * public API contract stays in English; never derive it from `slug`. */
+  apiSlug: string;
   /** Database key, snake_case. Parity with the backend; not sent by the web app. */
   dbKey: string;
   /** Production subdomain host (no scheme). Used by `proxy.ts` host routing. */
@@ -116,7 +121,8 @@ export const THEME_CARD_ACCENT: Readonly<
 
 export const VERTICALS: ReadonlyArray<Vertical> = [
   {
-    slug: 'venomous-animals',
+    slug: 'animais-peconhentos',
+    apiSlug: 'venomous-animals',
     dbKey: 'venomous_animals',
     subdomain: 'peconhentos.mapasus.com.br',
     label: 'Animais Peçonhentos',
@@ -202,7 +208,8 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
       'https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia',
   },
   {
-    slug: 'rare-diseases',
+    slug: 'doencas-raras',
+    apiSlug: 'rare-diseases',
     dbKey: 'rare_diseases',
     subdomain: 'raras.mapasus.com.br',
     label: 'Doenças Raras',
@@ -281,7 +288,8 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
       'https://www.gov.br/saude/pt-br/composicao/saes/doencas-raras/politica-de-saude/estabelecimentos-habilitados',
   },
   {
-    slug: 'oncology',
+    slug: 'oncologia',
+    apiSlug: 'oncology',
     dbKey: 'oncology',
     subdomain: 'oncologia.mapasus.com.br',
     label: 'Oncologia',

@@ -274,8 +274,9 @@ function LegendTable({ rows }: { rows: { term: string; meaning: string }[] }) {
 }
 
 // Docs-only copy per vertical: which query param filters specialties and how
-// to describe it. Label, slug and theme come from the registry — a new live
-// vertical shows up in the docs automatically (with a sensible default note).
+// to describe it. Keyed by apiSlug (these cards document API namespaces).
+// Label and theme come from the registry — a new live vertical shows up in
+// the docs automatically (with a sensible default note).
 const FILTER_NOTES: Record<string, { param: string; paramKind: string }> = {
   'venomous-animals': { param: 'treatment', paramKind: 'tipo de soro' },
   'rare-diseases': { param: 'disease', paramKind: 'área de doença' },
@@ -409,7 +410,7 @@ export default function Docs() {
             {/* Vertical cards */}
             <div className="grid gap-3 sm:grid-cols-3 mb-6">
               {LIVE_VERTICALS.map((v) => {
-                const note = FILTER_NOTES[v.slug] ?? {
+                const note = FILTER_NOTES[v.apiSlug] ?? {
                   param: 'disease',
                   paramKind: v.diseaseFilterLabel.toLowerCase(),
                 };
@@ -427,7 +428,7 @@ export default function Docs() {
                     <code
                       className={`inline-block text-[11px] font-mono px-2 py-0.5 rounded-full ${THEME_BADGE_CLASS[v.theme]}`}
                     >
-                      {v.slug}
+                      {v.apiSlug}
                     </code>
                     <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
                       Filtro:{' '}

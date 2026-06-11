@@ -22,7 +22,7 @@ export default function Navbar({ vertical, label }: NavbarProps) {
   const links = [
     { href: `/${vertical}`, label: 'Busca' },
     { href: `/${vertical}/profissionais`, label: 'Profissionais' },
-    { href: '/stats', label: 'Estatísticas' },
+    { href: '/estatisticas', label: 'Estatísticas' },
     { href: '/docs', label: 'API' },
   ];
   const [isOpen, setIsOpen] = useState(false);

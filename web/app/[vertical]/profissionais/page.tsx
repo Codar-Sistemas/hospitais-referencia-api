@@ -78,7 +78,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
       try {
         let result: Hospital[] = [];
         if (cep.replace(/\D/g, '').length === 8) {
-          const data = await searchNearby(v.slug, {
+          const data = await searchNearby(v.apiSlug, {
             cep: cep.replace(/\D/g, ''),
             treatment: treatment || undefined,
             disease: disease || undefined,
@@ -91,7 +91,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
             setError('Informe estado ou município.');
             return;
           }
-          result = await searchHospitals(v.slug, {
+          result = await searchHospitals(v.apiSlug, {
             stateCode: stateCode || undefined,
             city: city || undefined,
             treatment: treatment || undefined,

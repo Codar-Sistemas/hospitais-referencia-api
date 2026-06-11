@@ -109,12 +109,12 @@ function buildVerticalJsonLd(v: Vertical) {
           {
             '@type': 'DataDownload',
             encodingFormat: 'application/json',
-            contentUrl: `${API_URL}/v1/${v.slug}/hospitals`,
+            contentUrl: `${API_URL}/v1/${v.apiSlug}/hospitals`,
           },
           {
             '@type': 'DataDownload',
             encodingFormat: 'application/json',
-            contentUrl: `${API_URL}/v1/${v.slug}/states`,
+            contentUrl: `${API_URL}/v1/${v.apiSlug}/states`,
           },
         ],
       },

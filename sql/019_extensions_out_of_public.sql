@@ -18,10 +18,18 @@
 
 BEGIN;
 
+-- Resolve unqualified earthdistance/cube symbols (ll_to_earth, gist opclass)
+-- from `extensions` while we recreate the function and index below.
+SET LOCAL search_path = public, extensions;
+
 CREATE SCHEMA IF NOT EXISTS extensions;
 GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 
--- 1) Drop the dependent function so earthdistance can be dropped.
+-- 1) Drop EVERY object that hard-depends on earthdistance so it can be dropped.
+--    Two of them: the nearby_hospitals function and a partial GiST index on
+--    ll_to_earth(lat, lng). No CASCADE — if another dependent shows up, the
+--    DROP EXTENSION errors and the whole tx rolls back (prod untouched).
+DROP INDEX IF EXISTS idx_hospitals_geo;
 DROP FUNCTION IF EXISTS nearby_hospitals(
     double precision, double precision, integer, text, text, integer, text
 );
@@ -84,7 +92,12 @@ AS $$
     LIMIT p_limit;
 $$;
 
--- 4) Re-grant execute (DROP/CREATE wiped the old grants).
+-- 4) Recreate the partial GiST index that backs nearby_hospitals' range scan.
+CREATE INDEX idx_hospitals_geo
+    ON hospitals USING gist (ll_to_earth(lat, lng))
+    WHERE lat IS NOT NULL AND lng IS NOT NULL;
+
+-- 5) Re-grant execute (DROP/CREATE wiped the old grants).
 GRANT EXECUTE ON FUNCTION nearby_hospitals(
     double precision, double precision, integer, text, text, integer, text
 ) TO anon, authenticated, service_role;

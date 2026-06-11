@@ -1,6 +1,6 @@
 # 🏥 MapaSUS — Hospitais de Referência do SUS
 
-> Plataforma pública e gratuita que organiza, normaliza e republica dados oficiais do **Ministério da Saúde** sobre os hospitais habilitados pelo SUS. A primeira vertical em produção cobre **acidentes por animais peçonhentos** (cobras, escorpiões, aranhas, lagartas). Próximas verticais: doenças raras, oncologia, transplantes.
+> Plataforma pública e gratuita que organiza, normaliza e republica dados oficiais do **Ministério da Saúde** sobre os hospitais habilitados pelo SUS. Três verticais em produção — **animais peçonhentos**, **doenças raras** e **oncologia** (CACON/UNACON) — com busca cross-vertical no hub. Próximas: transplantes, Farmácia Popular, CER.
 
 [![Sync diário](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml)
 [![Lint](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/lint.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/lint.yml)

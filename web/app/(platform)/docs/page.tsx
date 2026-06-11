@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import DocsSidebar from '@/components/docs/DocsSidebar';
 
 export const metadata: Metadata = {
@@ -9,23 +10,122 @@ export const metadata: Metadata = {
 
 const BASE = 'https://hospitais-referencia-api.vercel.app';
 
-function Method({ method }: { method: string }) {
-  return (
-    <span
-      className={`text-xs font-bold px-2 py-0.5 rounded text-white ${
-        method === 'POST' ? 'bg-blue-600' : 'bg-emerald-600'
-      }`}
-    >
-      {method}
-    </span>
-  );
+// ---------------------------------------------------------------------------
+// Lightweight syntax highlighting (no dependency). Returns React spans so we
+// never touch dangerouslySetInnerHTML.
+// ---------------------------------------------------------------------------
+function highlightJson(code: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  // strings (optionally a key, when followed by ":"), booleans/null, numbers.
+  const re = /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(code)) !== null) {
+    if (m.index > last) nodes.push(code.slice(last, m.index));
+    if (m[1] !== undefined) {
+      if (m[2] !== undefined) {
+        nodes.push(
+          <span key={key++} className="text-sky-300">
+            {m[1]}
+          </span>,
+        );
+        nodes.push(
+          <span key={key++} className="text-slate-500">
+            {m[2]}
+          </span>,
+        );
+      } else {
+        nodes.push(
+          <span key={key++} className="text-emerald-300">
+            {m[1]}
+          </span>,
+        );
+      }
+    } else if (m[3] !== undefined) {
+      nodes.push(
+        <span key={key++} className="text-violet-300">
+          {m[3]}
+        </span>,
+      );
+    } else if (m[4] !== undefined) {
+      nodes.push(
+        <span key={key++} className="text-amber-300">
+          {m[4]}
+        </span>,
+      );
+    }
+    last = re.lastIndex;
+  }
+  if (last < code.length) nodes.push(code.slice(last));
+  return nodes;
 }
 
-function Code({ children }: { children: string }) {
+function highlightShell(code: string): ReactNode[] {
+  const lines = code.split('\n');
+  return lines.map((line, idx) => {
+    const prefix = idx > 0 ? '\n' : '';
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith('#') || trimmed.startsWith('//')) {
+      return (
+        <span key={idx} className="text-slate-500">
+          {prefix}
+          {line}
+        </span>
+      );
+    }
+    // Color quoted strings within the line.
+    const parts: ReactNode[] = [];
+    const re = /("[^"]*"|'[^']*')/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    let k = 0;
+    while ((m = re.exec(line)) !== null) {
+      if (m.index > last) parts.push(line.slice(last, m.index));
+      parts.push(
+        <span key={k++} className="text-amber-200">
+          {m[1]}
+        </span>,
+      );
+      last = re.lastIndex;
+    }
+    if (last < line.length) parts.push(line.slice(last));
+    return (
+      <span key={idx}>
+        {prefix}
+        {parts}
+      </span>
+    );
+  });
+}
+
+type Lang = 'bash' | 'json' | 'js' | 'python';
+
+const LANG_LABEL: Record<Lang, string> = {
+  bash: 'cURL',
+  json: 'JSON',
+  js: 'JavaScript',
+  python: 'Python',
+};
+
+function CodeBlock({ lang, label, children }: { lang: Lang; label?: string; children: string }) {
+  const body = lang === 'json' ? highlightJson(children) : highlightShell(children);
   return (
-    <pre className="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs overflow-x-auto leading-relaxed font-mono">
-      <code>{children}</code>
-    </pre>
+    <div className="rounded-xl overflow-hidden border border-slate-700/60 shadow-sm">
+      <div className="flex items-center justify-between bg-slate-800 px-3 py-1.5">
+        <div className="flex gap-1.5" aria-hidden>
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+        </div>
+        <span className="text-[11px] font-medium text-slate-400 tracking-wide">
+          {label ?? LANG_LABEL[lang]}
+        </span>
+      </div>
+      <pre className="bg-slate-900 text-slate-100 p-4 text-xs overflow-x-auto leading-relaxed font-mono">
+        <code>{body}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -70,17 +170,34 @@ function ParamTable({ params }: { params: ParamDef[] }) {
   );
 }
 
+function Method({ method }: { method: string }) {
+  return (
+    <span
+      className={`text-xs font-bold px-2 py-0.5 rounded text-white ${
+        method === 'POST' ? 'bg-blue-600' : 'bg-emerald-600'
+      }`}
+    >
+      {method}
+    </span>
+  );
+}
+
+interface Example {
+  label?: string;
+  code: string;
+}
+
 interface EndpointProps {
   id: string;
   method: string;
   path: string;
   description: string;
   params?: ParamDef[];
-  example: string;
+  examples: Example[];
   response: string;
 }
 
-function Endpoint({ id, method, path, description, params, example, response }: EndpointProps) {
+function Endpoint({ id, method, path, description, params, examples, response }: EndpointProps) {
   return (
     <div
       id={id}
@@ -90,7 +207,7 @@ function Endpoint({ id, method, path, description, params, example, response }: 
         <Method method={method} />
         <code className="text-sm font-mono text-slate-800 font-semibold break-all">{path}</code>
       </div>
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-5">
         <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
         {params && params.length > 0 && (
           <div>
@@ -102,15 +219,27 @@ function Endpoint({ id, method, path, description, params, example, response }: 
         )}
         <div>
           <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            Exemplo
+            {examples.length > 1 ? 'Exemplos' : 'Exemplo'}
           </h4>
-          <Code>{example}</Code>
+          <div className="space-y-3">
+            {examples.map((ex, i) => (
+              <div key={i}>
+                {ex.label && (
+                  <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-slate-300" />
+                    {ex.label}
+                  </p>
+                )}
+                <CodeBlock lang="bash">{ex.code}</CodeBlock>
+              </div>
+            ))}
+          </div>
         </div>
         <div>
           <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
             Resposta
           </h4>
-          <Code>{response}</Code>
+          <CodeBlock lang="json">{response}</CodeBlock>
         </div>
       </div>
     </div>
@@ -230,7 +359,10 @@ export default function Docs() {
               A API cobre vários programas do SUS (&ldquo;verticais&rdquo;). Toda rota de hospitais
               existe em três formatos:
             </p>
-            <Code>{`# Legado — vertical implícita (animais peçonhentos)
+            <CodeBlock
+              lang="bash"
+              label="Formatos de rota"
+            >{`# Legado — vertical implícita (animais peçonhentos)
 GET /v1/hospitals?state_code=SP
 
 # Namespaced — vertical explícita (recomendado)
@@ -239,7 +371,7 @@ GET /v1/rare-diseases/hospitals?state_code=SP&disease=gene_therapy
 GET /v1/oncology/hospitals?state_code=SP&disease=cacon
 
 # Cross-vertical — uma busca em todas as verticais ativas
-GET /v1/search?city=Salvador`}</Code>
+GET /v1/search?city=Salvador`}</CodeBlock>
             <div className="overflow-x-auto rounded-xl border border-slate-200 mt-4">
               <table className="w-full text-xs">
                 <thead>
@@ -381,7 +513,7 @@ GET /v1/search?city=Salvador`}</Code>
             method="GET"
             path="/v1/states"
             description="Lista as 27 UFs com status de sincronização e total de hospitais cadastrados (vertical default)."
-            example={`curl "${BASE}/v1/states"`}
+            examples={[{ code: `curl "${BASE}/v1/states"` }]}
             response={`{
   "states": [
     {
@@ -401,7 +533,7 @@ GET /v1/search?city=Salvador`}</Code>
             method="GET"
             path="/v1/states/:state_code"
             description="Detalhes de um estado específico, incluindo URL do PDF fonte e hash SHA256."
-            example={`curl "${BASE}/v1/states/SP"`}
+            examples={[{ code: `curl "${BASE}/v1/states/SP"` }]}
             response={`{
   "state_code": "SP",
   "name": "São Paulo",
@@ -434,14 +566,20 @@ GET /v1/search?city=Salvador`}</Code>
               { name: 'limit', type: 'number', description: 'Padrão 100, máx 500' },
               { name: 'offset', type: 'number', description: 'Paginação' },
             ]}
-            example={`# Peçonhentos — por estado e animal
-curl "${BASE}/v1/venomous-animals/hospitals?state_code=SP&treatment=escorpiao"
-
-# Oncologia — CACON em SP
-curl "${BASE}/v1/oncology/hospitals?state_code=SP&disease=cacon"
-
-# Doenças raras — terapia gênica
-curl "${BASE}/v1/rare-diseases/hospitals?disease=gene_therapy"`}
+            examples={[
+              {
+                label: 'Peçonhentos — por estado e animal',
+                code: `curl "${BASE}/v1/venomous-animals/hospitals?state_code=SP&treatment=escorpiao"`,
+              },
+              {
+                label: 'Oncologia — CACON em SP',
+                code: `curl "${BASE}/v1/oncology/hospitals?state_code=SP&disease=cacon"`,
+              },
+              {
+                label: 'Doenças raras — terapia gênica',
+                code: `curl "${BASE}/v1/rare-diseases/hospitals?disease=gene_therapy"`,
+              },
+            ]}
             response={`{
   "filters": { "state_code": "SP", "disease": "cacon", "vertical": "oncology" },
   "total_returned": 14,
@@ -485,11 +623,16 @@ curl "${BASE}/v1/rare-diseases/hospitals?disease=gene_therapy"`}
               },
               { name: 'limit', type: 'number', description: 'Padrão 20, máx 100' },
             ]}
-            example={`# Peçonhentos por CEP
-curl "${BASE}/v1/venomous-animals/hospitals/nearby?cep=13280000&treatment=crotalico"
-
-# Oncologia por CEP — radioterapia mais próxima
-curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`}
+            examples={[
+              {
+                label: 'Peçonhentos por CEP',
+                code: `curl "${BASE}/v1/venomous-animals/hospitals/nearby?cep=13280000&treatment=crotalico"`,
+              },
+              {
+                label: 'Oncologia por CEP — radioterapia mais próxima',
+                code: `curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`,
+              },
+            ]}
             response={`{
   "origin": {
     "lat": -22.889, "lng": -48.445,
@@ -517,7 +660,7 @@ curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`}
             method="GET"
             path="/v1/hospitals/:id"
             description="Todos os dados de um hospital específico, incluindo coordenadas e status de geocoding."
-            example={`curl "${BASE}/v1/hospitals/42"`}
+            examples={[{ code: `curl "${BASE}/v1/hospitals/42"` }]}
             response={`{
   "id": 42,
   "state_code": "SP",
@@ -546,7 +689,7 @@ curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`}
               { name: 'limit', type: 'number', description: 'Padrão 50, máx 200' },
               { name: 'offset', type: 'number', description: 'Paginação' },
             ]}
-            example={`curl "${BASE}/v1/search?city=Salvador"`}
+            examples={[{ code: `curl "${BASE}/v1/search?city=Salvador"` }]}
             response={`{
   "filters": { "city": "salvador", "vertical": "all" },
   "total_returned": 11,
@@ -568,7 +711,7 @@ curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`}
             method="GET"
             path="/v1/stats"
             description="Métricas públicas agregadas e anônimas (LGPD-compliant): volume de buscas, demanda por UF, resiliência dos syncs e cobertura. Cache-Control: public, max-age=300."
-            example={`curl "${BASE}/v1/stats"`}
+            examples={[{ code: `curl "${BASE}/v1/stats"` }]}
             response={`{
   "generated_at": "2026-04-14T12:00:00Z",
   "overview": {
@@ -675,35 +818,20 @@ curl "${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy"`}
           <section id="exemplos" className="scroll-mt-24">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Exemplos de integração</h2>
             <div className="space-y-4">
-              <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                  JavaScript / TypeScript
-                </h3>
-                <Code>{`const res = await fetch(
+              <CodeBlock lang="js">{`const res = await fetch(
   '${BASE}/v1/oncology/hospitals/nearby?cep=01310100&disease=radiotherapy'
 );
 const { hospitals } = await res.json();
-console.log(hospitals[0].name, hospitals[0].distance_km + ' km');`}</Code>
-              </div>
-              <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                  Python
-                </h3>
-                <Code>{`import requests
+console.log(hospitals[0].name, hospitals[0].distance_km + ' km');`}</CodeBlock>
+              <CodeBlock lang="python">{`import requests
 
 r = requests.get(
     '${BASE}/v1/rare-diseases/hospitals',
     params={'state_code': 'SP', 'disease': 'gene_therapy'}
 )
 for h in r.json()['hospitals']:
-    print(h['city'], '-', h['name'])`}</Code>
-              </div>
-              <div>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                  cURL
-                </h3>
-                <Code>{`curl "${BASE}/v1/search?city=Curitiba" | python3 -m json.tool`}</Code>
-              </div>
+    print(h['city'], '-', h['name'])`}</CodeBlock>
+              <CodeBlock lang="bash">{`curl "${BASE}/v1/search?city=Curitiba" | python3 -m json.tool`}</CodeBlock>
             </div>
 
             <div className="mt-8 p-5 bg-white border border-slate-200 rounded-2xl text-sm text-slate-500 shadow-sm">

@@ -84,6 +84,9 @@ export interface Hospital {
   verticals: Vertical[];
   created_at: string;
   updated_at: string;
+  /** Attached on namespaced lookups (/v1/{vertical}/hospitals/:id) — the
+   * hospital's qualifications in that vertical, same shape as list rows. */
+  specialties?: HospitalSpecialtySummary[];
 }
 
 /** Per-vertical qualification summary attached to list responses for

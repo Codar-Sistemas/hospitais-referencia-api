@@ -110,7 +110,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
   }
 
   const inputClass =
-    'border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm text-slate-800 placeholder-slate-400';
+    'border border-slate-200 bg-white rounded-xl px-3 py-2.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent shadow-sm text-slate-800 placeholder-slate-400';
 
   const stateOptions = useMemo(
     () => STATES.map((s) => ({ value: s.code, label: `${s.code} – ${s.name}`, keywords: s.name })),
@@ -298,7 +298,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
             </p>
             {hasTreatments && (
               <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                <span className="text-emerald-600 font-bold">✓</span> = atende
+                <span className="text-accent-600 font-bold">✓</span> = atende
               </div>
             )}
           </div>
@@ -367,7 +367,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                       {h.phones ? (
                         <a
                           href={`tel:${h.phones.replace(/\D/g, '')}`}
-                          className="hover:text-emerald-600 transition-colors"
+                          className="hover:text-accent-600 transition-colors"
                         >
                           {h.phones}
                         </a>
@@ -394,7 +394,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                           {specialtyBadges(h).map((label) => (
                             <span
                               key={label}
-                              className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700 ring-1 ring-violet-200 whitespace-nowrap"
+                              className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-accent-50 text-accent-700 ring-1 ring-accent-200 whitespace-nowrap"
                             >
                               {label}
                             </span>

@@ -91,7 +91,7 @@ export default function SearchTabs({ mode, onChange, modes }: SearchTabsProps) {
           onClick={() => onChange(id)}
           className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
             mode === id
-              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50'
+              ? 'border-accent-600 text-accent-700 bg-accent-50/50'
               : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'
           }`}
         >
@@ -105,7 +105,7 @@ export default function SearchTabs({ mode, onChange, modes }: SearchTabsProps) {
 }
 
 export const INPUT_CLASS =
-  'w-full border border-slate-200 bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow shadow-sm';
+  'w-full border border-slate-200 bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-shadow shadow-sm';
 
 export const FIELD_LABEL_CLASS =
   'block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5';

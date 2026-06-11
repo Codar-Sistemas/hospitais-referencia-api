@@ -58,13 +58,13 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
       {/* Hero */}
       <div className="bg-white border-b border-slate-100">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-10 text-center">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-full mb-5">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-accent-700 bg-accent-50 ring-1 ring-accent-200 px-3 py-1 rounded-full mb-5">
+            <span className="w-1.5 h-1.5 bg-accent-500 rounded-full" />
             {v.hero.eyebrow}
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight tracking-tight">
             {v.hero.titleLead} <br />
-            <span className="text-emerald-600">{v.hero.titleAccent}</span>
+            <span className="text-accent-600">{v.hero.titleAccent}</span>
           </h1>
           <p className="mt-4 text-slate-500 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
             {v.hero.subtitle}
@@ -157,7 +157,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
             <button
               type="submit"
               disabled={isPending}
-              className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm text-sm"
+              className="mt-5 w-full bg-accent-600 hover:bg-accent-700 disabled:bg-accent-400 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm text-sm"
             >
               {isPending ? (
                 <span className="flex items-center justify-center gap-2">
@@ -232,7 +232,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
           </div>
           <p className="mt-6 text-xs text-slate-400">
             Documentação completa da API em{' '}
-            <Link href="/docs" className="text-emerald-600 hover:underline">
+            <Link href="/docs" className="text-accent-600 hover:underline">
               /docs
             </Link>
             .

@@ -70,7 +70,7 @@ export default function HospitalCard({ hospital, showTreatments = true }: Hospit
 
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-slate-900 leading-snug text-sm group-hover:text-emerald-700 transition-colors">
+          <h3 className="font-semibold text-slate-900 leading-snug text-sm group-hover:text-accent-700 transition-colors">
             {hospital.name}
           </h3>
           <p className="text-xs text-slate-400 mt-0.5 font-medium">
@@ -78,7 +78,7 @@ export default function HospitalCard({ hospital, showTreatments = true }: Hospit
           </p>
         </div>
         {hospital.distance_km !== undefined && (
-          <span className="shrink-0 text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 px-2.5 py-1 rounded-full">
+          <span className="shrink-0 text-xs font-semibold bg-accent-50 text-accent-700 ring-1 ring-accent-200 px-2.5 py-1 rounded-full">
             {hospital.distance_km < 1
               ? `${hospital.distance_m?.toFixed(0)} m`
               : `${hospital.distance_km.toFixed(1)} km`}
@@ -127,7 +127,7 @@ export default function HospitalCard({ hospital, showTreatments = true }: Hospit
             </svg>
             <a
               href={`tel:${hospital.phones.replace(/\D/g, '')}`}
-              className="hover:text-emerald-600 transition-colors"
+              className="hover:text-accent-600 transition-colors"
               onClick={() =>
                 emit({
                   event_type: 'phone_clicked',
@@ -163,7 +163,7 @@ export default function HospitalCard({ hospital, showTreatments = true }: Hospit
           {qualificationBadges.map((label) => (
             <span
               key={label}
-              className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700 ring-1 ring-violet-200"
+              className="text-xs px-2 py-0.5 rounded-full font-medium bg-accent-50 text-accent-700 ring-1 ring-accent-200"
             >
               {label}
             </span>
@@ -176,7 +176,7 @@ export default function HospitalCard({ hospital, showTreatments = true }: Hospit
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1 text-xs text-emerald-600 font-medium hover:text-emerald-700 transition-colors"
+          className="mt-3 inline-flex items-center gap-1 text-xs text-accent-600 font-medium hover:text-accent-700 transition-colors"
           onClick={() =>
             emit({
               event_type: 'directions_clicked',

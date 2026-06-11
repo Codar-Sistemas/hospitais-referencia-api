@@ -39,10 +39,7 @@ interface ComboboxProps {
 // Accent-insensitive lowercase. Used for matching only — display preserves
 // the original casing/diacritics.
 function normalize(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
 export default function Combobox({
@@ -80,9 +77,7 @@ export default function Combobox({
   const filtered = useMemo(() => {
     if (!query.trim()) return options;
     const q = normalize(query);
-    return options.filter((opt) =>
-      normalize(`${opt.label} ${opt.keywords ?? ''}`).includes(q),
-    );
+    return options.filter((opt) => normalize(`${opt.label} ${opt.keywords ?? ''}`).includes(q));
   }, [options, query]);
 
   // Close on outside click. Listening to mousedown so the click on a
@@ -92,10 +87,7 @@ export default function Combobox({
     if (!open) return;
     function onDocClick(e: MouseEvent) {
       const target = e.target as Node;
-      if (
-        !containerRef.current?.contains(target) &&
-        !listRef.current?.contains(target)
-      ) {
+      if (!containerRef.current?.contains(target) && !listRef.current?.contains(target)) {
         setOpen(false);
         setQuery('');
       }
@@ -127,9 +119,7 @@ export default function Combobox({
   // Keep highlighted item in view while navigating with the keyboard.
   useEffect(() => {
     if (!open) return;
-    const el = listRef.current?.querySelector<HTMLLIElement>(
-      `[data-index="${highlightIndex}"]`,
-    );
+    const el = listRef.current?.querySelector<HTMLLIElement>(`[data-index="${highlightIndex}"]`);
     el?.scrollIntoView({ block: 'nearest' });
   }, [highlightIndex, open]);
 
@@ -167,9 +157,7 @@ export default function Combobox({
   };
 
   const displayedValue = open ? query : (selectedOption?.label ?? '');
-  const effectivePlaceholder = disabled
-    ? (disabledPlaceholder ?? placeholder)
-    : placeholder;
+  const effectivePlaceholder = disabled ? (disabledPlaceholder ?? placeholder) : placeholder;
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -191,7 +179,7 @@ export default function Combobox({
             if (!open) setOpen(true);
           }}
           onKeyDown={handleKeyDown}
-          className={`w-full border border-slate-200 bg-white rounded-xl px-4 py-2.5 pr-9 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow shadow-sm ${
+          className={`w-full border border-slate-200 bg-white rounded-xl px-4 py-2.5 pr-9 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-shadow shadow-sm ${
             disabled ? 'opacity-60 cursor-not-allowed' : ''
           }`}
         />
@@ -208,48 +196,51 @@ export default function Combobox({
         </svg>
       </div>
 
-      {open && !disabled && position && createPortal(
-        <ul
-          ref={listRef}
-          id={listboxId}
-          role="listbox"
-          style={{
-            position: 'fixed',
-            top: position.top,
-            left: position.left,
-            width: position.width,
-          }}
-          className="z-[60] max-h-64 overflow-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1"
-        >
-          {filtered.length === 0 ? (
-            <li className="px-4 py-2 text-sm text-slate-400 italic">{emptyMessage}</li>
-          ) : (
-            filtered.map((opt, idx) => (
-              <li
-                key={opt.value}
-                role="option"
-                aria-selected={opt.value === value}
-                data-index={idx}
-                // Use onMouseDown (not onClick) so we fire BEFORE the input
-                // blurs and triggers a close-via-outside-click.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(opt);
-                }}
-                onMouseEnter={() => setHighlightIndex(idx)}
-                className={`px-4 py-2 text-sm cursor-pointer ${
-                  idx === highlightIndex
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : 'text-slate-700 hover:bg-slate-50'
-                } ${opt.value === value ? 'font-semibold' : ''}`}
-              >
-                {opt.label}
-              </li>
-            ))
-          )}
-        </ul>,
-        document.body,
-      )}
+      {open &&
+        !disabled &&
+        position &&
+        createPortal(
+          <ul
+            ref={listRef}
+            id={listboxId}
+            role="listbox"
+            style={{
+              position: 'fixed',
+              top: position.top,
+              left: position.left,
+              width: position.width,
+            }}
+            className="z-[60] max-h-64 overflow-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1"
+          >
+            {filtered.length === 0 ? (
+              <li className="px-4 py-2 text-sm text-slate-400 italic">{emptyMessage}</li>
+            ) : (
+              filtered.map((opt, idx) => (
+                <li
+                  key={opt.value}
+                  role="option"
+                  aria-selected={opt.value === value}
+                  data-index={idx}
+                  // Use onMouseDown (not onClick) so we fire BEFORE the input
+                  // blurs and triggers a close-via-outside-click.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(opt);
+                  }}
+                  onMouseEnter={() => setHighlightIndex(idx)}
+                  className={`px-4 py-2 text-sm cursor-pointer ${
+                    idx === highlightIndex
+                      ? 'bg-accent-50 text-accent-800'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  } ${opt.value === value ? 'font-semibold' : ''}`}
+                >
+                  {opt.label}
+                </li>
+              ))
+            )}
+          </ul>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -170,7 +170,7 @@ export default async function VerticalLayout({
       <footer className="border-t border-slate-200 bg-white py-8 mt-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
           <Link href="/" className="flex items-center gap-2 hover:text-slate-600 transition-colors">
-            <div className="w-6 h-6 bg-emerald-600 rounded flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-6 h-6 bg-accent-600 rounded flex items-center justify-center text-white text-xs font-bold">
               +
             </div>
             <span className="font-medium text-slate-500">MapaSUS · {v.label}</span>
@@ -181,7 +181,7 @@ export default async function VerticalLayout({
               href={v.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-600 hover:underline"
+              className="text-accent-600 hover:underline"
             >
               Ministério da Saúde
             </a>{' '}

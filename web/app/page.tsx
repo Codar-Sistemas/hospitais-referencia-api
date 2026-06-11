@@ -51,20 +51,36 @@ export default function Hub() {
     <div className="flex flex-col flex-1">
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
               +
             </div>
             <span className="font-bold text-slate-800 text-lg tracking-tight">MapaSUS</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <nav className="flex items-center gap-0.5 sm:gap-1">
+              <Link
+                href="/estatisticas"
+                className="px-2 sm:px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              >
+                Estatísticas
+              </Link>
+              <Link
+                href="/docs"
+                className="px-2 sm:px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              >
+                API
+              </Link>
+            </nav>
+            {/* The SAMU badge keeps priority on small screens; GitHub moves
+                behind the md breakpoint (it also lives in the footer). */}
             <SamuBadge />
             <a
               href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+              className="hidden md:inline text-sm text-slate-500 hover:text-slate-800 transition-colors"
             >
               GitHub ↗
             </a>

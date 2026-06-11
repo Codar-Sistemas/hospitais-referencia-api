@@ -35,6 +35,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
 
   const [stateCode, setStateCode] = useState('');
   const [treatment, setTreatment] = useState('');
+  const [disease, setDisease] = useState('');
   const [city, setCity] = useState('');
   const [cep, setCep] = useState('');
   const [radius, setRadius] = useState('50000');
@@ -80,6 +81,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
           const data = await searchNearby(v.slug, {
             cep: cep.replace(/\D/g, ''),
             treatment: treatment || undefined,
+            disease: disease || undefined,
             radiusM: parseInt(radius, 10),
             limit: 200,
           });
@@ -93,6 +95,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
             stateCode: stateCode || undefined,
             city: city || undefined,
             treatment: treatment || undefined,
+            disease: disease || undefined,
             limit: 500,
           });
         }
@@ -239,6 +242,19 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                 onChange={setTreatment}
                 options={treatmentOptions}
                 placeholder="Todos"
+              />
+            </div>
+          )}
+          {!hasTreatments && v.diseaseFilterOptions.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                Doença
+              </label>
+              <Combobox
+                value={disease}
+                onChange={setDisease}
+                options={[...v.diseaseFilterOptions]}
+                placeholder="Todas"
               />
             </div>
           )}

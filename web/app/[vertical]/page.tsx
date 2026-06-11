@@ -25,6 +25,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
   const [mode, setMode] = useState<SearchMode>('city');
   const [stateCode, setStateCode] = useState('');
   const [treatment, setTreatment] = useState('');
+  const [disease, setDisease] = useState('');
   const [city, setCity] = useState('');
   const [cep, setCep] = useState('');
 
@@ -32,7 +33,14 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    search({ mode, stateCode, city, cep, treatment: treatment || undefined });
+    search({
+      mode,
+      stateCode,
+      city,
+      cep,
+      treatment: treatment || undefined,
+      disease: disease || undefined,
+    });
   }
 
   const faqJsonLd = {
@@ -104,6 +112,9 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
                   onCepChange={setCep}
                   onTreatmentChange={setTreatment}
                   showTreatmentFilter={hasTreatments}
+                  diseaseOptions={v.diseaseFilterOptions}
+                  disease={disease}
+                  onDiseaseChange={setDisease}
                 />
               )}
               {mode === 'city' && (
@@ -115,6 +126,9 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
                   onStateCodeChange={setStateCode}
                   onTreatmentChange={setTreatment}
                   showTreatmentFilter={hasTreatments}
+                  diseaseOptions={v.diseaseFilterOptions}
+                  disease={disease}
+                  onDiseaseChange={setDisease}
                 />
               )}
             </div>

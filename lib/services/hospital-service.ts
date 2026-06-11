@@ -18,6 +18,7 @@ import type {
   Vertical,
   VerticalOrAll,
 } from '../types/domain.js';
+import { resolveDiseaseArea, specialtiesMatchArea, type DiseaseArea } from './disease-areas.js';
 import { lookupCep } from './geocoding-service.js';
 import { CANONICAL_TREATMENTS, normalizeCity, normalizeTreatment } from './search-normalizer.js';
 
@@ -74,6 +75,40 @@ async function attachSpecialties<T extends HospitalListRow>(
   }
 }
 
+// The `disease` filter only makes sense on qualification-based verticals —
+// the default (venomous) filters by the `treatment` vocabulary instead.
+function resolveDiseaseFilter(
+  rawDisease: string | null | undefined,
+  vertical: VerticalOrAll,
+): DiseaseArea | null {
+  if (!rawDisease) return null;
+  if (vertical === 'all' || vertical === DEFAULT_VERTICAL) {
+    throw new ValidationError(
+      "The 'disease' filter is only available on qualification-based verticals " +
+        '(e.g. /v1/rare-diseases/hospitals). Use treatment= on the default vertical.',
+    );
+  }
+  return resolveDiseaseArea(rawDisease);
+}
+
+// Resolves a disease-area filter to the hospital ids qualified for it.
+// One small query (a vertical has dozens of rows); matching happens on the
+// stable 35.XX codes inside metadata.qualification_codes.
+async function findIdsByDiseaseArea(vertical: Vertical, area: DiseaseArea): Promise<number[]> {
+  const rows = await hospitalRepo.listSpecialtiesByVertical(vertical);
+  const ids = new Set<number>();
+  for (const row of rows) {
+    const codes = row.metadata?.['qualification_codes'];
+    const summary = {
+      specialty: row.specialty,
+      habilitado_em: row.habilitado_em,
+      qualification_codes: Array.isArray(codes) ? codes.map(String) : [],
+    };
+    if (specialtiesMatchArea([summary], area)) ids.add(row.hospital_id);
+  }
+  return [...ids];
+}
+
 function resolveTreatment(rawTreatment: string | null | undefined): Treatment | null {
   if (!rawTreatment) return null;
   const canonical = normalizeTreatment(rawTreatment);
@@ -102,6 +137,7 @@ export interface ListHospitalsParams {
   stateCode: StateCode | null;
   city: string | null;
   treatment: string | null;
+  disease: string | null;
   q: string | null;
   limit: number;
   offset: number;
@@ -113,6 +149,7 @@ export interface ListHospitalsResult {
     state_code: StateCode | null;
     city: string | null;
     treatment: string | null;
+    disease: string | null;
     q: string | null;
     limit: number;
     offset: number;
@@ -123,7 +160,16 @@ export interface ListHospitalsResult {
 }
 
 export async function listHospitals(params: ListHospitalsParams): Promise<ListHospitalsResult> {
-  const { stateCode, city, treatment: rawTreatment, q, limit, offset, vertical } = params;
+  const {
+    stateCode,
+    city,
+    treatment: rawTreatment,
+    disease: rawDisease,
+    q,
+    limit,
+    offset,
+    vertical,
+  } = params;
   if (!stateCode && !city && !q) {
     throw new ValidationError(
       'Provide at least one filter: state_code, city or q. Ex: /v1/hospitals?state_code=SP',
@@ -131,6 +177,29 @@ export async function listHospitals(params: ListHospitalsParams): Promise<ListHo
   }
   const treatment = resolveTreatment(rawTreatment);
   const v = resolveVertical(vertical);
+  const disease = resolveDiseaseFilter(rawDisease, v);
+
+  const filtersEcho = {
+    state_code: stateCode,
+    city,
+    treatment: rawTreatment,
+    disease: rawDisease,
+    q,
+    limit,
+    offset,
+    vertical: v,
+  };
+
+  // Disease filter resolves to an id allowlist BEFORE the hospitals query
+  // so limit/offset paginate the filtered set.
+  let ids: number[] | null = null;
+  if (disease) {
+    ids = await findIdsByDiseaseArea(v as Vertical, disease);
+    if (ids.length === 0) {
+      return { filters: filtersEcho, total_returned: 0, hospitals: [] };
+    }
+  }
+
   const rows = await hospitalRepo.search({
     stateCode,
     cityNormalized: city ? normalizeCity(city) : null,
@@ -139,18 +208,11 @@ export async function listHospitals(params: ListHospitalsParams): Promise<ListHo
     limit,
     offset,
     vertical: v,
+    ids,
   });
   await attachSpecialties(rows, v);
   return {
-    filters: {
-      state_code: stateCode,
-      city,
-      treatment: rawTreatment,
-      q,
-      limit,
-      offset,
-      vertical: v,
-    },
+    filters: filtersEcho,
     total_returned: rows.length,
     hospitals: rows,
   };
@@ -315,6 +377,7 @@ export interface ListNearbyParams {
   radiusM: number;
   limit: number;
   treatment: string | null;
+  disease?: string | null;
   vertical?: string | null;
 }
 
@@ -344,10 +407,12 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
     radiusM,
     limit,
     treatment: rawTreatment,
+    disease: rawDisease,
     vertical,
   } = params;
   const treatment = resolveTreatment(rawTreatment);
   const v = resolveVertical(vertical);
+  const disease = resolveDiseaseFilter(rawDisease, v);
   const { origin, stateCode: resolvedStateCode } = await resolveOrigin({
     lat,
     lng,
@@ -368,11 +433,17 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
       vertical: v,
     });
     await attachSpecialties(rows, v);
+    // Disease filter is applied after the RPC (it has no qualification
+    // awareness). Limit ran pre-filter, which can under-fill a page — fine
+    // for qualification verticals, whose universe is a few dozen rows.
+    const filtered = disease
+      ? rows.filter((h) => specialtiesMatchArea(h.specialties, disease))
+      : rows;
     return {
       origin,
       radius_m: radiusM,
-      total_returned: rows.length,
-      hospitals: rows.map((h) => ({
+      total_returned: filtered.length,
+      hospitals: filtered.map((h) => ({
         ...h,
         distance_km: Math.round((h.distance_m / 1000) * 10) / 10,
       })),
@@ -404,10 +475,13 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
     vertical: v,
   });
   await attachSpecialties(rows, v);
+  const filtered = disease
+    ? rows.filter((h) => specialtiesMatchArea(h.specialties, disease))
+    : rows;
   return {
     origin: { ...origin, city_search: citySearch },
-    total_returned: rows.length,
-    hospitals: rows,
+    total_returned: filtered.length,
+    hospitals: filtered,
     notice: 'Results by city (not ordered by distance).',
   };
 }

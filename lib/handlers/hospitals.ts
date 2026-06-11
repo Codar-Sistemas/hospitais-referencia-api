@@ -38,6 +38,7 @@ export async function listHospitals(
     res,
   );
   const q = url.searchParams.get('q');
+  const disease = url.searchParams.get('disease');
   const limit = parseIntParam(url.searchParams.get('limit'), { fallback: 100, max: 500 });
   const offset = parseIntParam(url.searchParams.get('offset'), { fallback: 0 });
 
@@ -45,6 +46,7 @@ export async function listHospitals(
     stateCode: state_code ? (state_code.toUpperCase() as StateCode) : null,
     city,
     treatment,
+    disease,
     q,
     limit,
     offset,
@@ -84,6 +86,7 @@ export async function listNearbyHospitals(
   const lat = parseFloatParam(url.searchParams.get('lat'));
   const lng = parseFloatParam(url.searchParams.get('lng'));
   const cep = url.searchParams.get('cep');
+  const disease = url.searchParams.get('disease');
   const radiusM = parseIntParam(radius_m, { fallback: 50000, max: 200000 });
   const limit = parseIntParam(url.searchParams.get('limit'), { fallback: 20, max: 100 });
 
@@ -96,6 +99,7 @@ export async function listNearbyHospitals(
     radiusM,
     limit,
     treatment,
+    disease,
     vertical: ctx.vertical,
   });
   // Only CEP-derived origin variants carry `user_state_code`; the `in`

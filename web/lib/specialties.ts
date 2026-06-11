@@ -78,3 +78,17 @@ export function specialtyTypeLabels(specialties: HospitalSpecialty[] | undefined
   const labels = (specialties ?? []).map((s) => SPECIALTY_LABEL_BY_KEY[s.specialty] ?? s.specialty);
   return [...new Set(labels)];
 }
+
+/** Options for the "Doença" search filter. `value` is the canonical EN key
+ * the API accepts as `?disease=`; labels mirror the card badges. */
+export const DISEASE_FILTER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'congenital_anomalies', label: 'Anomalias congênitas' },
+  { value: 'intellectual_disability', label: 'Deficiência intelectual' },
+  { value: 'inborn_metabolism_errors', label: 'Erros inatos do metabolismo' },
+  { value: 'inflammatory_diseases', label: 'Doenças inflamatórias' },
+  { value: 'infectious_diseases', label: 'Doenças infecciosas' },
+  { value: 'autoimmune_diseases', label: 'Doenças autoimunes' },
+  { value: 'other_non_genetic', label: 'Outras de origem não genética' },
+  { value: 'genetic_counseling', label: 'Aconselhamento genético' },
+  { value: 'gene_therapy', label: 'Terapia gênica' },
+];

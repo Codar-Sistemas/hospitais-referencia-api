@@ -15,6 +15,11 @@ interface SearchByCityProps {
   /** Hide the treatment combobox for verticals without a treatment
    * vocabulary (e.g. rare-diseases). Defaults to shown. */
   showTreatmentFilter?: boolean;
+  /** Disease-area filter for qualification-based verticals — renders a
+   * "Doença (opcional)" combobox when non-empty. */
+  diseaseOptions?: ReadonlyArray<{ value: string; label: string }>;
+  disease?: string;
+  onDiseaseChange?: (value: string) => void;
 }
 
 export default function SearchByCity({
@@ -25,6 +30,9 @@ export default function SearchByCity({
   onStateCodeChange,
   onTreatmentChange,
   showTreatmentFilter = true,
+  diseaseOptions = [],
+  disease = '',
+  onDiseaseChange,
 }: SearchByCityProps) {
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,10 +85,13 @@ export default function SearchByCity({
       ? 'Carregando cidades...'
       : 'Selecione uma cidade';
 
+  const showDiseaseFilter = diseaseOptions.length > 0;
+  const filterColumns = 2 + (showTreatmentFilter ? 1 : 0) + (showDiseaseFilter ? 1 : 0);
+
   return (
     <div
       className={`col-span-full grid grid-cols-1 gap-4 ${
-        showTreatmentFilter ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+        filterColumns === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
       }`}
     >
       <div>
@@ -111,6 +122,17 @@ export default function SearchByCity({
             onChange={onTreatmentChange}
             options={treatmentOptions}
             placeholder="Todos os tipos"
+          />
+        </div>
+      )}
+      {showDiseaseFilter && onDiseaseChange && (
+        <div>
+          <label className={FIELD_LABEL_CLASS}>Doença (opcional)</label>
+          <Combobox
+            value={disease}
+            onChange={onDiseaseChange}
+            options={[...diseaseOptions]}
+            placeholder="Todas as áreas"
           />
         </div>
       )}

@@ -13,6 +13,7 @@
 
 import type { TreatmentOption } from './constants';
 import { TREATMENTS } from './constants';
+import { DISEASE_FILTER_OPTIONS } from './specialties';
 
 export interface Vertical {
   /** URL slug, kebab-case. Drives `app/[vertical]` and `/v1/{slug}` API routes. */
@@ -31,6 +32,9 @@ export interface Vertical {
   theme: VerticalTheme;
   /** The vertical's treatment/specialty options (PT labels, EN canonical values). */
   treatments: ReadonlyArray<TreatmentOption>;
+  /** Disease-area filter for qualification-based verticals — sent to the
+   * API as `?disease=`. Empty for verticals that filter by treatment. */
+  diseaseFilterOptions: ReadonlyArray<{ value: string; label: string }>;
   /** Hero copy for the vertical home. `emergencyNote` renders the red pill
    * under the subtitle — omit it for non-emergency verticals. */
   hero: {
@@ -65,6 +69,7 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     status: 'live',
     theme: 'venom',
     treatments: TREATMENTS,
+    diseaseFilterOptions: [],
     hero: {
       eyebrow: 'Dados oficiais do Ministério da Saúde',
       titleLead: 'Hospitais com soro antiofídico',
@@ -149,6 +154,7 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     status: 'live',
     theme: 'rare',
     treatments: [],
+    diseaseFilterOptions: DISEASE_FILTER_OPTIONS,
     hero: {
       eyebrow: 'Dados oficiais do Ministério da Saúde',
       titleLead: 'Centros de referência em',
@@ -226,6 +232,7 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     status: 'coming-soon',
     theme: 'oncology',
     treatments: [],
+    diseaseFilterOptions: [],
     hero: {
       eyebrow: 'Em breve',
       titleLead: 'Centros de alta complexidade',

@@ -10,6 +10,7 @@ export interface HospitalSearchInput {
   city?: string | undefined;
   cep?: string | undefined;
   treatment?: string | undefined;
+  disease?: string | undefined;
   radiusM?: number | undefined;
   limit?: number | undefined;
 }
@@ -50,6 +51,7 @@ export function useHospitalSearch(vertical: string): UseHospitalSearchResult {
             const data = await searchNearby(vertical, {
               cep: input.cep.replace(/\D/g, ''),
               treatment: input.treatment,
+              disease: input.disease,
               radiusM: input.radiusM ?? 100000,
               limit: input.limit ?? 50,
             });
@@ -63,6 +65,7 @@ export function useHospitalSearch(vertical: string): UseHospitalSearchResult {
               city: input.city,
               stateCode: input.stateCode,
               treatment: input.treatment,
+              disease: input.disease,
               limit: input.limit ?? 100,
             });
           } else {
@@ -73,6 +76,7 @@ export function useHospitalSearch(vertical: string): UseHospitalSearchResult {
             result = await searchHospitals(vertical, {
               stateCode: input.stateCode,
               treatment: input.treatment,
+              disease: input.disease,
               limit: input.limit ?? 200,
             });
           }
@@ -87,6 +91,7 @@ export function useHospitalSearch(vertical: string): UseHospitalSearchResult {
               mode: input.mode,
               city: input.city || null,
               has_cep: Boolean(input.cep),
+              disease: input.disease || null,
               results_count: result.length,
             },
           });

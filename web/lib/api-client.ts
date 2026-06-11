@@ -57,6 +57,7 @@ export interface SearchHospitalsParams {
   stateCode?: string | undefined;
   city?: string | undefined;
   treatment?: string | undefined;
+  disease?: string | undefined;
   q?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
@@ -70,6 +71,7 @@ export async function searchHospitals(
     state_code: params.stateCode,
     city: params.city,
     treatment: params.treatment,
+    disease: params.disease,
     q: params.q,
     limit: params.limit,
     offset: params.offset,
@@ -85,6 +87,7 @@ export interface SearchNearbyParams {
   city?: string | undefined;
   stateCode?: string | undefined;
   treatment?: string | undefined;
+  disease?: string | undefined;
   radiusM?: number | undefined;
   limit?: number | undefined;
 }
@@ -100,6 +103,7 @@ export async function searchNearby(
     city: params.city,
     state_code: params.stateCode,
     treatment: params.treatment,
+    disease: params.disease,
     radius_m: params.radiusM,
     limit: params.limit,
   });

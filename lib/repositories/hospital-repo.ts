@@ -35,6 +35,10 @@ export interface SearchFilters {
   limit: number;
   offset: number;
   vertical?: VerticalOrAll | null;
+  // Pre-resolved id allowlist (e.g. disease-area filter via
+  // hospital_specialties). Applied before limit/offset so pagination
+  // stays correct.
+  ids?: number[] | null;
 }
 
 export async function search(filters: SearchFilters): Promise<HospitalListRow[]> {
@@ -46,6 +50,7 @@ export async function search(filters: SearchFilters): Promise<HospitalListRow[]>
     limit,
     offset,
     vertical = DEFAULT_VERTICAL,
+    ids,
   } = filters;
 
   const params: Record<string, string> = {
@@ -60,6 +65,7 @@ export async function search(filters: SearchFilters): Promise<HospitalListRow[]>
   if (cityNormalized) params['city_normalized'] = `ilike.*${cityNormalized}*`;
   if (treatment) params['treatments'] = `cs.{"${treatment}"}`;
   if (q) params['or'] = `(name.ilike.*${q}*,address.ilike.*${q}*)`;
+  if (ids) params['id'] = `in.(${ids.join(',')})`;
   return sb<HospitalListRow>('hospitals', params);
 }
 
@@ -151,6 +157,16 @@ export async function findSpecialtiesByHospitalIds(
     hospital_id: `in.(${ids.join(',')})`,
     vertical: `eq.${vertical}`,
     order: 'specialty.asc',
+  });
+}
+
+/** Every qualification row of a vertical — feeds the disease-area filter.
+ * Verticals are small (dozens of establishments), so one unbounded select
+ * is cheaper than pushing JSONB matching into PostgREST. */
+export async function listSpecialtiesByVertical(vertical: Vertical): Promise<SpecialtyRow[]> {
+  return sb<SpecialtyRow>('hospital_specialties', {
+    select: 'hospital_id,specialty,habilitado_em,metadata',
+    vertical: `eq.${vertical}`,
   });
 }
 

@@ -6,8 +6,10 @@ import type {
   NearbyHospitalsResponse,
 } from './types';
 
-export const API_BASE =
-  process.env['NEXT_PUBLIC_API_URL'] || 'https://hospitais-referencia-api.vercel.app';
+import { API_URL } from './site';
+
+// Re-exported for telemetry.ts and callers that import it from here.
+export const API_BASE = API_URL;
 
 function buildUrl(
   path: string,

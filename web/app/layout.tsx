@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import PostHogScript from '@/components/PostHogScript';
+import { SITE_URL } from '@/lib/site';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -13,7 +14,7 @@ const PLATFORM_DESCRIPTION =
   'Plataforma pública e gratuita que organiza e republica os dados oficiais do Ministério da Saúde sobre os estabelecimentos habilitados pelo SUS.';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://hospitais-referencia-web.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'MapaSUS — Estabelecimentos de Referência do SUS',
     template: '%s | MapaSUS',

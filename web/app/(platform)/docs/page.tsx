@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import DocsSidebar from '@/components/docs/DocsSidebar';
+import { API_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'API Docs',
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
     'Documentação da API REST pública e gratuita do MapaSUS para consulta dos estabelecimentos de referência habilitados pelo SUS.',
 };
 
-const BASE = 'https://hospitais-referencia-api.vercel.app';
+const BASE = API_URL;
 
 // ---------------------------------------------------------------------------
 // Lightweight syntax highlighting (no dependency). Returns React spans so we

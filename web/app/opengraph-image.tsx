@@ -1,4 +1,7 @@
 import { ImageResponse } from 'next/og';
+import { SITE_URL } from '@/lib/site';
+
+const DISPLAY_HOST = SITE_URL.replace(/^https?:\/\//, '');
 
 export const alt =
   'MapaSUS — Estabelecimentos de referência do SUS. Dados oficiais do Ministério da Saúde.';
@@ -105,9 +108,7 @@ export default function OpengraphImage() {
         <div style={{ fontSize: 20, opacity: 0.9 }}>
           Dados oficiais do Ministério da Saúde · Atualização automática diária
         </div>
-        <div style={{ fontSize: 20, fontWeight: 600, opacity: 0.95 }}>
-          hospitais-referencia-web.vercel.app
-        </div>
+        <div style={{ fontSize: 20, fontWeight: 600, opacity: 0.95 }}>{DISPLAY_HOST}</div>
       </div>
     </div>,
     { ...size },

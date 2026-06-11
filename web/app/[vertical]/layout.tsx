@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import { API_URL, SITE_URL } from '@/lib/site';
 import { getVertical, LIVE_VERTICALS, type Vertical } from '@/lib/verticals';
 
 // Unknown or not-yet-live slugs 404 instead of rendering on demand.
@@ -42,9 +43,6 @@ export async function generateMetadata({
     },
   };
 }
-
-const SITE_URL = 'https://hospitais-referencia-web.vercel.app';
-const API_URL = 'https://hospitais-referencia-api.vercel.app';
 
 // Schema.org graph, parameterized per vertical — gives classic and AI search
 // engines (ChatGPT, Gemini, Perplexity) rich, citable context:

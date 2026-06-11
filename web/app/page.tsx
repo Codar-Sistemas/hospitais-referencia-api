@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import HubSearch from '@/components/hub/HubSearch';
+import { SITE_URL } from '@/lib/site';
 import { VERTICALS, type VerticalTheme } from '@/lib/verticals';
 
 export const metadata: Metadata = {
@@ -41,8 +42,6 @@ const ACCENT: Record<VerticalTheme, { dot: string; ring: string; text: string; h
     hover: 'group-hover:text-sky-600',
   },
 };
-
-const SITE_URL = 'https://hospitais-referencia-web.vercel.app';
 
 const hubJsonLd = {
   '@context': 'https://schema.org',

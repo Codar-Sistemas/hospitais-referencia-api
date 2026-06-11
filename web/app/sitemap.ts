@@ -1,8 +1,9 @@
 import { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
 import { LIVE_VERTICALS } from '@/lib/verticals';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://hospitais-referencia-web.vercel.app';
+  const baseUrl = SITE_URL;
   const now = new Date();
 
   // Hub landing.

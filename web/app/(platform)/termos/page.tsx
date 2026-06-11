@@ -19,7 +19,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function Termos() {
-  const updated = '14 de abril de 2026';
+  const updated = '11 de junho de 2026';
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
@@ -59,28 +59,35 @@ export default function Termos() {
         <p>
           O <strong>MapaSUS</strong> é um serviço público, gratuito e de código aberto que agrega e
           disponibiliza, em formato estruturado, os dados oficiais dos estabelecimentos habilitados
-          pelo SUS, conforme publicados pelo <strong>Ministério da Saúde</strong> em{' '}
+          pelo SUS — animais peçonhentos, doenças raras, oncologia e demais áreas que venham a ser
+          incorporadas — conforme publicados pelo <strong>Ministério da Saúde</strong> em{' '}
           <a
-            href="https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia"
+            href="https://www.gov.br/saude"
             target="_blank"
             rel="noopener noreferrer"
             className="text-emerald-600 hover:underline"
           >
             gov.br/saude
           </a>
-          .
+          . A fonte oficial específica de cada área está indicada no rodapé da respectiva página.
         </p>
         <p>
           O serviço é mantido de forma voluntária e opera inteiramente dentro dos limites gratuitos
-          de Supabase, Vercel e GitHub Actions. Nenhum dado pessoal é coletado ou comercializado.
+          de Supabase, Vercel e GitHub Actions. Nenhum dado é comercializado.
         </p>
       </Section>
 
       <Section title="2. Natureza e precisão dos dados">
         <p>
           Todos os dados exibidos são provenientes exclusivamente de documentos oficiais do
-          Ministério da Saúde. Este serviço <strong>não cria, altera nem valida</strong> as
-          informações — apenas as normaliza e disponibiliza em formato de fácil acesso.
+          Ministério da Saúde (PDFs e planilhas). Este serviço{' '}
+          <strong>não cria, altera nem valida</strong> as informações — apenas as normaliza e
+          disponibiliza em formato de fácil acesso.
+        </p>
+        <p>
+          As <strong>coordenadas geográficas</strong> exibidas nos mapas são derivadas por
+          geocodificação automática dos endereços oficiais (Nominatim/OpenStreetMap e dados abertos
+          do CNES) e podem conter imprecisões — não constam dos documentos originais.
         </p>
         <p>
           As informações podem estar desatualizadas em relação à situação real de cada unidade de
@@ -126,7 +133,8 @@ export default function Termos() {
           <li>Interrupções temporárias do serviço;</li>
           <li>Divergências entre os dados exibidos e a situação real das unidades de saúde;</li>
           <li>
-            Eventuais erros introduzidos no processo de extração e normalização dos PDFs oficiais.
+            Eventuais erros introduzidos no processo de extração e normalização dos documentos
+            oficiais (PDFs e planilhas) ou na geocodificação automática dos endereços.
           </li>
         </ul>
       </Section>
@@ -153,9 +161,23 @@ export default function Termos() {
 
       <Section title="6. Privacidade">
         <p>
-          Este serviço <strong>não coleta dados pessoais</strong>. Não há cadastro, login ou
-          rastreamento de usuários. Os únicos dados processados são o endereço IP para fins de rate
-          limiting — não são armazenados de forma persistente nem associados a nenhuma identidade.
+          Este serviço <strong>não exige cadastro nem login</strong> e não usa cookies de
+          rastreamento. Não é possível identificar usuários individualmente.
+        </p>
+        <p>
+          Para operar e melhorar o serviço, registramos <strong>métricas de uso</strong>: tipo de
+          busca, filtros aplicados e a UF derivada do CEP consultado. O endereço IP{' '}
+          <strong>nunca é armazenado em texto claro</strong> — ele é transformado em um hash
+          irreversível (SHA-256 com salt), usado apenas para rate limiting e para a contagem
+          agregada de usuários únicos.
+        </p>
+        <p>
+          Essas métricas são <strong>apagadas automaticamente após 30 dias</strong> e publicadas
+          somente de forma agregada na página de{' '}
+          <Link href="/estatisticas" className="text-emerald-600 hover:underline">
+            Estatísticas
+          </Link>
+          . Nenhum dado é comercializado ou compartilhado com terceiros.
         </p>
       </Section>
 

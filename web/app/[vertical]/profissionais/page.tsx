@@ -5,6 +5,7 @@ import Combobox from '@/components/ui/Combobox';
 import { searchHospitals, searchNearby } from '@/lib/api-client';
 import { STATES, TREATMENTS, TREATMENT_TEXT_CLASS } from '@/lib/constants';
 import { fetchCitiesByState } from '@/lib/ibge';
+import { specialtyBadges } from '@/lib/specialties';
 import { getVertical } from '@/lib/verticals';
 import type { Hospital } from '@/lib/types';
 
@@ -315,6 +316,11 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                       {shortTreatmentLabel(t.label)}
                     </th>
                   ))}
+                  {!hasTreatments && (
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide">
+                      Habilitações
+                    </th>
+                  )}
                   {showDistance && (
                     <th className="px-4 py-3 font-semibold text-slate-600 text-right text-xs uppercase tracking-wide whitespace-nowrap">
                       Dist.
@@ -366,6 +372,20 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
                         )}
                       </td>
                     ))}
+                    {!hasTreatments && (
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1 max-w-sm">
+                          {specialtyBadges(h).map((label) => (
+                            <span
+                              key={label}
+                              className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700 ring-1 ring-violet-200 whitespace-nowrap"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    )}
                     {showDistance && (
                       <td className="px-4 py-3 text-right text-xs text-slate-500 whitespace-nowrap font-medium">
                         {h.distance_km !== undefined ? `${h.distance_km.toFixed(1)} km` : '—'}

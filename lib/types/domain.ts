@@ -86,6 +86,16 @@ export interface Hospital {
   updated_at: string;
 }
 
+/** Per-vertical qualification summary attached to list responses for
+ * non-default verticals (e.g. rare_diseases). `qualification_codes` carries
+ * the raw "Códigos Habilitados" strings from the official source — the web
+ * maps the embedded 35.XX codes to disease-area badges. */
+export interface HospitalSpecialtySummary {
+  specialty: string;
+  habilitado_em: string | null;
+  qualification_codes: string[];
+}
+
 /** Subset returned by `hospital-repo.search()`. */
 export type HospitalListRow = Pick<
   Hospital,
@@ -103,7 +113,9 @@ export type HospitalListRow = Pick<
   | 'ocr_confidence'
   | 'requires_verification'
   | 'verticals'
->;
+> & {
+  specialties?: HospitalSpecialtySummary[];
+};
 
 /** Returned by the `nearby_hospitals` RPC. Adds the computed distance. */
 export interface NearbyHospitalRow extends HospitalListRow {

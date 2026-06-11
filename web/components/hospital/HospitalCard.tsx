@@ -1,6 +1,7 @@
 'use client';
 import type { Hospital } from '@/lib/types';
 import { TREATMENT_BADGE_CLASS, TREATMENT_LABEL_BY_VALUE } from '@/lib/constants';
+import { specialtyBadges } from '@/lib/specialties';
 import { emit } from '@/lib/telemetry';
 
 interface HospitalCardProps {
@@ -12,6 +13,10 @@ interface HospitalCardProps {
 }
 
 export default function HospitalCard({ hospital, showTreatments = true }: HospitalCardProps) {
+  // Disease-area badges from the vertical's qualifications (rare-diseases
+  // et al.) — the counterpart of the venomous treatment badges below.
+  const qualificationBadges = specialtyBadges(hospital);
+
   const mapsUrl = hospital.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         `${hospital.name} ${hospital.address} ${hospital.city}`,
@@ -148,6 +153,19 @@ export default function HospitalCard({ hospital, showTreatments = true }: Hospit
               }`}
             >
               {TREATMENT_LABEL_BY_VALUE[treatment] ?? treatment}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {qualificationBadges.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {qualificationBadges.map((label) => (
+            <span
+              key={label}
+              className="text-xs px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700 ring-1 ring-violet-200"
+            >
+              {label}
             </span>
           ))}
         </div>

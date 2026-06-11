@@ -15,6 +15,15 @@ export interface Hospital {
   extraction_source?: 'pdf_text' | 'pdf_ocr';
   ocr_confidence?: number | null;
   requires_verification?: boolean;
+  // Present on non-default verticals (e.g. rare-diseases): the hospital's
+  // qualifications with the raw "Códigos Habilitados" strings.
+  specialties?: HospitalSpecialty[];
+}
+
+export interface HospitalSpecialty {
+  specialty: string;
+  habilitado_em: string | null;
+  qualification_codes: string[];
 }
 
 export interface HospitalSearchResponse {

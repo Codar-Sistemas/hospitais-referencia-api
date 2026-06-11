@@ -44,6 +44,36 @@ export function resolveVertical(vertical: string | null | undefined): VerticalOr
   return vertical as Vertical;
 }
 
+// The default vertical answers "what does this hospital treat" with the
+// `treatments` column; other verticals (rare_diseases, oncology) answer it
+// with `hospital_specialties`. Attach those rows — one batched query — so
+// list/nearby responses can render qualification badges without N+1 calls.
+async function attachSpecialties<T extends HospitalListRow>(
+  rows: T[],
+  vertical: VerticalOrAll,
+): Promise<void> {
+  if (vertical === 'all' || vertical === DEFAULT_VERTICAL || rows.length === 0) return;
+  const specialtyRows = await hospitalRepo.findSpecialtiesByHospitalIds(
+    rows.map((r) => r.id),
+    vertical,
+  );
+  const byHospital = new Map<number, HospitalListRow['specialties']>();
+  for (const s of specialtyRows) {
+    const codes = s.metadata?.['qualification_codes'];
+    const entry = {
+      specialty: s.specialty,
+      habilitado_em: s.habilitado_em,
+      qualification_codes: Array.isArray(codes) ? codes.map(String) : [],
+    };
+    const list = byHospital.get(s.hospital_id);
+    if (list) list.push(entry);
+    else byHospital.set(s.hospital_id, [entry]);
+  }
+  for (const row of rows) {
+    row.specialties = byHospital.get(row.id) ?? [];
+  }
+}
+
 function resolveTreatment(rawTreatment: string | null | undefined): Treatment | null {
   if (!rawTreatment) return null;
   const canonical = normalizeTreatment(rawTreatment);
@@ -110,6 +140,7 @@ export async function listHospitals(params: ListHospitalsParams): Promise<ListHo
     offset,
     vertical: v,
   });
+  await attachSpecialties(rows, v);
   return {
     filters: {
       state_code: stateCode,
@@ -336,6 +367,7 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
       limit,
       vertical: v,
     });
+    await attachSpecialties(rows, v);
     return {
       origin,
       radius_m: radiusM,
@@ -371,6 +403,7 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
     limit,
     vertical: v,
   });
+  await attachSpecialties(rows, v);
   return {
     origin: { ...origin, city_search: citySearch },
     total_returned: rows.length,

@@ -132,6 +132,28 @@ export async function findNearby(options: FindNearbyOptions): Promise<NearbyHosp
   });
 }
 
+/** Raw `hospital_specialties` row subset used to build the per-hospital
+ * specialty summaries on list responses. */
+export interface SpecialtyRow {
+  hospital_id: number;
+  specialty: string;
+  habilitado_em: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export async function findSpecialtiesByHospitalIds(
+  ids: number[],
+  vertical: Vertical,
+): Promise<SpecialtyRow[]> {
+  if (ids.length === 0) return [];
+  return sb<SpecialtyRow>('hospital_specialties', {
+    select: 'hospital_id,specialty,habilitado_em,metadata',
+    hospital_id: `in.(${ids.join(',')})`,
+    vertical: `eq.${vertical}`,
+    order: 'specialty.asc',
+  });
+}
+
 export interface CrossVerticalSearchFilters {
   stateCode?: StateCode | null;
   cityNormalized?: string | null;

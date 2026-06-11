@@ -33,7 +33,6 @@ from datetime import UTC, date, datetime
 from typing import Any, Final
 
 from scripts.geocoding.batch import geocode_pending
-from scripts.providers.cnes_api import CnesApiProvider
 from scripts.shared.config import (
     EXTRACTION_SOURCE_XLSX,
     VERTICAL_RARE_DISEASES,
@@ -41,6 +40,7 @@ from scripts.shared.config import (
 from scripts.shared.db import SupabaseClient
 from scripts.shared.http import download_file
 from scripts.shared.logger import log
+from scripts.shared.qualification_sync import enrich_with_cnes
 from scripts.shared.sync_log_writer import write_sync_log
 from scripts.shared.types import SyncResult
 from scripts.syncs.rare_diseases.specialties import map_qualification_type
@@ -111,26 +111,8 @@ def _specialty_entries(row: RareDiseaseXlsxRow) -> list[SpecialtyEntry]:
     ]
 
 
-def enrich_with_cnes(
-    hospitals: dict[str, RareDiseaseHospital],
-    provider: CnesApiProvider | None = None,
-) -> None:
-    """Fill address/phone/coordinates from the CNES open-data API.
-    Per-CNES failures are tolerated — the row simply stays 'pending' and the
-    Nominatim batch resolves it by city later."""
-    provider = provider or CnesApiProvider()
-    misses = 0
-    for cnes, hospital in hospitals.items():
-        establishment = provider.fetch(cnes)
-        if establishment is None:
-            misses += 1
-            log(f"CNES API miss for {cnes} ({hospital['name']})", state_code="BR")
-            continue
-        hospital["address"] = establishment.address
-        hospital["phones"] = establishment.phone
-        hospital["lat"] = establishment.lat
-        hospital["lng"] = establishment.lng
-    log(f"CNES enrichment: {len(hospitals) - misses}/{len(hospitals)} resolved", state_code="BR")
+# `enrich_with_cnes` moved to scripts/shared/qualification_sync.py (shared
+# with the oncology vertical) — re-imported above, same call sites.
 
 
 # ---------------------------------------------------------------------------

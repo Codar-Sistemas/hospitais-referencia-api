@@ -1,14 +1,22 @@
 """
 Structural types for the rare_diseases sync pipeline.
 
-The national XLSX rows carry far fewer fields than the venomous PDFs
-(no address/phones — those come from the CNES API at enrichment time),
-so this vertical has its own shapes instead of reusing HospitalRecord.
+The upsert-ready shapes (SpecialtyEntry, hospital keyed by CNES) are
+shared with other qualification-based verticals and live in
+scripts/shared/types.py; the aliases below keep this vertical's public
+names stable. Only the XLSX row shape is rare-diseases-specific.
 """
 
 from __future__ import annotations
 
 from typing import TypedDict
+
+from scripts.shared.types import QualificationHospital, SpecialtyEntry
+
+# Public aliases — RareDiseaseHospital predates the shared extraction.
+RareDiseaseHospital = QualificationHospital
+
+__all__ = ["RareDiseaseHospital", "RareDiseaseXlsxRow", "SpecialtyEntry"]
 
 
 class RareDiseaseXlsxRow(TypedDict):
@@ -24,27 +32,3 @@ class RareDiseaseXlsxRow(TypedDict):
     qualification_year: int | None
     qualification_codes: list[str]
     source_url: str
-
-
-class SpecialtyEntry(TypedDict):
-    """One (specialty, metadata) pair destined for hospital_specialties."""
-
-    specialty: str
-    habilitado_em: str | None  # ISO date (YYYY-01-01 — source has year only)
-    source_url: str
-    metadata: dict[str, object]
-
-
-class RareDiseaseHospital(TypedDict):
-    """Upsert-ready hospital, keyed by CNES, after merging both XLSX files
-    and enriching with the CNES open-data API."""
-
-    state_code: str
-    city: str
-    name: str
-    cnes: str
-    address: str | None
-    phones: str | None
-    lat: float | None
-    lng: float | None
-    specialties: list[SpecialtyEntry]

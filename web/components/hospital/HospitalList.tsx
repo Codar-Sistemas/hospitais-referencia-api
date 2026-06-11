@@ -66,7 +66,7 @@ export default function HospitalList({ hospitals, showTreatments = true }: Hospi
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-slate-800">
-          {count} hospital{plural ? 'is' : ''} encontrado{plural ? 's' : ''}
+          {count} {plural ? 'hospitais encontrados' : 'hospital encontrado'}
         </h2>
         {isSortedByDistance && (
           <span className="text-xs text-slate-400">Ordenado por distância</span>

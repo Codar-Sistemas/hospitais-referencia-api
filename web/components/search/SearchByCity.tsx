@@ -20,6 +20,8 @@ interface SearchByCityProps {
   diseaseOptions?: ReadonlyArray<{ value: string; label: string }>;
   disease?: string;
   onDiseaseChange?: (value: string) => void;
+  /** PT label for the disease filter (per-vertical, e.g. "Tipo de serviço"). */
+  diseaseFilterLabel?: string;
 }
 
 export default function SearchByCity({
@@ -33,6 +35,7 @@ export default function SearchByCity({
   diseaseOptions = [],
   disease = '',
   onDiseaseChange,
+  diseaseFilterLabel = 'Doença',
 }: SearchByCityProps) {
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -127,7 +130,7 @@ export default function SearchByCity({
       )}
       {showDiseaseFilter && onDiseaseChange && (
         <div>
-          <label className={FIELD_LABEL_CLASS}>Doença (opcional)</label>
+          <label className={FIELD_LABEL_CLASS}>{diseaseFilterLabel} (opcional)</label>
           <Combobox
             value={disease}
             onChange={onDiseaseChange}

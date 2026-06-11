@@ -13,7 +13,7 @@
 
 import type { TreatmentOption } from './constants';
 import { TREATMENTS } from './constants';
-import { DISEASE_FILTER_OPTIONS } from './specialties';
+import { ONCOLOGY_FILTER_OPTIONS, RARE_DISEASE_FILTER_OPTIONS } from './specialties';
 
 export interface Vertical {
   /** URL slug, kebab-case. Drives `app/[vertical]` and `/v1/{slug}` API routes. */
@@ -35,6 +35,9 @@ export interface Vertical {
   /** Disease-area filter for qualification-based verticals — sent to the
    * API as `?disease=`. Empty for verticals that filter by treatment. */
   diseaseFilterOptions: ReadonlyArray<{ value: string; label: string }>;
+  /** PT label for that filter ("Doença" for rare diseases, "Tipo de
+   * serviço" for oncology). */
+  diseaseFilterLabel: string;
   /** Hero copy for the vertical home. `emergencyNote` renders the red pill
    * under the subtitle — omit it for non-emergency verticals. */
   hero: {
@@ -70,6 +73,7 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     theme: 'venom',
     treatments: TREATMENTS,
     diseaseFilterOptions: [],
+    diseaseFilterLabel: 'Doença',
     hero: {
       eyebrow: 'Dados oficiais do Ministério da Saúde',
       titleLead: 'Hospitais com soro antiofídico',
@@ -154,7 +158,8 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     status: 'live',
     theme: 'rare',
     treatments: [],
-    diseaseFilterOptions: DISEASE_FILTER_OPTIONS,
+    diseaseFilterOptions: RARE_DISEASE_FILTER_OPTIONS,
+    diseaseFilterLabel: 'Doença',
     hero: {
       eyebrow: 'Dados oficiais do Ministério da Saúde',
       titleLead: 'Centros de referência em',
@@ -229,28 +234,80 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     subdomain: 'oncologia.mapasus.com.br',
     label: 'Oncologia',
     shortLabel: 'Oncologia',
-    status: 'coming-soon',
+    status: 'live',
     theme: 'oncology',
     treatments: [],
-    diseaseFilterOptions: [],
+    diseaseFilterOptions: ONCOLOGY_FILTER_OPTIONS,
+    diseaseFilterLabel: 'Tipo de serviço',
     hero: {
-      eyebrow: 'Em breve',
-      titleLead: 'Centros de alta complexidade',
-      titleAccent: 'em oncologia (CACON e UNACON)',
+      eyebrow: 'Dados oficiais do Ministério da Saúde',
+      titleLead: 'Hospitais habilitados em',
+      titleAccent: 'oncologia pelo SUS',
       subtitle:
-        'Os hospitais habilitados pelo SUS para tratamento oncológico de alta complexidade, em construção.',
+        'Encontre os CACON, UNACON e serviços de radioterapia, reconstrução mamária e tratamento sincrônico habilitados pelo SUS em todo o Brasil.',
     },
-    howItWorks: [],
-    faq: [],
+    howItWorks: [
+      {
+        title: '1. Dados oficiais',
+        body: 'As planilhas de hospitais habilitados publicadas pela Coordenação-Geral de Câncer do Ministério da Saúde são monitoradas todos os dias. Quando um arquivo muda, a base é atualizada automaticamente.',
+      },
+      {
+        title: '2. Busca inteligente',
+        body: 'Localize o hospital habilitado mais próximo por cidade ou CEP, filtrando por tipo de serviço (CACON, UNACON, radioterapia, oncologia pediátrica e outros).',
+      },
+      {
+        title: '3. Informações completas',
+        body: 'Cada hospital traz endereço, telefone e CNES, enriquecidos diretamente do Cadastro Nacional de Estabelecimentos de Saúde (CNES).',
+      },
+    ],
+    faq: [
+      {
+        question: 'O que são CACON e UNACON?',
+        answer:
+          'São as duas categorias de habilitação em alta complexidade em oncologia no SUS. UNACON (Unidade de Assistência de Alta Complexidade em Oncologia) trata os cânceres mais prevalentes; CACON (Centro de Assistência de Alta Complexidade em Oncologia) é habilitado para todos os tipos de câncer e obrigatoriamente oferece radioterapia. Ambos podem ter serviços adicionais, como hematologia e oncologia pediátrica.',
+      },
+      {
+        question: 'Como conseguir tratamento oncológico pelo SUS?',
+        answer:
+          'O acesso começa pela rede básica de saúde: com a suspeita ou diagnóstico, o paciente é encaminhado a um hospital habilitado pela regulação do SUS. A Lei nº 12.732/2012 garante o início do tratamento em até 60 dias a partir do diagnóstico registrado. Esta ferramenta ajuda a conhecer os hospitais habilitados da sua região.',
+      },
+      {
+        question: 'O que é a habilitação em reconstrução mamária?',
+        answer:
+          'A reconstrução mamária pós-mastectomia é um direito garantido por lei às pacientes do SUS. Os hospitais com a habilitação específica (código 17.23) realizam a cirurgia plástica reparadora da mama, na mesma operação do tratamento ou posteriormente.',
+      },
+      {
+        question: 'De onde vêm os dados?',
+        answer:
+          'Das planilhas oficiais de hospitais habilitados publicadas pela Coordenação-Geral de Câncer (CGCAN) do Ministério da Saúde em gov.br/saude, lidas automaticamente todos os dias. Endereços, telefones e coordenadas são complementados com o Cadastro Nacional de Estabelecimentos de Saúde (CNES). Nenhum dado é inventado — apenas normalizado.',
+      },
+      {
+        question: 'A API é gratuita?',
+        answer:
+          'Sim. A API REST é pública, gratuita, sem autenticação e documentada na rota /docs. Há rate limit de 15 requisições por minuto por IP para proteger contra abusos.',
+      },
+    ],
     metadata: {
-      title: 'Centros de Alta Complexidade em Oncologia no SUS | MapaSUS',
+      title: 'Hospitais Habilitados em Oncologia no SUS | CACON e UNACON',
       description:
-        'Diretório dos hospitais habilitados pelo SUS para tratamento oncológico (CACON/UNACON) no Brasil. Em construção.',
-      keywords: ['oncologia', 'câncer', 'CACON', 'UNACON', 'SUS', 'ministério da saúde'],
+        'Encontre os hospitais habilitados pelo SUS em oncologia: CACON, UNACON, radioterapia e reconstrução mamária. Dados oficiais do Ministério da Saúde.',
+      keywords: [
+        'oncologia',
+        'câncer',
+        'CACON',
+        'UNACON',
+        'radioterapia',
+        'quimioterapia',
+        'oncologia pediátrica',
+        'reconstrução mamária',
+        'SUS',
+        'ministério da saúde',
+        'CNES',
+      ],
     },
     cardDescription:
-      'Os hospitais habilitados pelo SUS para tratamento oncológico de alta complexidade (CACON/UNACON). Em construção.',
-    sourceUrl: 'https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/c/cancer',
+      'Os hospitais habilitados pelo SUS em alta complexidade oncológica: CACON, UNACON, radioterapia, reconstrução mamária e tratamento sincrônico.',
+    sourceUrl: 'https://www.gov.br/saude/pt-br/composicao/saes/cgcan/hospitais-habilitados',
   },
 ];
 

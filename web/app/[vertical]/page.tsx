@@ -115,6 +115,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
                   diseaseOptions={v.diseaseFilterOptions}
                   disease={disease}
                   onDiseaseChange={setDisease}
+                  diseaseFilterLabel={v.diseaseFilterLabel}
                 />
               )}
               {mode === 'city' && (
@@ -129,6 +130,7 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
                   diseaseOptions={v.diseaseFilterOptions}
                   disease={disease}
                   onDiseaseChange={setDisease}
+                  diseaseFilterLabel={v.diseaseFilterLabel}
                 />
               )}
             </div>

@@ -31,7 +31,7 @@ const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;
 const URL_TO_DB_VERTICAL: Readonly<Record<string, Vertical>> = {
   'venomous-animals': 'venomous_animals',
   'rare-diseases': 'rare_diseases',
-  oncologia: 'oncology',
+  oncology: 'oncology',
 };
 const VERTICAL_PREFIX = new RegExp(`^/v1/(${Object.keys(URL_TO_DB_VERTICAL).join('|')})(/.*)?$`);
 

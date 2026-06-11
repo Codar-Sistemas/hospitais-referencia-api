@@ -248,7 +248,7 @@ export default function Profissionais({ params }: { params: Promise<{ vertical: 
           {!hasTreatments && v.diseaseFilterOptions.length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Doença
+                {v.diseaseFilterLabel}
               </label>
               <Combobox
                 value={disease}

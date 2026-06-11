@@ -53,6 +53,7 @@ EXTRACTION_SOURCE_XLSX: Final[Literal["xlsx"]] = "xlsx"
 # -------------------------------------------------------------------------
 VERTICAL_VENOMOUS_ANIMALS: Final[Literal["venomous_animals"]] = "venomous_animals"
 VERTICAL_RARE_DISEASES: Final[Literal["rare_diseases"]] = "rare_diseases"
+VERTICAL_ONCOLOGY: Final[Literal["oncology"]] = "oncology"
 
 # -------------------------------------------------------------------------
 # Geocoding status (column `hospitals.geocoding_status`)

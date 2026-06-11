@@ -18,7 +18,12 @@ import type {
   Vertical,
   VerticalOrAll,
 } from '../types/domain.js';
-import { resolveDiseaseArea, specialtiesMatchArea, type DiseaseArea } from './disease-areas.js';
+import {
+  resolveDiseaseArea,
+  specialtiesMatchArea,
+  type DiseaseArea,
+  type QualificationVertical,
+} from './disease-areas.js';
 import { lookupCep } from './geocoding-service.js';
 import { CANONICAL_TREATMENTS, normalizeCity, normalizeTreatment } from './search-normalizer.js';
 
@@ -88,13 +93,18 @@ function resolveDiseaseFilter(
         '(e.g. /v1/rare-diseases/hospitals). Use treatment= on the default vertical.',
     );
   }
-  return resolveDiseaseArea(rawDisease);
+  // The guards above excluded 'all' and the default vertical; TS can't
+  // narrow via the DEFAULT_VERTICAL constant, hence the cast.
+  return resolveDiseaseArea(rawDisease, vertical as QualificationVertical);
 }
 
 // Resolves a disease-area filter to the hospital ids qualified for it.
 // One small query (a vertical has dozens of rows); matching happens on the
 // stable 35.XX codes inside metadata.qualification_codes.
-async function findIdsByDiseaseArea(vertical: Vertical, area: DiseaseArea): Promise<number[]> {
+async function findIdsByDiseaseArea(
+  vertical: QualificationVertical,
+  area: DiseaseArea,
+): Promise<number[]> {
   const rows = await hospitalRepo.listSpecialtiesByVertical(vertical);
   const ids = new Set<number>();
   for (const row of rows) {
@@ -104,7 +114,7 @@ async function findIdsByDiseaseArea(vertical: Vertical, area: DiseaseArea): Prom
       habilitado_em: row.habilitado_em,
       qualification_codes: Array.isArray(codes) ? codes.map(String) : [],
     };
-    if (specialtiesMatchArea([summary], area)) ids.add(row.hospital_id);
+    if (specialtiesMatchArea([summary], area, vertical)) ids.add(row.hospital_id);
   }
   return [...ids];
 }
@@ -194,7 +204,8 @@ export async function listHospitals(params: ListHospitalsParams): Promise<ListHo
   // so limit/offset paginate the filtered set.
   let ids: number[] | null = null;
   if (disease) {
-    ids = await findIdsByDiseaseArea(v as Vertical, disease);
+    // resolveDiseaseFilter already rejected 'all'/default verticals.
+    ids = await findIdsByDiseaseArea(v as QualificationVertical, disease);
     if (ids.length === 0) {
       return { filters: filtersEcho, total_returned: 0, hospitals: [] };
     }
@@ -437,7 +448,7 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
     // awareness). Limit ran pre-filter, which can under-fill a page — fine
     // for qualification verticals, whose universe is a few dozen rows.
     const filtered = disease
-      ? rows.filter((h) => specialtiesMatchArea(h.specialties, disease))
+      ? rows.filter((h) => specialtiesMatchArea(h.specialties, disease, v as QualificationVertical))
       : rows;
     return {
       origin,
@@ -476,7 +487,7 @@ export async function listNearbyHospitals(params: ListNearbyParams): Promise<Lis
   });
   await attachSpecialties(rows, v);
   const filtered = disease
-    ? rows.filter((h) => specialtiesMatchArea(h.specialties, disease))
+    ? rows.filter((h) => specialtiesMatchArea(h.specialties, disease, v as QualificationVertical))
     : rows;
   return {
     origin: { ...origin, city_search: citySearch },

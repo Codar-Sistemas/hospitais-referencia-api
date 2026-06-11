@@ -19,13 +19,22 @@ Quirks handled here:
 from __future__ import annotations
 
 import re
-import unicodedata
 from io import BytesIO
 from typing import Any
 
 from openpyxl import load_workbook
 
+from scripts.shared.spreadsheets import (
+    SheetLayoutError,
+    clean_cell,
+    normalize_cnes,
+    normalize_header,
+)
 from scripts.syncs.rare_diseases.types import RareDiseaseXlsxRow
+
+# Public alias — this module's error predates the shared extraction; it is
+# the SAME class, so existing `except XlsxLayoutError` keeps working.
+XlsxLayoutError = SheetLayoutError
 
 # Header cell -> RareDiseaseXlsxRow field. Keys are normalized (lowercase,
 # accent-stripped) so cosmetic header edits don't break the mapping.
@@ -42,10 +51,10 @@ _EXPECTED_HEADERS = {
 
 _UF_RE = re.compile(r"^[A-Z]{2}$")
 
-
-class XlsxLayoutError(RuntimeError):
-    """The spreadsheet no longer matches the layout this parser expects.
-    Raised loudly so a silent gov.br format change never half-applies."""
+# Internal aliases over the shared cell helpers (scripts/shared/spreadsheets).
+_clean = clean_cell
+_normalize_header = normalize_header
+_normalize_cnes = normalize_cnes
 
 
 def parse_xlsx(content: bytes, source_url: str) -> list[RareDiseaseXlsxRow]:
@@ -126,34 +135,6 @@ def _locate_header(rows_iter: Any, source_url: str) -> dict[str, int]:
                 )
             return columns
     raise XlsxLayoutError(f"No header row found in {source_url}")
-
-
-def _normalize_header(value: Any) -> str | None:
-    text = _clean(value)
-    if text is None:
-        return None
-    stripped = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    return re.sub(r"\s+", " ", stripped).strip().lower()
-
-
-def _clean(value: Any) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _normalize_cnes(value: Any, source_url: str) -> str:
-    """CNES is 7 digits by spec; Excel may deliver it as int, float or
-    string with/without leading zeros."""
-    if value is None:
-        raise XlsxLayoutError(f"Establishment row without CNES in {source_url}")
-    if isinstance(value, float):
-        value = int(value)
-    digits = re.sub(r"\D", "", str(value))
-    if not digits or len(digits) > 7:
-        raise XlsxLayoutError(f"Invalid CNES {value!r} in {source_url}")
-    return digits.zfill(7)
 
 
 def _as_year(value: Any) -> int | None:

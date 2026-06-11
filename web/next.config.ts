@@ -8,27 +8,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // Host-level redirects (www / old vercel.app → mapasus.com.br) are handled
+  // natively by Vercel once mapasus.com.br is set as the project's Primary
+  // Domain — it 308s every non-primary host to the primary. Doing it here
+  // instead would redirect the live vercel.app URL to mapasus.com.br even
+  // BEFORE its DNS resolves, taking the site offline. So only the path-level
+  // redirect lives here.
   async redirects() {
     return [
-      // SEO consolidation: send every non-canonical host to https://mapasus.com.br
-      // so link juice and indexing land on one domain. The canonical <link> tags
-      // already point here; these 308s make it authoritative.
-      //   www.mapasus.com.br/*               → mapasus.com.br/*
-      //   hospitais-referencia-web.vercel.app/* → mapasus.com.br/*
-      // The vertical subdomains (peconhentos/raras/oncologia.mapasus.com.br) are
-      // NOT redirected — proxy.ts rewrites those to their vertical.
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'www.mapasus.com.br' }],
-        destination: 'https://mapasus.com.br/:path*',
-        permanent: true,
-      },
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'hospitais-referencia-web.vercel.app' }],
-        destination: 'https://mapasus.com.br/:path*',
-        permanent: true,
-      },
       // Preserve the single indexed URL that moved under the venomous-animals
       // vertical. (`/` intentionally changed from the venomous search to the hub.)
       {

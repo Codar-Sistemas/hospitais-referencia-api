@@ -10,21 +10,30 @@ import { LIVE_VERTICALS, THEME_DOT_CLASS } from '@/lib/verticals';
 // vertical. Busca and Profissionais are vertical-scoped.
 //
 // The brand area splits in two: the "+" mark goes back to the hub, and the
-// vertical name opens a switcher listing every live vertical (derived from
-// the registry — a new vertical shows up here with zero Navbar edits).
+// label opens a switcher listing every live vertical (derived from the
+// registry — a new vertical shows up here with zero Navbar edits).
+//
+// Without a `vertical` (platform pages: /estatisticas, /docs, /termos) the
+// navbar runs in platform mode: "MapaSUS" as the switcher label, only the
+// platform-wide links, plus the GitHub link — same chrome as the hub header.
 interface NavbarProps {
-  vertical: string;
-  label: string;
+  vertical?: string;
+  label?: string;
 }
 
-export default function Navbar({ vertical, label }: NavbarProps) {
+export default function Navbar({ vertical, label }: NavbarProps = {}) {
   const pathname = usePathname();
-  const links = [
-    { href: `/${vertical}`, label: 'Busca' },
-    { href: `/${vertical}/profissionais`, label: 'Profissionais' },
-    { href: '/estatisticas', label: 'Estatísticas' },
-    { href: '/docs', label: 'API' },
-  ];
+  const links = vertical
+    ? [
+        { href: `/${vertical}`, label: 'Busca' },
+        { href: `/${vertical}/profissionais`, label: 'Profissionais' },
+        { href: '/estatisticas', label: 'Estatísticas' },
+        { href: '/docs', label: 'API' },
+      ]
+    : [
+        { href: '/estatisticas', label: 'Estatísticas' },
+        { href: '/docs', label: 'API' },
+      ];
   const [isOpen, setIsOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
@@ -79,7 +88,7 @@ export default function Navbar({ vertical, label }: NavbarProps) {
               onClick={() => setSwitcherOpen((open) => !open)}
               className="flex items-center gap-1.5 font-semibold text-slate-800 text-base leading-tight rounded-lg px-2 py-1.5 -ml-2 hover:bg-slate-100 transition-colors"
             >
-              {label}
+              {label ?? 'MapaSUS'}
               <svg
                 className={`w-4 h-4 text-slate-400 transition-transform ${switcherOpen ? 'rotate-180' : ''}`}
                 fill="none"
@@ -173,8 +182,20 @@ export default function Navbar({ vertical, label }: NavbarProps) {
           ))}
         </nav>
 
-        {/* Desktop SAMU badge */}
-        <SamuBadge className="hidden md:flex" />
+        {/* Desktop SAMU badge (+ GitHub on platform pages, matching the hub) */}
+        <div className="hidden md:flex items-center gap-3">
+          <SamuBadge />
+          {!vertical && (
+            <a
+              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              GitHub ↗
+            </a>
+          )}
+        </div>
 
         {/* Mobile hamburger */}
         <button

@@ -5,7 +5,6 @@ returns the metadata sync uses to detect change.
 
 from __future__ import annotations
 
-import hashlib
 import re
 from datetime import UTC, datetime, timedelta, timezone
 from urllib.parse import urljoin
@@ -13,7 +12,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from scripts.shared.config import REQUEST_TIMEOUT, USER_AGENT
-from scripts.shared.http import build_session
+from scripts.shared.http import build_session, download_file
 
 # Last-updated timestamp shown on the source page: "Atualizado em 10/02/2026 18h04"
 # Pattern is Portuguese — that is what gov.br renders.
@@ -88,13 +87,7 @@ def fetch_page_metadata(page_url: str) -> tuple[datetime | None, str | None]:
 
 def download_pdf(url: str) -> tuple[bytes, str]:
     """Download a PDF and return (bytes, sha256_hex)."""
-    response = _session.get(
-        url,
-        headers={"User-Agent": USER_AGENT},
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
-    return response.content, hashlib.sha256(response.content).hexdigest()
+    return download_file(url, session=_session)
 
 
 def is_image_based_pdf(path: str) -> bool:

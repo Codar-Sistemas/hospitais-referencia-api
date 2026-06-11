@@ -30,7 +30,7 @@ interface ProdResponse {
   data?: ProdHospital[];
 }
 
-const PROD_API = process.env['PROD_API'] ?? 'https://hospitais-referencia-api.vercel.app';
+const PROD_API = process.env['PROD_API'] ?? 'https://api.mapasus.com.br';
 const LOCAL_SB = process.env['SUPABASE_URL'];
 const SERVICE_KEY = process.env['SUPABASE_SERVICE_KEY'];
 

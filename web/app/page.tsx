@@ -1,316 +1,219 @@
-'use client';
-import { useState } from 'react';
-import SearchTabs from '@/components/search/SearchTabs';
-import SearchByAnimal from '@/components/search/SearchByAnimal';
-import SearchByPostalCode from '@/components/search/SearchByPostalCode';
-import SearchByCity from '@/components/search/SearchByCity';
-import HospitalList from '@/components/hospital/HospitalList';
-import { useHospitalSearch } from '@/hooks/useHospitalSearch';
-import type { SearchMode } from '@/lib/types';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import HubSearch from '@/components/hub/HubSearch';
+import { SITE_URL } from '@/lib/site';
+import { VERTICALS, type VerticalTheme } from '@/lib/verticals';
 
-export default function Home() {
-  const [mode, setMode] = useState<SearchMode>('city');
-  const [stateCode, setStateCode] = useState('');
-  const [treatment, setTreatment] = useState('');
-  const [city, setCity] = useState('');
-  const [cep, setCep] = useState('');
+export const metadata: Metadata = {
+  title: 'MapaSUS — Estabelecimentos de Referência do SUS',
+  description:
+    'Plataforma pública e gratuita que organiza e republica os dados oficiais do Ministério da Saúde sobre os estabelecimentos habilitados pelo SUS: animais peçonhentos, doenças raras e oncologia.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'MapaSUS — Estabelecimentos de Referência do SUS',
+    description:
+      'Dados oficiais do Ministério da Saúde sobre estabelecimentos habilitados pelo SUS, organizados, normalizados e fáceis de buscar.',
+    url: '/',
+    siteName: 'MapaSUS',
+    locale: 'pt_BR',
+    type: 'website',
+  },
+};
 
-  const { hospitals, error, searched, isPending, search } = useHospitalSearch();
+// Per-theme accent classes. Full CSS-variable theming is a follow-up; for now
+// each vertical card carries its own static accent.
+const ACCENT: Record<VerticalTheme, { dot: string; ring: string; text: string; hover: string }> = {
+  venom: {
+    dot: 'bg-emerald-500',
+    ring: 'hover:border-emerald-300 hover:ring-emerald-100',
+    text: 'text-emerald-700',
+    hover: 'group-hover:text-emerald-600',
+  },
+  rare: {
+    dot: 'bg-violet-500',
+    ring: 'hover:border-violet-300 hover:ring-violet-100',
+    text: 'text-violet-700',
+    hover: 'group-hover:text-violet-600',
+  },
+  oncology: {
+    dot: 'bg-sky-500',
+    ring: 'hover:border-sky-300 hover:ring-sky-100',
+    text: 'text-sky-700',
+    hover: 'group-hover:text-sky-600',
+  },
+};
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    search({ mode, stateCode, city, cep, treatment: treatment || undefined });
-  }
+const hubJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}#organization`,
+      name: 'Codar Sistemas',
+      url: 'https://codarsistemas.com.br',
+      sameAs: ['https://github.com/Codar-Sistemas'],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}#website`,
+      name: 'MapaSUS',
+      description:
+        'Plataforma pública que organiza e republica os dados oficiais do Ministério da Saúde sobre os estabelecimentos habilitados pelo SUS.',
+      url: SITE_URL,
+      inLanguage: 'pt-BR',
+      publisher: { '@id': `${SITE_URL}#organization` },
+    },
+  ],
+};
 
+export default function Hub() {
   return (
-    <div>
+    <div className="flex flex-col flex-1">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
+              +
+            </div>
+            <span className="font-bold text-slate-800 text-lg tracking-tight">MapaSUS</span>
+          </div>
+          <a
+            href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+          >
+            GitHub ↗
+          </a>
+        </div>
+      </header>
+
       {/* Hero */}
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-10 text-center">
+      <section className="bg-white border-b border-slate-100">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 px-3 py-1 rounded-full mb-5">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-            Dados oficiais do Ministério da Saúde
+            Iniciativa cidadã independente · Dados do Ministério da Saúde
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight tracking-tight">
-            Hospitais com soro antiofídico{" "}
-            <br />
-            <span className="text-emerald-600">e antiveneno no Brasil</span>
+          <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 leading-tight tracking-tight">
+            Os estabelecimentos de referência do <span className="text-emerald-600">SUS</span>,
+            fáceis de encontrar
           </h1>
-          <p className="mt-4 text-slate-500 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
-            Encontre a unidade de referência mais próxima em caso de acidente com animais peçonhentos.
+          <p className="mt-5 text-slate-500 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            O Ministério da Saúde publica as listas de hospitais habilitados por programa em PDFs e
+            planilhas dispersos. O MapaSUS organiza, normaliza e republica esses dados com busca por
+            cidade, CEP e proximidade — atualizados automaticamente todos os dias.
           </p>
-          <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 px-4 py-2 rounded-full">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Em emergência, ligue para o SAMU: 192
+          <HubSearch />
+        </div>
+      </section>
+
+      {/* Vertical cards */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-12 w-full">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-5">
+          Escolha uma área
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {VERTICALS.map((v) => {
+            const accent = ACCENT[v.theme];
+            const isLive = v.status === 'live';
+            const inner = (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`w-2.5 h-2.5 rounded-full ${accent.dot}`} />
+                  {isLive ? (
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 px-2 py-0.5 rounded-full">
+                      No ar
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 ring-1 ring-slate-200 px-2 py-0.5 rounded-full">
+                      Em breve
+                    </span>
+                  )}
+                </div>
+                <h3
+                  className={`text-lg font-bold text-slate-900 ${isLive ? accent.hover : ''} transition-colors`}
+                >
+                  {v.label}
+                </h3>
+                <p className="mt-2 text-sm text-slate-500 leading-relaxed">{v.cardDescription}</p>
+                {isLive && (
+                  <span
+                    className={`mt-4 inline-flex items-center gap-1 text-sm font-semibold ${accent.text}`}
+                  >
+                    Buscar hospitais →
+                  </span>
+                )}
+              </>
+            );
+            return isLive ? (
+              <Link
+                key={v.slug}
+                href={`/${v.slug}`}
+                className={`group block bg-white rounded-2xl border border-slate-200 p-6 shadow-sm ring-1 ring-transparent transition-all ${accent.ring}`}
+              >
+                {inner}
+              </Link>
+            ) : (
+              <div
+                key={v.slug}
+                className="block bg-white rounded-2xl border border-slate-200 p-6 shadow-sm opacity-75"
+                aria-disabled="true"
+              >
+                {inner}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* About + disclaimer */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 w-full">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-slate-900 mb-2">O que é o MapaSUS</h2>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Uma plataforma pública e gratuita que reúne, numa interface única e numa API REST
+            aberta, os estabelecimentos habilitados pelo SUS para diferentes programas de
+            atendimento. Nenhum dado é inventado ou modificado — apenas normalizado e estruturado a
+            partir das publicações oficiais do Ministério da Saúde.
+          </p>
+          <p className="mt-3 text-xs text-slate-400 leading-relaxed">
+            O MapaSUS é uma iniciativa cidadã independente, mantida pela{' '}
+            <a href="https://codarsistemas.com.br" className="text-emerald-600 hover:underline">
+              Codar Sistemas
+            </a>
+            . Não tem vínculo institucional com o Ministério da Saúde do Brasil. Em caso de
+            emergência, ligue para o SAMU (192).
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-white py-8 mt-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-emerald-600 rounded flex items-center justify-center text-white text-xs font-bold">
+              +
+            </div>
+            <span className="font-medium text-slate-500">MapaSUS</span>
+          </div>
+          <p className="text-center">Dados: Ministério da Saúde · Atualização automática diária</p>
+          <div className="flex items-center gap-4">
+            <Link href="/termos" className="hover:text-slate-600 transition-colors">
+              Termos de uso
+            </Link>
+            <Link href="/docs" className="hover:text-slate-600 transition-colors">
+              API
+            </Link>
           </div>
         </div>
-      </div>
+      </footer>
 
-      {/* Search */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <SearchTabs mode={mode} onChange={setMode} />
-
-          <form onSubmit={handleSearch} className="p-5 sm:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {mode === 'animal' && (
-                <SearchByAnimal
-                  stateCode={stateCode}
-                  treatment={treatment}
-                  onStateCodeChange={setStateCode}
-                  onTreatmentChange={setTreatment}
-                />
-              )}
-              {mode === 'cep' && (
-                <SearchByPostalCode
-                  cep={cep}
-                  treatment={treatment}
-                  onCepChange={setCep}
-                  onTreatmentChange={setTreatment}
-                />
-              )}
-              {mode === 'city' && (
-                <SearchByCity
-                  city={city}
-                  stateCode={stateCode}
-                  treatment={treatment}
-                  onCityChange={setCity}
-                  onStateCodeChange={setStateCode}
-                  onTreatmentChange={setTreatment}
-                />
-              )}
-            </div>
-
-            {error && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isPending}
-              className="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm text-sm"
-            >
-              {isPending ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Buscando...
-                </span>
-              ) : (
-                'Buscar hospitais'
-              )}
-            </button>
-          </form>
-        </div>
-
-        {searched && <HospitalList hospitals={hospitals} />}
-      </div>
-
-      {/* ----------------------------------------------------------------
-          Below-the-fold SEO content. Server-rendered (despite the parent
-          being a Client Component) so crawlers see real H2/H3 hierarchy,
-          and AI engines pick up the FAQPage schema.
-          ---------------------------------------------------------------- */}
-      <section
-        aria-labelledby="como-funciona"
-        className="max-w-3xl mx-auto px-4 sm:px-6 pb-12"
-      >
-        <h2
-          id="como-funciona"
-          className="text-2xl font-bold text-slate-900 mb-6"
-        >
-          Como funciona
-        </h2>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-2">
-              1. Dados oficiais
-            </h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Os PDFs publicados pelo Ministério da Saúde para cada estado são
-              monitorados todos os dias. Quando um arquivo muda, a base é
-              atualizada automaticamente.
-            </p>
-          </article>
-          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-2">
-              2. Busca inteligente
-            </h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Localize a unidade de referência mais próxima por cidade, CEP ou
-              tipo de animal. Resultados ordenados por distância quando
-              coordenadas estão disponíveis.
-            </p>
-          </article>
-          <article className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-2">
-              3. Pronto para emergência
-            </h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Cada hospital traz telefone, endereço, CNES e a lista exata de
-              soros disponíveis (botrópico, crotálico, elapídico, escorpiônico
-              e outros).
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="faq"
-        className="max-w-3xl mx-auto px-4 sm:px-6 pb-16"
-      >
-        <h2 id="faq" className="text-2xl font-bold text-slate-900 mb-6">
-          Perguntas frequentes
-        </h2>
-        <div className="space-y-4">
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              O que são animais peçonhentos?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Animais peçonhentos são aqueles que produzem veneno e possuem um
-              mecanismo para inoculá-lo, como cobras (jararaca, cascavel,
-              coral, surucucu), escorpiões, aranhas (armadeira, marrom) e
-              lagartas (Lonomia). No Brasil, acidentes com esses animais são
-              tratados como urgência médica no SUS.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              O que devo fazer em caso de acidente?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Ligue imediatamente para o SAMU (192). Mantenha a pessoa
-              acidentada calma e em repouso, com o membro afetado elevado se
-              possível. Não faça torniquete, não corte a região, não chupe o
-              veneno. Lave o local com água e sabão e procure o hospital de
-              referência mais próximo — esta ferramenta ajuda você a
-              identificá-lo.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              De onde vêm os dados?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Os dados vêm dos PDFs oficiais publicados pelo Ministério da
-              Saúde em{' '}
-              <a
-                href="https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-600 hover:underline"
-              >
-                gov.br/saude
-              </a>
-              . Eles são lidos automaticamente todos os dias e estruturados
-              para facilitar a busca. Nenhum dado é inventado — apenas
-              normalizado.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              Quais tipos de soro existem?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Os principais são: soro antibotrópico (jararaca, urutu), soro
-              anticrotálico (cascavel), soro antielapídico (coral-verdadeira),
-              soro antilaquético (surucucu), soro antiescorpiônico, soro
-              antiloxoscélico (aranha marrom), soro antifoneutrico (aranha
-              armadeira) e soro antilonômico (lagarta-de-fogo). Nem todo
-              hospital tem todos os tipos — esta ferramenta mostra exatamente
-              quais cada unidade disponibiliza.
-            </p>
-          </details>
-          <details className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <summary className="font-semibold text-slate-900 cursor-pointer">
-              A API é gratuita?
-            </summary>
-            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
-              Sim. A API REST é pública, gratuita, sem autenticação e
-              documentada em{' '}
-              <a href="/docs" className="text-emerald-600 hover:underline">
-                /docs
-              </a>
-              . Há rate limit de 15 requisições por minuto por IP para
-              proteger contra abusos. Para casos de uso institucional com
-              volume maior,{' '}
-              <a
-                href="https://github.com/Codar-Sistemas/hospitais-referencia-api/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-600 hover:underline"
-              >
-                abra uma issue
-              </a>
-              .
-            </p>
-          </details>
-        </div>
-      </section>
-
-      {/* FAQPage JSON-LD — makes the questions citable by AI engines and
-          enables rich snippets in Google search results. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(hubJsonLd) }}
       />
     </div>
   );
 }
-
-const faqJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'O que são animais peçonhentos?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Animais peçonhentos são aqueles que produzem veneno e possuem um mecanismo para inoculá-lo, como cobras (jararaca, cascavel, coral, surucucu), escorpiões, aranhas (armadeira, marrom) e lagartas (Lonomia). No Brasil, acidentes com esses animais são tratados como urgência médica no SUS.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'O que devo fazer em caso de acidente com animal peçonhento?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Ligue imediatamente para o SAMU (192). Mantenha a pessoa acidentada calma e em repouso, com o membro afetado elevado se possível. Não faça torniquete, não corte a região, não chupe o veneno. Lave o local com água e sabão e procure o hospital de referência mais próximo.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'De onde vêm os dados dos hospitais de referência?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Os dados vêm dos PDFs oficiais publicados pelo Ministério da Saúde do Brasil em gov.br/saude. Eles são lidos automaticamente todos os dias e estruturados para facilitar a busca. Nenhum dado é inventado — apenas normalizado.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Quais tipos de soro antiofídico e antiveneno existem?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Os principais são: soro antibotrópico (jararaca, urutu), soro anticrotálico (cascavel), soro antielapídico (coral-verdadeira), soro antilaquético (surucucu), soro antiescorpiônico, soro antiloxoscélico (aranha marrom), soro antifoneutrico (aranha armadeira) e soro antilonômico (lagarta-de-fogo).',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'A API de hospitais de referência é gratuita?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Sim. A API REST é pública, gratuita, sem autenticação e documentada na rota /docs. Há rate limit de 15 requisições por minuto por IP para proteger contra abusos.',
-      },
-    },
-  ],
-};

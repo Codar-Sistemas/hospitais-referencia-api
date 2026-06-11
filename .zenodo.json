@@ -28,7 +28,7 @@
       "resource_type": "software"
     },
     {
-      "identifier": "https://hospitais-referencia-api.vercel.app",
+      "identifier": "https://mapasus.com.br",
       "relation": "isIdenticalTo",
       "resource_type": "software"
     }

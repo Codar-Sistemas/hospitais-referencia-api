@@ -9,7 +9,7 @@ generic logger, backup manifest of N tables).
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 class WordBox(TypedDict, total=False):
@@ -108,6 +108,32 @@ class SyncResult(TypedDict, total=False):
     triggered_by: str
 
 
+class SpecialtyEntry(TypedDict):
+    """One (specialty, metadata) pair destined for hospital_specialties.
+    Shared by the qualification-based verticals (rare_diseases, oncology)."""
+
+    specialty: str
+    habilitado_em: str | None  # ISO date, or None when the source has no date
+    source_url: str
+    metadata: dict[str, object]
+    portaria: NotRequired[str | None]  # raw text from sources that carry it
+
+
+class QualificationHospital(TypedDict):
+    """Upsert-ready hospital for a qualification-based vertical, keyed by
+    CNES after merging all source files and enriching via the CNES API."""
+
+    state_code: str
+    city: str
+    name: str
+    cnes: str
+    address: str | None
+    phones: str | None
+    lat: float | None
+    lng: float | None
+    specialties: list[SpecialtyEntry]
+
+
 class GeocodingSummary(TypedDict):
     """Return of the geocoding batch entry-point."""
 
@@ -139,6 +165,8 @@ __all__ = [
     "GeocodingSummary",
     "HospitalRecord",
     "ParsedHospitalRow",
+    "QualificationHospital",
+    "SpecialtyEntry",
     "StateRow",
     "SyncResult",
     "SyncStatus",

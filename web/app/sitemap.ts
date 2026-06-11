@@ -1,38 +1,35 @@
 import { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
+import { LIVE_VERTICALS } from '@/lib/verticals';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://hospitais-referencia-web.vercel.app';
+  const baseUrl = SITE_URL;
+  const now = new Date();
 
-  return [
-    {
-      url: `${baseUrl}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/profissionais`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/stats`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/termos`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/docs`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
+  // Hub landing.
+  const entries: MetadataRoute.Sitemap = [
+    { url: baseUrl, lastModified: now, changeFrequency: 'daily', priority: 1 },
   ];
+
+  // Per-vertical routes (search home + professional view).
+  for (const v of LIVE_VERTICALS) {
+    entries.push(
+      { url: `${baseUrl}/${v.slug}`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+      {
+        url: `${baseUrl}/${v.slug}/profissionais`,
+        lastModified: now,
+        changeFrequency: 'weekly',
+        priority: 0.7,
+      },
+    );
+  }
+
+  // Platform-wide pages.
+  entries.push(
+    { url: `${baseUrl}/stats`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${baseUrl}/docs`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${baseUrl}/termos`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+  );
+
+  return entries;
 }

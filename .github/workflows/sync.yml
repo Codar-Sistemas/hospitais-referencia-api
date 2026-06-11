@@ -57,6 +57,11 @@ jobs:
           if [ -n "${{ github.event.inputs.state_code }}" ]; then ARGS="$ARGS ${{ github.event.inputs.state_code }}"; fi
           python -m scripts.syncs.venomous_animals $ARGS
 
+      # Other verticals run in their OWN staggered workflows
+      # (sync-rare-diseases.yml @ 04:30 UTC, sync-oncology.yml @ 05:30 UTC)
+      # so external services (gov.br, CNES API, Nominatim) never get hit by
+      # two verticals at once and failures stay isolated per vertical.
+
       - id: check
         name: Check whether any hospitals are pending geocoding
         if: github.event.inputs.skip_geocoding != 'true'

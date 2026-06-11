@@ -35,3 +35,21 @@ jobs:
 
       - name: Testar módulo geocode (funções puras + cache)
         run: python -m tests.test_geocode
+
+      - name: Testar parser XLSX (doenças raras)
+        run: python -m tests.test_xlsx_parser
+
+      - name: Testar mapeamento de especialidades (doenças raras)
+        run: python -m tests.test_rare_specialties
+
+      - name: Testar upserter multi-vertical (doenças raras)
+        run: python -m tests.test_rare_upserter
+
+      - name: Testar parser de planilhas (oncologia)
+        run: python -m tests.test_oncology_parser
+
+      - name: Testar mapeamento de códigos 17.XX (oncologia)
+        run: python -m tests.test_oncology_specialties
+
+      - name: Testar montagem e upsert do snapshot (oncologia)
+        run: python -m tests.test_oncology_sync

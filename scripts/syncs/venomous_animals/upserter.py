@@ -5,7 +5,12 @@ Preserves geocoding when possible:
   - Matched row, same address -> keep lat/lng + geocoding metadata.
   - Matched row, address changed -> invalidate coordinates (re-geocode).
   - Unmatched row in new PDF     -> insert with geocoding_status='pending'.
-  - Existing row missing from PDF -> delete.
+  - Existing row missing from PDF -> delete (venomous-only rows) or strip
+    the vertical (rows shared with another vertical, e.g. rare_diseases).
+
+This sync only ever sees rows tagged with its own vertical — the select
+filters `verticals @> {venomous_animals}` so hospitals belonging solely to
+other verticals are invisible to the diff and can never be deleted here.
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ from typing import Any
 from scripts.shared.config import (
     EXTRACTION_SOURCE_PDF_OCR,
     GEOCODING_STATUS_PENDING,
+    VERTICAL_VENOMOUS_ANIMALS,
 )
 from scripts.shared.db import SupabaseClient
 from scripts.shared.logger import log
@@ -35,7 +41,14 @@ def upsert_hospitals(
     existing = client.select(
         "hospitals",
         state_code=f"eq.{state_code}",
-        select=("id,city,name,address,cnes,lat,lng,geocoding_status,geocoding_source,geocoded_at"),
+        # Only this vertical's rows take part in the diff — rows belonging
+        # solely to other verticals (e.g. rare_diseases) must never be
+        # touched, let alone removed, by the venomous sync.
+        verticals=f"cs.{{{VERTICAL_VENOMOUS_ANIMALS}}}",
+        select=(
+            "id,city,name,address,cnes,lat,lng,"
+            "geocoding_status,geocoding_source,geocoded_at,verticals"
+        ),
     )
     by_key = {(h["city"] or "", h["name"] or "", h["cnes"] or ""): h for h in existing}
 
@@ -83,18 +96,29 @@ def upsert_hospitals(
                     "geocoding_status": GEOCODING_STATUS_PENDING,
                     # Tag the row with this sync's vertical so the public API
                     # can find it. New verticals must extend this list.
-                    "verticals": ["venomous_animals"],
+                    "verticals": [VERTICAL_VENOMOUS_ANIMALS],
                 }
             )
 
-    # Hospitals that disappeared from the PDF.
-    ids_to_remove = [
-        h["id"]
-        for h in existing
-        if h["id"] not in seen_ids and h["id"] not in {u[0] for u in to_update}
+    # Hospitals that disappeared from the PDF. Rows shared with another
+    # vertical lose only the venomous tag (and its specialties); the row
+    # itself stays alive for the other vertical's pages and API filters.
+    rows_to_remove = [
+        h for h in existing if h["id"] not in seen_ids and h["id"] not in {u[0] for u in to_update}
     ]
-    for id_ in ids_to_remove:
-        client.delete("hospitals", id=f"eq.{id_}")
+    for row in rows_to_remove:
+        other_verticals = [
+            v for v in (row.get("verticals") or []) if v != VERTICAL_VENOMOUS_ANIMALS
+        ]
+        if other_verticals:
+            client.update("hospitals", {"id": row["id"]}, {"verticals": other_verticals})
+            client.delete(
+                "hospital_specialties",
+                hospital_id=f"eq.{row['id']}",
+                vertical=f"eq.{VERTICAL_VENOMOUS_ANIMALS}",
+            )
+        else:
+            client.delete("hospitals", id=f"eq.{row['id']}")
 
     # Insert new rows in chunks to stay below request size limits.
     for i in range(0, len(to_insert), 500):
@@ -105,11 +129,11 @@ def upsert_hospitals(
         client.update("hospitals", {"id": id_}, payload)
 
     log(
-        f"+{len(to_insert)} new, ~{len(to_update)} updated, -{len(ids_to_remove)} removed",
+        f"+{len(to_insert)} new, ~{len(to_update)} updated, -{len(rows_to_remove)} removed",
         state_code=state_code,
     )
 
-    return len(to_insert), len(to_update), len(ids_to_remove)
+    return len(to_insert), len(to_update), len(rows_to_remove)
 
 
 def is_ocr_extraction(extraction_source: str) -> bool:

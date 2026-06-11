@@ -44,6 +44,16 @@ EXTRACTION_SOURCE_PDF_TEXT: Final[Literal["pdf_text"]] = "pdf_text"
 EXTRACTION_SOURCE_PDF_OCR: Final[Literal["pdf_ocr"]] = "pdf_ocr"
 EXTRACTION_SOURCE_LLM_GEMINI: Final[Literal["llm_gemini"]] = "llm_gemini"
 EXTRACTION_SOURCE_LLM_GROQ: Final[Literal["llm_groq"]] = "llm_groq"
+EXTRACTION_SOURCE_XLSX: Final[Literal["xlsx"]] = "xlsx"
+
+# -------------------------------------------------------------------------
+# Vertical keys (column `hospitals.verticals`, `sync_logs.vertical`).
+# Must stay in sync with the backend `Vertical` type (lib/types/domain.ts)
+# and the web registry (web/lib/verticals.ts).
+# -------------------------------------------------------------------------
+VERTICAL_VENOMOUS_ANIMALS: Final[Literal["venomous_animals"]] = "venomous_animals"
+VERTICAL_RARE_DISEASES: Final[Literal["rare_diseases"]] = "rare_diseases"
+VERTICAL_ONCOLOGY: Final[Literal["oncology"]] = "oncology"
 
 # -------------------------------------------------------------------------
 # Geocoding status (column `hospitals.geocoding_status`)
@@ -51,6 +61,9 @@ EXTRACTION_SOURCE_LLM_GROQ: Final[Literal["llm_groq"]] = "llm_groq"
 GEOCODING_STATUS_OK = "ok"
 GEOCODING_STATUS_PENDING = "pending"
 GEOCODING_STATUS_FAILED = "failed"
+
+# Coordinates supplied directly by the CNES open-data API (no geocoding ran).
+GEOCODING_SOURCE_CNES_API = "cnes_api"
 
 # -------------------------------------------------------------------------
 # Canonical English treatment names (written to DB).

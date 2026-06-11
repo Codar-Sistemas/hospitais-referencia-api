@@ -1,7 +1,15 @@
-import type { Hospital, HospitalSearchResponse, NearbyHospitalsResponse } from './types';
+import type {
+  CrossVerticalHospital,
+  CrossVerticalSearchResponse,
+  Hospital,
+  HospitalSearchResponse,
+  NearbyHospitalsResponse,
+} from './types';
 
-export const API_BASE =
-  process.env['NEXT_PUBLIC_API_URL'] || 'https://hospitais-referencia-api.vercel.app';
+import { API_URL } from './site';
+
+// Re-exported for telemetry.ts and callers that import it from here.
+export const API_BASE = API_URL;
 
 function buildUrl(
   path: string,
@@ -57,16 +65,21 @@ export interface SearchHospitalsParams {
   stateCode?: string | undefined;
   city?: string | undefined;
   treatment?: string | undefined;
+  disease?: string | undefined;
   q?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
 }
 
-export async function searchHospitals(params: SearchHospitalsParams): Promise<Hospital[]> {
-  const url = buildUrl('/v1/hospitals', {
+export async function searchHospitals(
+  vertical: string,
+  params: SearchHospitalsParams,
+): Promise<Hospital[]> {
+  const url = buildUrl(`/v1/${vertical}/hospitals`, {
     state_code: params.stateCode,
     city: params.city,
     treatment: params.treatment,
+    disease: params.disease,
     q: params.q,
     limit: params.limit,
     offset: params.offset,
@@ -82,22 +95,50 @@ export interface SearchNearbyParams {
   city?: string | undefined;
   stateCode?: string | undefined;
   treatment?: string | undefined;
+  disease?: string | undefined;
   radiusM?: number | undefined;
   limit?: number | undefined;
 }
 
-export async function searchNearby(params: SearchNearbyParams): Promise<NearbyHospitalsResponse> {
-  const url = buildUrl('/v1/hospitals/nearby', {
+export async function searchNearby(
+  vertical: string,
+  params: SearchNearbyParams,
+): Promise<NearbyHospitalsResponse> {
+  const url = buildUrl(`/v1/${vertical}/hospitals/nearby`, {
     cep: params.cep,
     lat: params.lat,
     lng: params.lng,
     city: params.city,
     state_code: params.stateCode,
     treatment: params.treatment,
+    disease: params.disease,
     radius_m: params.radiusM,
     limit: params.limit,
   });
   return request<NearbyHospitalsResponse>(url, { cache: 'no-store' });
+}
+
+// ---------------------------------------------------------------------------
+// Cross-vertical search (hub) — one query across every active vertical.
+// ---------------------------------------------------------------------------
+export interface CrossVerticalSearchParams {
+  stateCode?: string | undefined;
+  city?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+}
+
+export async function searchAcrossVerticals(
+  params: CrossVerticalSearchParams,
+): Promise<CrossVerticalHospital[]> {
+  const url = buildUrl('/v1/search', {
+    state_code: params.stateCode,
+    city: params.city,
+    q: params.q,
+    limit: params.limit,
+  });
+  const data = await request<CrossVerticalSearchResponse>(url, { next: { revalidate: 600 } });
+  return data.hospitals ?? [];
 }
 
 // ---------------------------------------------------------------------------

@@ -2,21 +2,26 @@
 // Plain text, served at the root, gives ChatGPT/Gemini/Perplexity
 // a concise "TL;DR" of the site they can cite from.
 
+import { API_URL, SITE_URL } from '@/lib/site';
+
 export const dynamic = 'force-static';
 
-const SITE = 'https://hospitais-referencia-web.vercel.app';
-const API = 'https://hospitais-referencia-api.vercel.app';
+const SITE = SITE_URL;
+const API = API_URL;
 
-const CONTENT = `# Hospitais de Referência para Animais Peçonhentos
+const CONTENT = `# MapaSUS — Estabelecimentos de Referência do SUS
 
-> Diretório público dos hospitais brasileiros habilitados a tratar acidentes com animais peçonhentos (cobras, escorpiões, aranhas, lagartas). Dados oficiais do Ministério da Saúde, atualizados todos os dias. Custo zero, gratuito, sem cadastro.
+> Plataforma pública que organiza, normaliza e republica os dados oficiais do Ministério da Saúde sobre os estabelecimentos habilitados pelo SUS. Dados atualizados todos os dias. Custo zero, gratuito, sem cadastro. Três verticais em produção: animais peçonhentos (cobras, escorpiões, aranhas, lagartas), doenças raras e oncologia (CACON/UNACON), com busca cross-vertical no hub.
 
-A ferramenta agrega os PDFs publicados em gov.br/saude para cada um dos 27 estados, extrai as tabelas de hospitais habilitados pelo SUS a aplicar soros antiofídicos e antivenenos, e expõe os dados via API REST pública e site de busca em português.
+A plataforma agrega os documentos publicados em gov.br/saude, extrai as tabelas de estabelecimentos habilitados, geocodifica os endereços e expõe os dados via API REST pública e site de busca em português.
 
 ## Site
 
-- [Busca por cidade, CEP ou animal](${SITE}/): formulário principal para o público geral
-- [Consulta para profissionais](${SITE}/profissionais): tabela técnica com CNES, telefone, grade completa de soros e mapa
+- [Hub MapaSUS](${SITE}/): porta de entrada da plataforma, busca cross-vertical e lista das verticais
+- [Animais peçonhentos — busca por cidade, CEP ou animal](${SITE}/venomous-animals): hospitais com soro antiofídico/antiveneno
+- [Doenças raras — serviços habilitados pelo SUS](${SITE}/rare-diseases): SRDR, atenção especializada e terapia gênica
+- [Oncologia — CACON e UNACON](${SITE}/oncology): alta complexidade, radioterapia, reconstrução mamária
+- [Consulta para profissionais](${SITE}/venomous-animals/profissionais): tabela técnica com CNES, telefone e mapa (disponível em cada vertical)
 - [Estatísticas públicas](${SITE}/stats): demanda agregada, resiliência do sync, cobertura geográfica
 - [Documentação da API](${SITE}/docs): exemplos curl, parâmetros, formato de resposta
 - [Termos de uso](${SITE}/termos)
@@ -24,9 +29,12 @@ A ferramenta agrega os PDFs publicados em gov.br/saude para cada um dos 27 estad
 ## API REST (gratuita, sem autenticação)
 
 - [GET /v1/states](${API}/v1/states): lista das 27 UFs com data da última atualização
-- [GET /v1/hospitals](${API}/v1/hospitals): busca por state_code, city, treatment, q
-- [GET /v1/hospitals/nearby](${API}/v1/hospitals/nearby): busca por proximidade (cep, lat+lng ou city)
+- [GET /v1/{vertical}/hospitals](${API}/v1/venomous-animals/hospitals): busca por state_code, city, q; treatment (peçonhentos) ou disease (raras, oncologia)
+- [GET /v1/{vertical}/hospitals/nearby](${API}/v1/venomous-animals/hospitals/nearby): busca por proximidade (cep, lat+lng ou city)
+- [GET /v1/search](${API}/v1/search): busca cross-vertical em todas as verticais ativas
 - [GET /v1/stats](${API}/v1/stats): agregados de uso e cobertura
+
+As rotas legadas \`/v1/hospitals\` continuam funcionando (vertical padrão = animais peçonhentos).
 
 Rate limit: 15 req/min por IP. CORS liberado. JSON.
 

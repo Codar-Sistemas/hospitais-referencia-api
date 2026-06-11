@@ -3,9 +3,9 @@ import { fetchStats } from '@/lib/api-client';
 import { TREATMENT_LABEL_BY_VALUE } from '@/lib/constants';
 
 export const metadata: Metadata = {
-  title: 'Estatísticas | Hospitais de Referência',
+  title: 'Estatísticas',
   description:
-    'Métricas de uso, alcance e resiliência da API pública de hospitais de referência para acidentes com animais peçonhentos no Brasil.',
+    'Métricas públicas de uso, alcance e resiliência da plataforma MapaSUS — dados oficiais do Ministério da Saúde.',
 };
 
 // Server component — runs on the API/SSR side and benefits from

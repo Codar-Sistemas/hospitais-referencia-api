@@ -10,6 +10,7 @@ export interface HospitalSearchInput {
   city?: string | undefined;
   cep?: string | undefined;
   treatment?: string | undefined;
+  disease?: string | undefined;
   radiusM?: number | undefined;
   limit?: number | undefined;
 }
@@ -23,7 +24,7 @@ export interface UseHospitalSearchResult {
   reset: () => void;
 }
 
-export function useHospitalSearch(): UseHospitalSearchResult {
+export function useHospitalSearch(vertical: string): UseHospitalSearchResult {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
@@ -35,68 +36,76 @@ export function useHospitalSearch(): UseHospitalSearchResult {
     setSearched(false);
   }, []);
 
-  const search = useCallback((input: HospitalSearchInput) => {
-    setError('');
-    setSearched(false);
-    startTransition(async () => {
-      try {
-        let result: Hospital[] = [];
-        if (input.mode === 'cep') {
-          if (!input.cep || input.cep.replace(/\D/g, '').length !== 8) {
-            setError('Informe um CEP válido com 8 dígitos.');
-            return;
+  const search = useCallback(
+    (input: HospitalSearchInput) => {
+      setError('');
+      setSearched(false);
+      startTransition(async () => {
+        try {
+          let result: Hospital[] = [];
+          if (input.mode === 'cep') {
+            if (!input.cep || input.cep.replace(/\D/g, '').length !== 8) {
+              setError('Informe um CEP válido com 8 dígitos.');
+              return;
+            }
+            const data = await searchNearby(vertical, {
+              cep: input.cep.replace(/\D/g, ''),
+              treatment: input.treatment,
+              disease: input.disease,
+              radiusM: input.radiusM ?? 100000,
+              limit: input.limit ?? 50,
+            });
+            result = data.hospitals;
+          } else if (input.mode === 'city') {
+            if (!input.city) {
+              setError('Informe a cidade.');
+              return;
+            }
+            result = await searchHospitals(vertical, {
+              city: input.city,
+              stateCode: input.stateCode,
+              treatment: input.treatment,
+              disease: input.disease,
+              limit: input.limit ?? 100,
+            });
+          } else {
+            if (!input.stateCode) {
+              setError('Selecione um estado.');
+              return;
+            }
+            result = await searchHospitals(vertical, {
+              stateCode: input.stateCode,
+              treatment: input.treatment,
+              disease: input.disease,
+              limit: input.limit ?? 200,
+            });
           }
-          const data = await searchNearby({
-            cep: input.cep.replace(/\D/g, ''),
-            treatment: input.treatment,
-            radiusM: input.radiusM ?? 100000,
-            limit: input.limit ?? 50,
+          setHospitals(result);
+          setSearched(true);
+          emit({
+            event_type: 'search_executed',
+            state_code: input.stateCode || null,
+            treatment: input.treatment || null,
+            payload: {
+              vertical,
+              mode: input.mode,
+              city: input.city || null,
+              has_cep: Boolean(input.cep),
+              disease: input.disease || null,
+              results_count: result.length,
+            },
           });
-          result = data.hospitals;
-        } else if (input.mode === 'city') {
-          if (!input.city) {
-            setError('Informe a cidade.');
-            return;
+          if (result.length === 0) {
+            setError('Nenhum hospital encontrado com esses filtros.');
           }
-          result = await searchHospitals({
-            city: input.city,
-            stateCode: input.stateCode,
-            treatment: input.treatment,
-            limit: input.limit ?? 100,
-          });
-        } else {
-          if (!input.stateCode) {
-            setError('Selecione um estado.');
-            return;
-          }
-          result = await searchHospitals({
-            stateCode: input.stateCode,
-            treatment: input.treatment,
-            limit: input.limit ?? 200,
-          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Erro ao buscar. Tente novamente.';
+          setError(message);
         }
-        setHospitals(result);
-        setSearched(true);
-        emit({
-          event_type: 'search_executed',
-          state_code: input.stateCode || null,
-          treatment: input.treatment || null,
-          payload: {
-            mode: input.mode,
-            city: input.city || null,
-            has_cep: Boolean(input.cep),
-            results_count: result.length,
-          },
-        });
-        if (result.length === 0) {
-          setError('Nenhum hospital encontrado com esses filtros.');
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Erro ao buscar. Tente novamente.';
-        setError(message);
-      }
-    });
-  }, []);
+      });
+    },
+    [vertical],
+  );
 
   return { hospitals, error, searched, isPending, search, reset };
 }

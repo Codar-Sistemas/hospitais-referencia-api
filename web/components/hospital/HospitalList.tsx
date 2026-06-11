@@ -8,9 +8,11 @@ const HospitalMap = dynamic(() => import('./HospitalMap'), { ssr: false });
 
 interface HospitalListProps {
   hospitals: Hospital[];
+  /** Forwarded to each HospitalCard — see its prop doc. */
+  showTreatments?: boolean;
 }
 
-export default function HospitalList({ hospitals }: HospitalListProps) {
+export default function HospitalList({ hospitals, showTreatments = true }: HospitalListProps) {
   if (hospitals.length === 0) return null;
 
   const hasVerificationWarning = hospitals.some((h) => h.requires_verification);
@@ -23,8 +25,18 @@ export default function HospitalList({ hospitals }: HospitalListProps) {
       {hasVerificationWarning && (
         <div className="mb-4 rounded-2xl border-2 border-red-300 bg-red-50 p-4 shadow-sm">
           <div className="flex items-start gap-3">
-            <svg className="w-6 h-6 shrink-0 text-red-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-6 h-6 shrink-0 text-red-600 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <div className="text-sm text-red-900 space-y-1.5">
               <p className="font-bold uppercase tracking-wide text-red-700 text-xs">
@@ -33,15 +45,19 @@ export default function HospitalList({ hospitals }: HospitalListProps) {
               <p className="leading-snug">
                 Parte dos hospitais exibidos vem de estados que publicam os dados como{' '}
                 <strong>PDF escaneado (imagem)</strong>. Essas unidades foram extraídas
-                automaticamente por OCR e <strong>podem conter erros</strong> no nome,
-                endereço ou telefone. Elas aparecem marcadas individualmente em{' '}
+                automaticamente por OCR e <strong>podem conter erros</strong> no nome, endereço ou
+                telefone. Elas aparecem marcadas individualmente em{' '}
                 <span className="inline-block px-1.5 py-0.5 rounded bg-red-100 ring-1 ring-red-300 font-semibold">
                   vermelho
-                </span>.
+                </span>
+                .
               </p>
               <p className="leading-snug font-semibold">
                 Sempre confirme por telefone antes de se deslocar, ou ligue{' '}
-                <a href="tel:192" className="underline">192 (SAMU)</a>.
+                <a href="tel:192" className="underline">
+                  192 (SAMU)
+                </a>
+                .
               </p>
             </div>
           </div>
@@ -50,7 +66,7 @@ export default function HospitalList({ hospitals }: HospitalListProps) {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-slate-800">
-          {count} hospital{plural ? 'is' : ''} encontrado{plural ? 's' : ''}
+          {count} {plural ? 'hospitais encontrados' : 'hospital encontrado'}
         </h2>
         {isSortedByDistance && (
           <span className="text-xs text-slate-400">Ordenado por distância</span>
@@ -63,7 +79,7 @@ export default function HospitalList({ hospitals }: HospitalListProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {hospitals.map((h) => (
-          <HospitalCard key={h.id} hospital={h} />
+          <HospitalCard key={h.id} hospital={h} showTreatments={showTreatments} />
         ))}
       </div>
     </div>

@@ -2,6 +2,12 @@ pdfplumber>=0.11.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 
+# XLSX parsing (rare_diseases vertical — national gov.br spreadsheets).
+openpyxl>=3.1
+# Legacy .xls (BIFF) reader — the main oncology file is a BIFF workbook
+# shipped with a misleading .xlsx extension; openpyxl cannot open it.
+xlrd>=2.0
+
 # Validation of LLM-returned structured data.
 pydantic>=2.7
 

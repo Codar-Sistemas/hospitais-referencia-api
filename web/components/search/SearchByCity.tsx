@@ -12,6 +12,16 @@ interface SearchByCityProps {
   onCityChange: (value: string) => void;
   onStateCodeChange: (value: string) => void;
   onTreatmentChange: (value: string) => void;
+  /** Hide the treatment combobox for verticals without a treatment
+   * vocabulary (e.g. rare-diseases). Defaults to shown. */
+  showTreatmentFilter?: boolean;
+  /** Disease-area filter for qualification-based verticals — renders a
+   * "Doença (opcional)" combobox when non-empty. */
+  diseaseOptions?: ReadonlyArray<{ value: string; label: string }>;
+  disease?: string;
+  onDiseaseChange?: (value: string) => void;
+  /** PT label for the disease filter (per-vertical, e.g. "Tipo de serviço"). */
+  diseaseFilterLabel?: string;
 }
 
 export default function SearchByCity({
@@ -21,6 +31,11 @@ export default function SearchByCity({
   onCityChange,
   onStateCodeChange,
   onTreatmentChange,
+  showTreatmentFilter = true,
+  diseaseOptions = [],
+  disease = '',
+  onDiseaseChange,
+  diseaseFilterLabel = 'Doença',
 }: SearchByCityProps) {
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,10 +55,7 @@ export default function SearchByCity({
     [],
   );
 
-  const cityOptions = useMemo(
-    () => cities.map((name) => ({ value: name, label: name })),
-    [cities],
-  );
+  const cityOptions = useMemo(() => cities.map((name) => ({ value: name, label: name })), [cities]);
 
   // Fetch IBGE city list whenever the state changes. Clears the selected
   // city if it doesn't exist in the new state's list.
@@ -76,8 +88,15 @@ export default function SearchByCity({
       ? 'Carregando cidades...'
       : 'Selecione uma cidade';
 
+  const showDiseaseFilter = diseaseOptions.length > 0;
+  const filterColumns = 2 + (showTreatmentFilter ? 1 : 0) + (showDiseaseFilter ? 1 : 0);
+
   return (
-    <div className="col-span-full grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div
+      className={`col-span-full grid grid-cols-1 gap-4 ${
+        filterColumns === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+      }`}
+    >
       <div>
         <label className={FIELD_LABEL_CLASS}>Estado *</label>
         <Combobox
@@ -98,15 +117,28 @@ export default function SearchByCity({
           disabled={cityDisabled}
         />
       </div>
-      <div>
-        <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
-        <Combobox
-          value={treatment}
-          onChange={onTreatmentChange}
-          options={treatmentOptions}
-          placeholder="Todos os tipos"
-        />
-      </div>
+      {showTreatmentFilter && (
+        <div>
+          <label className={FIELD_LABEL_CLASS}>Animal (opcional)</label>
+          <Combobox
+            value={treatment}
+            onChange={onTreatmentChange}
+            options={treatmentOptions}
+            placeholder="Todos os tipos"
+          />
+        </div>
+      )}
+      {showDiseaseFilter && onDiseaseChange && (
+        <div>
+          <label className={FIELD_LABEL_CLASS}>{diseaseFilterLabel} (opcional)</label>
+          <Combobox
+            value={disease}
+            onChange={onDiseaseChange}
+            options={[...diseaseOptions]}
+            placeholder="Todas as áreas"
+          />
+        </div>
+      )}
     </div>
   );
 }

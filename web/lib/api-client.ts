@@ -62,8 +62,11 @@ export interface SearchHospitalsParams {
   offset?: number | undefined;
 }
 
-export async function searchHospitals(params: SearchHospitalsParams): Promise<Hospital[]> {
-  const url = buildUrl('/v1/hospitals', {
+export async function searchHospitals(
+  vertical: string,
+  params: SearchHospitalsParams,
+): Promise<Hospital[]> {
+  const url = buildUrl(`/v1/${vertical}/hospitals`, {
     state_code: params.stateCode,
     city: params.city,
     treatment: params.treatment,
@@ -86,8 +89,11 @@ export interface SearchNearbyParams {
   limit?: number | undefined;
 }
 
-export async function searchNearby(params: SearchNearbyParams): Promise<NearbyHospitalsResponse> {
-  const url = buildUrl('/v1/hospitals/nearby', {
+export async function searchNearby(
+  vertical: string,
+  params: SearchNearbyParams,
+): Promise<NearbyHospitalsResponse> {
+  const url = buildUrl(`/v1/${vertical}/hospitals/nearby`, {
     cep: params.cep,
     lat: params.lat,
     lng: params.lng,

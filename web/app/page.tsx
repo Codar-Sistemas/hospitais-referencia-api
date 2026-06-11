@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import HubSearch from '@/components/hub/HubSearch';
 import { VERTICALS, type VerticalTheme } from '@/lib/verticals';
 
 export const metadata: Metadata = {
@@ -105,6 +106,7 @@ export default function Hub() {
             planilhas dispersos. O MapaSUS organiza, normaliza e republica esses dados com busca por
             cidade, CEP e proximidade — atualizados automaticamente todos os dias.
           </p>
+          <HubSearch />
         </div>
       </section>
 

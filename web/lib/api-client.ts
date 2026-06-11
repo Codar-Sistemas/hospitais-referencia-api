@@ -1,4 +1,10 @@
-import type { Hospital, HospitalSearchResponse, NearbyHospitalsResponse } from './types';
+import type {
+  CrossVerticalHospital,
+  CrossVerticalSearchResponse,
+  Hospital,
+  HospitalSearchResponse,
+  NearbyHospitalsResponse,
+} from './types';
 
 export const API_BASE =
   process.env['NEXT_PUBLIC_API_URL'] || 'https://hospitais-referencia-api.vercel.app';
@@ -108,6 +114,29 @@ export async function searchNearby(
     limit: params.limit,
   });
   return request<NearbyHospitalsResponse>(url, { cache: 'no-store' });
+}
+
+// ---------------------------------------------------------------------------
+// Cross-vertical search (hub) — one query across every active vertical.
+// ---------------------------------------------------------------------------
+export interface CrossVerticalSearchParams {
+  stateCode?: string | undefined;
+  city?: string | undefined;
+  q?: string | undefined;
+  limit?: number | undefined;
+}
+
+export async function searchAcrossVerticals(
+  params: CrossVerticalSearchParams,
+): Promise<CrossVerticalHospital[]> {
+  const url = buildUrl('/v1/search', {
+    state_code: params.stateCode,
+    city: params.city,
+    q: params.q,
+    limit: params.limit,
+  });
+  const data = await request<CrossVerticalSearchResponse>(url, { next: { revalidate: 600 } });
+  return data.hospitals ?? [];
 }
 
 // ---------------------------------------------------------------------------

@@ -62,6 +62,14 @@ export interface Vertical {
 
 export type VerticalTheme = 'venom' | 'rare' | 'oncology';
 
+// Tailwind badge classes per theme. Full CSS-variable theming is a follow-up;
+// for now both the hub cards and the cross-vertical result badges read these.
+export const THEME_BADGE_CLASS: Readonly<Record<VerticalTheme, string>> = {
+  venom: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  rare: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
+  oncology: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+};
+
 export const VERTICALS: ReadonlyArray<Vertical> = [
   {
     slug: 'venomous-animals',
@@ -319,6 +327,12 @@ export const VERTICAL_BY_SLUG: Readonly<Record<string, Vertical>> = Object.fromE
 // Production subdomain → slug. Consumed by `proxy.ts` to route by host.
 export const SUBDOMAIN_TO_SLUG: Readonly<Record<string, string>> = Object.fromEntries(
   VERTICALS.map((v) => [v.subdomain, v.slug]),
+);
+
+// DB key (snake_case) → vertical. The cross-vertical /v1/search returns
+// `active_verticals` as DB keys; the hub maps them back to slug/label/theme.
+export const VERTICAL_BY_DB_KEY: Readonly<Record<string, Vertical>> = Object.fromEntries(
+  VERTICALS.map((v) => [v.dbKey, v]),
 );
 
 /** Slugs that are statically generated and publicly reachable today. */

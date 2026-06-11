@@ -38,14 +38,22 @@ O Ministério da Saúde publica em `gov.br/saude` listas de hospitais habilitado
 
 ## Verticais ativas e roadmap
 
-| Vertical                               | Status                | Fonte oficial                                               |
-| -------------------------------------- | --------------------- | ----------------------------------------------------------- |
-| **Animais peçonhentos**                | ✅ Em produção        | 27 PDFs estaduais em `gov.br/saude/.../animais-peconhentos` |
-| **Doenças raras**                      | 🚧 Em desenvolvimento | 2 XLSX nacionais em `gov.br/saude/.../doencas-raras`        |
-| **Oncologia** (alta complexidade)      | 📋 Planejado          | 3 XLSX nacionais em `gov.br/saude/.../cgcan`                |
-| Transplantes, Farmácia Popular, CER, … | 🗺️ Roadmap            | gov.br + sites estaduais                                    |
+| Vertical                               | Status         | Fonte oficial                                               |
+| -------------------------------------- | -------------- | ----------------------------------------------------------- |
+| **Animais peçonhentos**                | ✅ Em produção | 27 PDFs estaduais em `gov.br/saude/.../animais-peconhentos` |
+| **Doenças raras**                      | ✅ Em produção | 2 XLSX nacionais em `gov.br/saude/.../doencas-raras`        |
+| **Oncologia** (CACON/UNACON)           | ✅ Em produção | 3 XLSX nacionais em `gov.br/saude/.../cgcan`                |
+| Transplantes, Farmácia Popular, CER, … | 🗺️ Roadmap     | gov.br + sites estaduais                                    |
 
-Cada vertical é independente: tem seu próprio sync, prompt de extração, rotas namespaced (`/v1/{vertical}/hospitals`) e cache no banco. Todas compartilham infraestrutura (DB, geocoding, LLM extractor, rate-limit).
+Cada vertical é independente: tem seu próprio sync (em workflow e horário próprios, escalonados para não competir por rate-limit), parser, rotas namespaced (`/v1/{vertical}/hospitals`) e habilitações no banco. Todas compartilham infraestrutura (DB, geocoding, enriquecimento CNES, rate-limit). O hub em `/` oferece busca **cross-vertical**: uma cidade, todas as áreas de uma vez.
+
+| Vertical            | URL slug           | Hospitais\* | Filtro especializado                                   |
+| ------------------- | ------------------ | ----------- | ------------------------------------------------------ |
+| Animais peçonhentos | `venomous-animals` | ~500        | `treatment` (tipo de soro)                             |
+| Doenças raras       | `rare-diseases`    | ~52         | `disease` (anomalias congênitas, terapia gênica, …)    |
+| Oncologia           | `oncology`         | ~384        | `disease` (CACON, UNACON, radioterapia, pediátrica, …) |
+
+\* Ordem de grandeza; o número exato acompanha as publicações do Ministério da Saúde.
 
 ---
 
@@ -167,11 +175,16 @@ GET /v1/hospitals?state_code=SP
 
 # Namespaced — vertical explícita (preferida)
 GET /v1/venomous-animals/hospitals?state_code=SP
-GET /v1/doencas-raras/hospitals?state_code=SP            (em breve)
+GET /v1/rare-diseases/hospitals?state_code=SP&disease=gene_therapy
+GET /v1/oncology/hospitals?state_code=SP&disease=cacon
 
 # Cross-vertical — busca em todas as verticais ativas
 GET /v1/search?state_code=SP
 ```
+
+Verticais baseadas em habilitação (raras, oncologia) aceitam `disease=<chave>`
+para filtrar por área/serviço; os valores válidos vêm no erro 400 quando a chave
+é inválida. A vertical default (peçonhentos) usa `treatment=` em vez disso.
 
 Convenção: URLs usam **kebab-case** (`/v1/venomous-animals`), DB e Python module em **snake_case** (`venomous_animals`). O roteador em `api/index.ts` faz a conversão num único lugar.
 
@@ -413,8 +426,8 @@ hospitais-referencia-api/
 ├── scripts/                     # Python 3.12, mypy --strict
 │   ├── syncs/                   # Uma pasta por vertical do MapaSUS
 │   │   ├── venomous_animals/    # 27 PDFs estaduais (ativo)
-│   │   ├── rare_diseases/       # 2 XLSX nacionais (em breve)
-│   │   └── oncology/            # 3 XLSX nacionais (planejado)
+│   │   ├── rare_diseases/       # 2 XLSX nacionais (ativo)
+│   │   └── oncology/            # 3 planilhas CGCAN, incl. .xls legado (ativo)
 │   ├── shared/
 │   │   ├── llm_extractor/       # Provider chain: Gemini → Groq + schema + score
 │   │   │   ├── providers/       # base.py, gemini.py, groq.py
@@ -423,12 +436,15 @@ hospitais-referencia-api/
 │   │   │   ├── preprocessing.py # pdf2image + Pillow (resize/sharpen)
 │   │   │   ├── pipeline.py      # orquestrador
 │   │   │   └── metrics.py       # score heurístico de confiança
-│   │   ├── types.py             # TypedDicts (HospitalRecord, StateRow, …)
+│   │   ├── spreadsheets.py      # helpers de célula (XLSX/XLS) compartilhados
+│   │   ├── qualification_sync.py # upsert multi-vertical (raras + oncologia)
+│   │   ├── sync_log_writer.py   # 1 linha por run em sync_logs (com vertical)
+│   │   ├── types.py             # TypedDicts (HospitalRecord, SpecialtyEntry, …)
 │   │   ├── db.py                # Cliente Supabase REST
 │   │   └── logger.py
 │   ├── parsing/                 # text_parser (pdfplumber), ocr_parser/engine (Tesseract)
-│   ├── geocoding/               # runner + address_normalizer
-│   ├── providers/               # Nominatim, BrasilAPI (Python)
+│   ├── geocoding/               # batch (geocode_pending) + runner + address_normalizer
+│   ├── providers/               # Nominatim, BrasilAPI, CNES open-data (Python)
 │   ├── dev-server.ts            # Wrapper local da API (tsx)
 │   ├── seed-from-prod.ts        # Popula Supabase local a partir da prod
 │   └── backup_supabase.py       # Snapshot JSONL antes de migrations
@@ -440,20 +456,28 @@ hospitais-referencia-api/
 │   ├── 011_rename_*             # Renomeia chave 'peconhentos' → 'animais_peconhentos'
 │   ├── 012_rename_*_to_en.sql   # Renomeia para 'venomous_animals' (en final)
 │   ├── 013_extraction_confidence.sql        # requires_verification baseado em confidence
-│   └── 014_stats_by_extraction_method.sql   # views quebram OCR vs LLM
+│   ├── 014_stats_by_extraction_method.sql   # views quebram OCR vs LLM
+│   ├── 015_rare_diseases_sources.sql        # vertical_sources + sync_logs.vertical
+│   └── 016_oncology_sources.sql             # seed das 3 fontes nacionais de oncologia
 │
-├── web/                         # Frontend Next.js 16 + Tailwind 4 + React 19
-│   ├── app/                     # /, /profissionais, /stats, /docs, /termos
-│   ├── components/              # ui/Combobox, hospital/HospitalMap, search/SearchTabs, …
+├── web/                         # Frontend Next.js 16 + Tailwind 4 + React 19 (multi-tenant)
+│   ├── proxy.ts                 # roteamento por host (subdomínio → vertical)
+│   ├── app/
+│   │   ├── page.tsx             # hub MapaSUS + busca cross-vertical
+│   │   ├── [vertical]/          # busca + profissionais (chrome temático via data-theme)
+│   │   └── (platform)/          # /stats, /docs, /termos (plataforma)
+│   ├── components/              # hub/HubSearch, ui/Combobox, hospital/HospitalMap, search/…
 │   ├── hooks/useHospitalSearch.ts
-│   └── lib/                     # api-client, ibge, telemetry, types
+│   └── lib/                     # verticals (registry), specialties, api-client, telemetry
 │
-├── tests/                       # Smoke + unitários (pytest + assert)
+├── tests/                       # Smoke + unitários (assert; inclui parsers XLSX/XLS)
 │
 ├── .github/workflows/
-│   ├── sync.yml                 # Cron 03:00 UTC: scrape + parse + LLM + upsert + geocode
+│   ├── sync.yml                 # Cron 03:00 UTC: peçonhentos (scrape PDF + LLM + geocode)
+│   ├── sync-rare-diseases.yml   # Cron 04:30 UTC: doenças raras (XLSX + CNES)
+│   ├── sync-oncology.yml        # Cron 05:30 UTC: oncologia (planilhas CGCAN + CNES)
 │   ├── lint.yml                 # tsc + ESLint + Prettier + Ruff + mypy
-│   └── tests.yml                # pytest em mudanças de scripts/ ou tests/
+│   └── tests.yml                # testes em mudanças de scripts/ ou tests/
 │
 ├── .husky/pre-commit            # lint-staged + tsc + mypy
 ├── tsconfig.json                # strict + 5 flags extras (web/ tem o mesmo)
@@ -527,7 +551,7 @@ cd web && npm install && npm run dev   # Frontend em :3000
 
 ```mermaid
 graph LR
-    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 014"]
+    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 016"]
     B --> C["3️⃣ Copiar credenciais"]
     C --> D["4️⃣ Sync inicial<br/>via Actions ou local"]
     D --> E["5️⃣ Deploy Vercel<br/>vercel --prod"]

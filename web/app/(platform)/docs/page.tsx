@@ -266,11 +266,89 @@ function LegendTable({ rows }: { rows: { term: string; meaning: string }[] }) {
   );
 }
 
-const VERTICALS_ROWS = [
-  { label: 'Animais peçonhentos', slug: 'venomous-animals', filter: 'treatment (tipo de soro)' },
-  { label: 'Doenças raras', slug: 'rare-diseases', filter: 'disease (área de doença)' },
-  { label: 'Oncologia', slug: 'oncology', filter: 'disease (tipo de serviço)' },
+type VTheme = 'venom' | 'rare' | 'oncology';
+
+const VERTICAL_CARDS: {
+  label: string;
+  slug: string;
+  param: string;
+  paramKind: string;
+  theme: VTheme;
+}[] = [
+  {
+    label: 'Animais peçonhentos',
+    slug: 'venomous-animals',
+    param: 'treatment',
+    paramKind: 'tipo de soro',
+    theme: 'venom',
+  },
+  {
+    label: 'Doenças raras',
+    slug: 'rare-diseases',
+    param: 'disease',
+    paramKind: 'área de doença',
+    theme: 'rare',
+  },
+  {
+    label: 'Oncologia',
+    slug: 'oncology',
+    param: 'disease',
+    paramKind: 'tipo de serviço',
+    theme: 'oncology',
+  },
 ];
+
+const THEME_DOT: Record<VTheme, string> = {
+  venom: 'bg-emerald-500',
+  rare: 'bg-violet-500',
+  oncology: 'bg-sky-500',
+};
+const THEME_PILL: Record<VTheme, string> = {
+  venom: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  rare: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
+  oncology: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+};
+const THEME_CARD: Record<VTheme, string> = {
+  venom: 'hover:border-emerald-300',
+  rare: 'hover:border-violet-300',
+  oncology: 'hover:border-sky-300',
+};
+
+const ROUTE_FORMATS: { name: string; badge?: string; desc: string; routes: string[] }[] = [
+  {
+    name: 'Legado',
+    desc: 'Vertical implícita — recai em animais peçonhentos.',
+    routes: ['GET /v1/hospitals?state_code=SP'],
+  },
+  {
+    name: 'Namespaced',
+    badge: 'Recomendado',
+    desc: 'Vertical explícita no caminho da URL.',
+    routes: [
+      'GET /v1/venomous-animals/hospitals?state_code=SP',
+      'GET /v1/rare-diseases/hospitals?disease=gene_therapy',
+      'GET /v1/oncology/hospitals?disease=cacon',
+    ],
+  },
+  {
+    name: 'Cross-vertical',
+    desc: 'Uma busca em todas as verticais ativas.',
+    routes: ['GET /v1/search?city=Salvador'],
+  },
+];
+
+// One route line on a dark strip: GET tinted, path white, query string dimmed.
+function RouteLine({ route }: { route: string }) {
+  const [method, rest = ''] = route.split(/ (.+)/);
+  const [path, query] = rest.split(/(\?.*)/);
+  return (
+    <div className="whitespace-nowrap">
+      <span className="text-emerald-400 font-semibold">{method}</span>{' '}
+      <span className="text-slate-100">{path}</span>
+      {query && <span className="text-slate-400">{query}</span>}
+    </div>
+  );
+}
 
 const RARE_DISEASE_KEYS = [
   'congenital_anomalies',
@@ -355,50 +433,68 @@ export default function Docs() {
           {/* Verticais e rotas */}
           <section id="verticais" className="scroll-mt-24 mb-10">
             <h2 className="text-lg font-bold text-slate-900 mb-2">Verticais e rotas</h2>
-            <p className="text-sm text-slate-600 leading-relaxed mb-4">
-              A API cobre vários programas do SUS (&ldquo;verticais&rdquo;). Toda rota de hospitais
-              existe em três formatos:
+            <p className="text-sm text-slate-600 leading-relaxed mb-5">
+              A API cobre vários programas do SUS (&ldquo;verticais&rdquo;). As três verticais
+              ativas hoje:
             </p>
-            <CodeBlock
-              lang="bash"
-              label="Formatos de rota"
-            >{`# Legado — vertical implícita (animais peçonhentos)
-GET /v1/hospitals?state_code=SP
 
-# Namespaced — vertical explícita (recomendado)
-GET /v1/venomous-animals/hospitals?state_code=SP
-GET /v1/rare-diseases/hospitals?state_code=SP&disease=gene_therapy
-GET /v1/oncology/hospitals?state_code=SP&disease=cacon
-
-# Cross-vertical — uma busca em todas as verticais ativas
-GET /v1/search?city=Salvador`}</CodeBlock>
-            <div className="overflow-x-auto rounded-xl border border-slate-200 mt-4">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">
-                      Vertical
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">
-                      Slug (URL)
-                    </th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-slate-500 uppercase tracking-wide">
-                      Filtro especializado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {VERTICALS_ROWS.map((v) => (
-                    <tr key={v.slug}>
-                      <td className="px-4 py-2.5 text-slate-700 font-medium">{v.label}</td>
-                      <td className="px-4 py-2.5 font-mono text-emerald-700">{v.slug}</td>
-                      <td className="px-4 py-2.5 text-slate-600">{v.filter}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Vertical cards */}
+            <div className="grid gap-3 sm:grid-cols-3 mb-6">
+              {VERTICAL_CARDS.map((v) => (
+                <div
+                  key={v.slug}
+                  className={`bg-white rounded-2xl border border-slate-200 p-4 shadow-sm transition-colors ${THEME_CARD[v.theme]}`}
+                >
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className={`w-2.5 h-2.5 rounded-full ${THEME_DOT[v.theme]}`} />
+                    <span className="font-semibold text-slate-900 text-sm leading-tight">
+                      {v.label}
+                    </span>
+                  </div>
+                  <code
+                    className={`inline-block text-[11px] font-mono px-2 py-0.5 rounded-full ${THEME_PILL[v.theme]}`}
+                  >
+                    {v.slug}
+                  </code>
+                  <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
+                    Filtro: <code className="font-mono text-slate-700 font-medium">{v.param}</code>{' '}
+                    <span className="text-slate-400">({v.paramKind})</span>
+                  </p>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed mt-3">
+
+            {/* Route formats */}
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+              Formatos de rota
+            </h3>
+            <div className="space-y-3">
+              {ROUTE_FORMATS.map((f) => (
+                <div
+                  key={f.name}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  <div className="px-4 pt-3.5 pb-3">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-semibold text-slate-900 text-sm">{f.name}</span>
+                      {f.badge && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 px-1.5 py-0.5 rounded-full">
+                          {f.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500">{f.desc}</p>
+                  </div>
+                  <div className="bg-slate-900 px-4 py-3 font-mono text-xs space-y-1 overflow-x-auto">
+                    {f.routes.map((r) => (
+                      <RouteLine key={r} route={r} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed mt-4">
               Convenção: URLs em <strong>kebab-case</strong> (<code>/v1/rare-diseases</code>). O
               parâmetro <code>disease</code> só existe nas verticais baseadas em habilitação (raras,
               oncologia); a vertical default usa <code>treatment</code>. Uma chave inválida retorna{' '}

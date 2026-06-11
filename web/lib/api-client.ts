@@ -92,6 +92,14 @@ export async function searchHospitals(
   return data.hospitals ?? [];
 }
 
+// Single hospital, vertical-scoped: 404s when the hospital doesn't belong to
+// the vertical, and the response carries that vertical's `specialties`.
+export async function fetchHospital(vertical: string, id: number | string): Promise<Hospital> {
+  return request<Hospital>(`${API_BASE}/v1/${vertical}/hospitals/${id}`, {
+    next: { revalidate: 600 },
+  });
+}
+
 export interface SearchNearbyParams {
   cep?: string | undefined;
   lat?: number | undefined;

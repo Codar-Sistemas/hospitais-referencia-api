@@ -89,6 +89,9 @@ export default function HubSearch() {
                     <p className="text-xs text-slate-400 mt-0.5">
                       {h.city} · {h.state_code}
                     </p>
+                    {/* Each badge opens THIS hospital's detail page in that
+                        vertical (qualifications, phones, map) — not the
+                        vertical's search home. */}
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       {h.active_verticals.map((dbKey) => {
                         const vertical = VERTICAL_BY_DB_KEY[dbKey];
@@ -96,7 +99,7 @@ export default function HubSearch() {
                         return (
                           <Link
                             key={dbKey}
-                            href={`/${vertical.slug}`}
+                            href={`/${vertical.slug}/hospital/${h.id}`}
                             className={`text-xs font-medium px-2.5 py-0.5 rounded-full transition-opacity hover:opacity-80 ${THEME_BADGE_CLASS[vertical.theme]}`}
                           >
                             {vertical.label} →

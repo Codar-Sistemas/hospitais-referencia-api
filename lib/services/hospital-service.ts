@@ -242,6 +242,9 @@ export async function getHospital(
   const v = options.vertical ? resolveVertical(options.vertical) : null;
   const row = await hospitalRepo.findById(n, { vertical: v });
   if (!row) throw new NotFoundError(`Hospital ${n} not found`);
+  // Namespaced lookups (/v1/{vertical}/hospitals/:id) carry the hospital's
+  // qualifications, same as list/nearby — detail views need the badges.
+  if (v) await attachSpecialties([row], v);
   return row;
 }
 

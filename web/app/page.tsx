@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import EmergencyBanner from '@/components/EmergencyBanner';
 import HubSearch from '@/components/hub/HubSearch';
 import { SITE_URL } from '@/lib/site';
-import { VERTICALS, type VerticalTheme } from '@/lib/verticals';
+import { THEME_CARD_ACCENT, VERTICALS } from '@/lib/verticals';
 
 export const metadata: Metadata = {
   title: 'MapaSUS — Estabelecimentos de Referência do SUS',
@@ -17,29 +18,6 @@ export const metadata: Metadata = {
     siteName: 'MapaSUS',
     locale: 'pt_BR',
     type: 'website',
-  },
-};
-
-// Per-theme accent classes. Full CSS-variable theming is a follow-up; for now
-// each vertical card carries its own static accent.
-const ACCENT: Record<VerticalTheme, { dot: string; ring: string; text: string; hover: string }> = {
-  venom: {
-    dot: 'bg-emerald-500',
-    ring: 'hover:border-emerald-300 hover:ring-emerald-100',
-    text: 'text-emerald-700',
-    hover: 'group-hover:text-emerald-600',
-  },
-  rare: {
-    dot: 'bg-violet-500',
-    ring: 'hover:border-violet-300 hover:ring-violet-100',
-    text: 'text-violet-700',
-    hover: 'group-hover:text-violet-600',
-  },
-  oncology: {
-    dot: 'bg-sky-500',
-    ring: 'hover:border-sky-300 hover:ring-sky-100',
-    text: 'text-sky-700',
-    hover: 'group-hover:text-sky-600',
   },
 };
 
@@ -78,16 +56,27 @@ export default function Hub() {
             </div>
             <span className="font-bold text-slate-800 text-lg tracking-tight">MapaSUS</span>
           </div>
-          <a
-            href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
-          >
-            GitHub ↗
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="tel:192"
+              className="flex items-center gap-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-100 transition-colors"
+            >
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+              SAMU 192
+            </a>
+            <a
+              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              GitHub ↗
+            </a>
+          </div>
         </div>
       </header>
+
+      <EmergencyBanner />
 
       {/* Hero */}
       <section className="bg-white border-b border-slate-100">
@@ -116,7 +105,7 @@ export default function Hub() {
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {VERTICALS.map((v) => {
-            const accent = ACCENT[v.theme];
+            const accent = THEME_CARD_ACCENT[v.theme];
             const isLive = v.status === 'live';
             const inner = (
               <>

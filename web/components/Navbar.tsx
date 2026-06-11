@@ -2,10 +2,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { LIVE_VERTICALS, THEME_DOT_CLASS } from '@/lib/verticals';
 
 // Stats and docs are platform-wide (the API is one namespaced service, the
 // stats endpoint is cross-vertical) — they live at the root, not under the
 // vertical. Busca and Profissionais are vertical-scoped.
+//
+// The brand area splits in two: the "+" mark goes back to the hub, and the
+// vertical name opens a switcher listing every live vertical (derived from
+// the registry — a new vertical shows up here with zero Navbar edits).
 interface NavbarProps {
   vertical: string;
   label: string;
@@ -20,13 +25,15 @@ export default function Navbar({ vertical, label }: NavbarProps) {
     { href: '/docs', label: 'API' },
   ];
   const [isOpen, setIsOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
 
-  // Close drawer on route change — adjust state during render
+  // Close drawer and switcher on route change — adjust state during render
   // (React 19 / set-state-in-effect compliant pattern).
   if (pathname !== lastPathname) {
     setLastPathname(pathname);
     setIsOpen(false);
+    setSwitcherOpen(false);
   }
 
   // Lock body scroll while drawer is open.
@@ -39,25 +46,114 @@ export default function Navbar({ vertical, label }: NavbarProps) {
     };
   }, [isOpen]);
 
-  // Close on Escape.
+  // Close drawer/switcher on Escape.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !switcherOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        setSwitcherOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen]);
+  }, [isOpen, switcherOpen]);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <Link href={`/${vertical}`} className="flex items-center gap-2.5 shrink-0">
-          <div className="w-8 h-8 bg-accent-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
-            +
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Link href="/" title="Início — MapaSUS" className="shrink-0">
+            <div className="w-8 h-8 bg-accent-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
+              +
+            </div>
+          </Link>
+
+          {/* Vertical switcher */}
+          <div className="relative">
+            <button
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={switcherOpen}
+              onClick={() => setSwitcherOpen((open) => !open)}
+              className="flex items-center gap-1.5 font-semibold text-slate-800 text-base leading-tight rounded-lg px-2 py-1.5 -ml-2 hover:bg-slate-100 transition-colors"
+            >
+              {label}
+              <svg
+                className={`w-4 h-4 text-slate-400 transition-transform ${switcherOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {switcherOpen && (
+              <>
+                {/* Invisible backdrop: closes the menu on outside click. */}
+                <button
+                  type="button"
+                  aria-label="Fechar seletor de áreas"
+                  onClick={() => setSwitcherOpen(false)}
+                  className="fixed inset-0 z-[55] cursor-default"
+                />
+                <div
+                  role="menu"
+                  className="absolute left-0 top-full mt-2 w-64 z-[60] bg-white rounded-xl border border-slate-200 shadow-lg py-2"
+                >
+                  <Link
+                    href="/"
+                    role="menuitem"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="w-5 h-5 bg-emerald-600 rounded flex items-center justify-center text-white text-[10px] font-bold">
+                      +
+                    </span>
+                    <span className="font-medium">Início — todas as áreas</span>
+                  </Link>
+                  <div className="my-1.5 border-t border-slate-100" />
+                  <p className="px-4 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Áreas
+                  </p>
+                  {LIVE_VERTICALS.map((v) => {
+                    const isCurrent = v.slug === vertical;
+                    return (
+                      <Link
+                        key={v.slug}
+                        href={`/${v.slug}`}
+                        role="menuitem"
+                        aria-current={isCurrent ? 'page' : undefined}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
+                          isCurrent
+                            ? 'bg-slate-50 text-slate-900 font-semibold'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                        {v.label}
+                        {isCurrent && (
+                          <svg
+                            className="w-4 h-4 ml-auto text-slate-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                            aria-hidden="true"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
-          <span className="font-semibold text-slate-800 text-base leading-tight">{label}</span>
-        </Link>
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
@@ -165,6 +261,34 @@ export default function Navbar({ vertical, label }: NavbarProps) {
                 {label}
               </Link>
             ))}
+
+            <p className="px-4 pt-5 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+              Áreas
+            </p>
+            <Link
+              href="/"
+              className="px-4 py-3 rounded-lg text-base font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              Início — todas as áreas
+            </Link>
+            {LIVE_VERTICALS.map((v) => {
+              const isCurrent = v.slug === vertical;
+              return (
+                <Link
+                  key={v.slug}
+                  href={`/${v.slug}`}
+                  aria-current={isCurrent ? 'page' : undefined}
+                  className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-base font-medium transition-colors ${
+                    isCurrent
+                      ? 'bg-slate-50 text-slate-900 font-semibold'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                  {v.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="p-4 border-t border-slate-200">

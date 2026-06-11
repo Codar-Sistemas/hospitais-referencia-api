@@ -1,6 +1,12 @@
 // MapaSUS vertical registry — the single source of truth for the platform's
-// health verticals. Navbar, layouts, metadata, api-client, sitemap and the
-// host router (`proxy.ts`) all derive from `VERTICALS`.
+// health verticals. Navbar (links + area switcher), layouts, metadata,
+// api-client, sitemap, hub cards and the host router (`proxy.ts`) all derive
+// from `VERTICALS`.
+//
+// ADDING A MODULE = adding ONE entry to `VERTICALS` below (plus a theme in the
+// `THEME_*` maps and globals.css if it introduces a new color). The hub card,
+// navbar switcher item, mobile menu entry, sitemap URL, OG image and subdomain
+// route all appear automatically — no per-surface edits.
 //
 // INVARIANT (mirrors the backend's `Vertical` ↔ `KNOWN_VERTICALS` ↔
 // `URL_TO_DB_VERTICAL` discipline): `slug` is the kebab-case URL segment used
@@ -62,12 +68,50 @@ export interface Vertical {
 
 export type VerticalTheme = 'venom' | 'rare' | 'oncology';
 
-// Tailwind badge classes per theme. Full CSS-variable theming is a follow-up;
-// for now both the hub cards and the cross-vertical result badges read these.
+// ---------------------------------------------------------------------------
+// Per-theme Tailwind classes. Everything visual that varies per vertical lives
+// HERE, keyed by theme — hub cards, nav switcher dots and cross-vertical badges
+// all read these maps. Adding a vertical that reuses an existing theme needs
+// zero edits below; adding a NEW theme fails to compile until every map gets
+// its classes (the Record<VerticalTheme, …> types are exhaustive on purpose).
+// ---------------------------------------------------------------------------
+
+// Pill/badge (cross-vertical search results, chips).
 export const THEME_BADGE_CLASS: Readonly<Record<VerticalTheme, string>> = {
   venom: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
   rare: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
   oncology: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+};
+
+// Small colored dot (hub cards, vertical switcher in the navbar).
+export const THEME_DOT_CLASS: Readonly<Record<VerticalTheme, string>> = {
+  venom: 'bg-emerald-500',
+  rare: 'bg-violet-500',
+  oncology: 'bg-sky-500',
+};
+
+// Hub card accents (hover ring, CTA text, title hover).
+export const THEME_CARD_ACCENT: Readonly<
+  Record<VerticalTheme, { dot: string; ring: string; text: string; hover: string }>
+> = {
+  venom: {
+    dot: THEME_DOT_CLASS.venom,
+    ring: 'hover:border-emerald-300 hover:ring-emerald-100',
+    text: 'text-emerald-700',
+    hover: 'group-hover:text-emerald-600',
+  },
+  rare: {
+    dot: THEME_DOT_CLASS.rare,
+    ring: 'hover:border-violet-300 hover:ring-violet-100',
+    text: 'text-violet-700',
+    hover: 'group-hover:text-violet-600',
+  },
+  oncology: {
+    dot: THEME_DOT_CLASS.oncology,
+    ring: 'hover:border-sky-300 hover:ring-sky-100',
+    text: 'text-sky-700',
+    hover: 'group-hover:text-sky-600',
+  },
 };
 
 export const VERTICALS: ReadonlyArray<Vertical> = [

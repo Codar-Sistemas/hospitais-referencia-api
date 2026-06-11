@@ -1,8 +1,10 @@
-// Canonical public URLs for the platform — single source for metadata,
-// canonicals, sitemap, OG, llms.txt and the API client.
+// Canonical PUBLIC URLs of the platform — single source for metadata,
+// canonicals, sitemap, OG, llms.txt and the docs page. These are display
+// URLs: they always point at production, regardless of environment (a
+// canonical/documented URL must not become `localhost` on a dev build).
 //
-// Override per-environment with NEXT_PUBLIC_SITE_URL / NEXT_PUBLIC_API_URL
-// (e.g. preview deploys, or while the production DNS is being set up). The
-// defaults are the production MapaSUS domains.
-export const SITE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://mapasus.com.br';
-export const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.mapasus.com.br';
+// The API CLIENT's fetch base is a separate concern: it reads
+// NEXT_PUBLIC_API_URL to let local/preview deploys hit a different API,
+// falling back to API_URL. See lib/api-client.ts.
+export const SITE_URL = 'https://mapasus.com.br';
+export const API_URL = 'https://api.mapasus.com.br';

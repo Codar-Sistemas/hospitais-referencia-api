@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { fetchStats } from '@/lib/api-client';
+import { fetchStats, type StatsResponse } from '@/lib/api-client';
 import { TREATMENT_LABEL_BY_VALUE } from '@/lib/constants';
 
 export const metadata: Metadata = {
@@ -12,8 +12,28 @@ export const metadata: Metadata = {
 // Next's incremental cache. Public, no auth required.
 export const revalidate = 300;
 
+// Empty payload rendered when the API is unreachable. Crucially this keeps the
+// build from failing: /stats is statically generated (ISR), so a build-time
+// fetch error would otherwise abort the whole `next build`. The page already
+// degrades gracefully on empty arrays / null, and ISR backfills real data
+// within `revalidate` once the API responds again.
+const EMPTY_STATS: StatsResponse = {
+  generated_at: new Date(0).toISOString(),
+  overview: null,
+  demand_by_user_state: [],
+  treatment_popularity_30d: [],
+  search_timeline_30d: [],
+  sync_resilience_90d: null,
+  coverage_by_state: [],
+};
+
 export default async function StatsPage() {
-  const data = await fetchStats();
+  let data: StatsResponse;
+  try {
+    data = await fetchStats();
+  } catch {
+    data = EMPTY_STATS;
+  }
   const overview = data.overview;
   const resilience = data.sync_resilience_90d;
   const maxDemand = Math.max(...data.demand_by_user_state.map((r) => r.searches), 1);

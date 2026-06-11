@@ -102,11 +102,13 @@ export default function Hub() {
             fáceis de encontrar
           </h1>
           <p className="mt-5 text-slate-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            {/* Each highlighted area carries its vertical's theme color
+                (emerald/violet/sky) — same palette as the cards below. */}
             Digite sua <strong className="text-slate-800">cidade</strong> e encontre em segundos os
             hospitais habilitados pelo SUS perto de você:{' '}
-            <strong className="text-slate-800">soro antiveneno</strong> para acidentes com cobras,
-            escorpiões e aranhas, <strong className="text-slate-800">doenças raras</strong> e{' '}
-            <strong className="text-slate-800">oncologia</strong> — com endereço, telefone e mapa.
+            <strong className="text-emerald-700">soro antiveneno</strong> para acidentes com cobras,
+            escorpiões e aranhas, <strong className="text-violet-700">doenças raras</strong> e{' '}
+            <strong className="text-sky-700">oncologia</strong> — com endereço, telefone e mapa.
           </p>
           <p className="mt-3 text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
             Numa emergência real, saber para onde ir salva tempo: acione o{' '}

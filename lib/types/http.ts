@@ -20,6 +20,9 @@ export interface RequestContext {
 // middleware drains it after the response is sent.
 export interface ResponseMetrics {
   treatment_searched?: string | null;
+  /** Disease-area filter searched (rare diseases, oncology) — the `?disease=`
+   * counterpart of `treatment_searched`, null on the venomous vertical. */
+  disease_searched?: string | null;
   search_origin?:
     | 'q'
     | 'city'

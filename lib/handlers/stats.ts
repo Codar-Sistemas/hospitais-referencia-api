@@ -84,6 +84,11 @@ interface DataQualityRow {
   llm_extracted: number;
   ocr_extracted: number;
 }
+interface SearchPopularityRow {
+  vertical: string;
+  filter_value: string;
+  searches: number;
+}
 
 export async function getStats(_req: Request, res: Response): Promise<void> {
   const [
@@ -99,6 +104,7 @@ export async function getStats(_req: Request, res: Response): Promise<void> {
     stateVerticalCoverage,
     topCities,
     dataQuality,
+    searchPopularity,
   ] = await Promise.all([
     sbService<OverviewRow>('v_search_stats_30d', { select: '*', limit: '1' }),
     sbService<DemandRow>('v_demand_by_user_state', { select: '*' }),
@@ -124,6 +130,11 @@ export async function getStats(_req: Request, res: Response): Promise<void> {
       limit: '15',
     }).catch(() => []),
     sbService<DataQualityRow>('v_data_quality', { select: '*', limit: '1' }).catch(() => []),
+    // Per-vertical search popularity lands with migration 022 — same rule.
+    sbService<SearchPopularityRow>('v_search_popularity_by_vertical_30d', {
+      select: '*',
+      order: 'vertical.asc,searches.desc',
+    }).catch(() => []),
   ]);
 
   const lastSyncByVertical = new Map(lastSyncs.map((s) => [s.vertical, s]));
@@ -155,5 +166,6 @@ export async function getStats(_req: Request, res: Response): Promise<void> {
     state_vertical_coverage: stateVerticalCoverage,
     top_cities: topCities,
     data_quality: dataQuality[0] ?? null,
+    search_popularity_by_vertical: searchPopularity,
   });
 }

@@ -229,6 +229,13 @@ export interface StatsResponse {
     llm_extracted: number;
     ocr_extracted: number;
   } | null;
+  /** Most-searched filter per vertical over 30 days (migration 022):
+   * `filter_value` is a treatment for venomous, a disease area otherwise. */
+  search_popularity_by_vertical?: {
+    vertical: string;
+    filter_value: string;
+    searches: number;
+  }[];
 }
 
 export async function fetchStats(): Promise<StatsResponse> {

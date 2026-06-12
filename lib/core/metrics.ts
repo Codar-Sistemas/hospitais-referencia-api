@@ -24,6 +24,7 @@ export interface TrackParams {
   error_message?: string | null;
 
   treatment_searched?: string | null;
+  disease_searched?: string | null;
   search_origin?: string | null;
   user_state_code?: string | null;
   results_count?: number | null;
@@ -73,6 +74,7 @@ export function track(params: TrackParams): void {
     error_type: params.error_type ?? null,
     error_message: truncate(params.error_message, 500),
     treatment_searched: params.treatment_searched ?? null,
+    disease_searched: params.disease_searched ?? null,
     search_origin: params.search_origin ?? null,
     user_state_code: params.user_state_code ?? null,
     results_count: typeof params.results_count === 'number' ? params.results_count : null,

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import EmergencyBanner from '@/components/EmergencyBanner';
 import Footer from '@/components/Footer';
-import SamuBadge from '@/components/SamuBadge';
+import Navbar from '@/components/Navbar';
 import HubSearch from '@/components/hub/HubSearch';
 import { SITE_URL } from '@/lib/site';
 import { THEME_CARD_ACCENT, VERTICALS } from '@/lib/verticals';
@@ -49,44 +49,7 @@ const hubJsonLd = {
 export default function Hub() {
   return (
     <div className="flex flex-col flex-1">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
-              +
-            </div>
-            <span className="font-bold text-slate-800 text-lg tracking-tight">MapaSUS</span>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <nav className="flex items-center gap-0.5 sm:gap-1">
-              <Link
-                href="/estatisticas"
-                className="px-2 sm:px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-              >
-                Estatísticas
-              </Link>
-              <Link
-                href="/docs"
-                className="px-2 sm:px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-              >
-                API
-              </Link>
-            </nav>
-            {/* The SAMU badge keeps priority on small screens; GitHub moves
-                behind the md breakpoint (it also lives in the footer). */}
-            <SamuBadge />
-            <a
-              href="https://github.com/Codar-Sistemas/hospitais-referencia-api"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden md:inline text-sm text-slate-500 hover:text-slate-800 transition-colors"
-            >
-              GitHub ↗
-            </a>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <EmergencyBanner />
 
@@ -101,10 +64,23 @@ export default function Hub() {
             Os estabelecimentos de referência do <span className="text-emerald-600">SUS</span>,
             fáceis de encontrar
           </h1>
-          <p className="mt-5 text-slate-500 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            O Ministério da Saúde publica as listas de hospitais habilitados por programa em PDFs e
-            planilhas dispersos. O MapaSUS organiza, normaliza e republica esses dados com busca por
-            cidade, CEP e proximidade — atualizados automaticamente todos os dias.
+          <p className="mt-5 text-slate-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            {/* Each highlighted area carries its vertical's theme color
+                (emerald/violet/sky) — same palette as the cards below. */}
+            Digite sua <strong className="text-slate-800">cidade</strong> e encontre em segundos os
+            hospitais habilitados pelo SUS perto de você:{' '}
+            <strong className="text-emerald-700">soro antiveneno</strong> para acidentes com cobras,
+            escorpiões e aranhas, <strong className="text-violet-700">doenças raras</strong> e{' '}
+            <strong className="text-sky-700">oncologia</strong> — com endereço, telefone e mapa.
+          </p>
+          <p className="mt-3 text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            Numa emergência real, saber para onde ir salva tempo: acione o{' '}
+            <a href="tel:192" className="font-semibold text-red-600 hover:underline">
+              SAMU (192)
+            </a>{' '}
+            e use o MapaSUS para localizar a unidade de referência mais próxima. Dentro de cada
+            área, busque também por CEP e proximidade. Dados oficiais do Ministério da Saúde,
+            atualizados todos os dias.
           </p>
           <HubSearch />
         </div>

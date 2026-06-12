@@ -54,6 +54,7 @@ export async function listHospitals(
   });
   res.metrics = {
     treatment_searched: result.filters.treatment ?? null,
+    disease_searched: result.filters.disease ?? null,
     search_origin: pickListOrigin({ state_code, city, q, treatment }),
     results_count: result.total_returned,
     vertical: result.filters.vertical,
@@ -107,6 +108,7 @@ export async function listNearbyHospitals(
   const userStateCode = 'user_state_code' in result.origin ? result.origin.user_state_code : null;
   res.metrics = {
     treatment_searched: treatment,
+    disease_searched: disease,
     search_origin: result.origin.source,
     user_state_code: userStateCode,
     results_count: result.total_returned,

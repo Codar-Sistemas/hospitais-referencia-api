@@ -1,8 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchStats, type StatsResponse } from '@/lib/api-client';
-import { TREATMENT_LABEL_BY_VALUE } from '@/lib/constants';
-import { THEME_DOT_CLASS, VERTICAL_BY_DB_KEY } from '@/lib/verticals';
+import { STATES, TREATMENT_LABEL_BY_VALUE } from '@/lib/constants';
+import { POPULATION_BY_REGION, REGION_BY_STATE, REGIONS } from '@/lib/regions';
+import { SPECIALTY_LABEL_BY_KEY } from '@/lib/specialties';
+import { LIVE_VERTICALS, THEME_DOT_CLASS, VERTICAL_BY_DB_KEY } from '@/lib/verticals';
+
+// PT label for a searched filter value: a treatment for venomous, a disease
+// area otherwise — pulled from the vertical's registry filter options.
+function filterLabel(dbKey: string, value: string): string {
+  if (dbKey === 'venomous_animals') return TREATMENT_LABEL_BY_VALUE[value] ?? value;
+  const v = VERTICAL_BY_DB_KEY[dbKey];
+  return v?.diseaseFilterOptions.find((o) => o.value === value)?.label ?? value;
+}
 
 export const metadata: Metadata = {
   title: 'Estatísticas',
@@ -28,7 +38,20 @@ const EMPTY_STATS: StatsResponse = {
   search_timeline_30d: [],
   sync_resilience_90d: null,
   coverage_by_state: [],
+  specialties_by_vertical: [],
+  state_vertical_coverage: [],
+  top_cities: [],
+  data_quality: null,
+  search_popularity_by_vertical: [],
 };
+
+// PT label for a `hospital_specialties.specialty` key. The venomous vertical
+// stores canonical treatment names (e.g. 'Bothropic'); the qualification
+// verticals store snake_case habilitation keys (e.g. 'cacon').
+function specialtyLabel(vertical: string, key: string): string {
+  if (vertical === 'venomous_animals') return TREATMENT_LABEL_BY_VALUE[key] ?? key;
+  return SPECIALTY_LABEL_BY_KEY[key] ?? key;
+}
 
 // PT labels + pill colors for sync_logs.status values.
 const SYNC_STATUS_LABEL: Record<string, { label: string; className: string }> = {
@@ -50,11 +73,72 @@ export default async function StatsPage() {
   // `?? []` guards against an older API build that predates `by_vertical`.
   const byVertical = data.by_vertical ?? [];
   const maxDemand = Math.max(...data.demand_by_user_state.map((r) => r.searches), 1);
-  const maxTreatment = Math.max(...data.treatment_popularity_30d.map((r) => r.searches), 1);
   const maxTimeline = Math.max(...data.search_timeline_30d.map((r) => r.searches), 1);
+  const searchPopularity = data.search_popularity_by_vertical ?? [];
   const totalHospitals = data.coverage_by_state.reduce((acc, s) => acc + s.hospitals_count, 0);
   const totalGeocoded = data.coverage_by_state.reduce((acc, s) => acc + s.geocoded_count, 0);
   const statesCovered = data.coverage_by_state.filter((s) => s.hospitals_count > 0).length;
+
+  // Domain analytics (migration 021) — `?? []`/`?? null` guard against an
+  // older API build that predates these fields.
+  const specialtiesByVertical = data.specialties_by_vertical ?? [];
+  const stateVerticalCoverage = data.state_vertical_coverage ?? [];
+  const topCities = data.top_cities ?? [];
+  const quality = data.data_quality ?? null;
+  const maxCity = Math.max(...topCities.map((c) => c.hospitals_count), 1);
+
+  // Stable vertical ordering: by hospital count when 020 is live, otherwise
+  // the coverage matrix, else the registry (so the "Mais buscados por área"
+  // section always shows every live area, even before 020/021 are applied).
+  const verticalKeys =
+    byVertical.length > 0
+      ? byVertical.map((r) => r.vertical)
+      : stateVerticalCoverage.length > 0
+        ? [...new Set(stateVerticalCoverage.map((r) => r.vertical))]
+        : LIVE_VERTICALS.map((v) => v.dbKey);
+
+  // Group the most-searched rows per vertical, preserving the API's
+  // searches-desc order within each.
+  const searchPopGrouped = new Map<string, typeof searchPopularity>();
+  for (const row of searchPopularity) {
+    const list = searchPopGrouped.get(row.vertical) ?? [];
+    list.push(row);
+    searchPopGrouped.set(row.vertical, list);
+  }
+
+  // Specialty rows arrive pre-sorted by hospitals_count desc within each
+  // vertical — group them preserving that order.
+  const specialtiesGrouped = new Map<string, typeof specialtiesByVertical>();
+  for (const row of specialtiesByVertical) {
+    const list = specialtiesGrouped.get(row.vertical) ?? [];
+    list.push(row);
+    specialtiesGrouped.set(row.vertical, list);
+  }
+
+  // Assistance voids: UFs with no row in the coverage matrix for a vertical.
+  const coveredStatesByVertical = new Map<string, Set<string>>();
+  for (const row of stateVerticalCoverage) {
+    const set = coveredStatesByVertical.get(row.vertical) ?? new Set<string>();
+    set.add(row.state_code);
+    coveredStatesByVertical.set(row.vertical, set);
+  }
+  const gapsByVertical = verticalKeys.map((vertical) => {
+    const covered = coveredStatesByVertical.get(vertical) ?? new Set<string>();
+    return {
+      vertical,
+      missing: STATES.filter((s) => !covered.has(s.code)).map((s) => s.code),
+    };
+  });
+
+  // Regional distribution: region → vertical → hospitals.
+  const regionMatrix = new Map<string, Map<string, number>>();
+  for (const row of stateVerticalCoverage) {
+    const region = REGION_BY_STATE[row.state_code];
+    if (!region) continue;
+    const perVertical = regionMatrix.get(region) ?? new Map<string, number>();
+    perVertical.set(row.vertical, (perVertical.get(row.vertical) ?? 0) + row.hospitals_count);
+    regionMatrix.set(region, perVertical);
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-12">
@@ -132,17 +216,316 @@ export default async function StatsPage() {
         </section>
       )}
 
+      {/* Specialty footprint — how many hospitals offer each soro grade /
+          SUS habilitation, per vertical (migration 021). */}
+      {specialtiesGrouped.size > 0 && (
+        <section>
+          <Card title="Serviços e especialidades por área">
+            <div className="grid gap-6 lg:grid-cols-3">
+              {verticalKeys.map((vertical) => {
+                const v = VERTICAL_BY_DB_KEY[vertical];
+                const rows = specialtiesGrouped.get(vertical);
+                if (!v || !rows || rows.length === 0) return null;
+                const maxCount = Math.max(...rows.map((r) => r.hospitals_count), 1);
+                return (
+                  <div key={vertical}>
+                    <p className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-3">
+                      <span className={`w-2 h-2 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                      {v.label}
+                    </p>
+                    <ul className="space-y-2">
+                      {rows.map((row) => (
+                        <li key={row.specialty} className="flex items-center gap-3 text-sm">
+                          <span
+                            className="w-36 truncate text-slate-700"
+                            title={specialtyLabel(vertical, row.specialty)}
+                          >
+                            {specialtyLabel(vertical, row.specialty)}
+                          </span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-full ${THEME_DOT_CLASS[v.theme]}`}
+                              style={{ width: `${(row.hospitals_count / maxCount) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-10 text-right tabular-nums text-slate-600">
+                            {row.hospitals_count}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-400 mt-4 leading-snug">
+              Número de hospitais habilitados em cada serviço ou tipo de soro. Um hospital pode
+              aparecer em mais de uma categoria.
+            </p>
+          </Card>
+        </section>
+      )}
+
+      {/* Assistance voids — UFs with zero coverage per vertical. The most
+          actionable public-interest number on this page. */}
+      {stateVerticalCoverage.length > 0 && (
+        <section>
+          <Card title="Vazios assistenciais — UFs sem unidade habilitada">
+            <ul className="space-y-4">
+              {gapsByVertical.map(({ vertical, missing }) => {
+                const v = VERTICAL_BY_DB_KEY[vertical];
+                if (!v) return null;
+                return (
+                  <li key={vertical} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="flex items-center gap-2 sm:w-48 shrink-0 text-sm font-semibold text-slate-800">
+                      <span className={`w-2 h-2 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                      {v.label}
+                    </span>
+                    {missing.length === 0 ? (
+                      <span className="text-sm text-emerald-700">
+                        Todas as 27 UFs têm ao menos uma unidade.
+                      </span>
+                    ) : (
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-slate-500 mr-1">
+                          {missing.length} {missing.length === 1 ? 'UF' : 'UFs'} sem cobertura:
+                        </span>
+                        {missing.map((uf) => (
+                          <span
+                            key={uf}
+                            className="px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-xs font-mono font-semibold"
+                          >
+                            {uf}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="text-xs text-slate-400 mt-4 leading-snug">
+              UFs sem nenhum estabelecimento habilitado na área. Pacientes dessas UFs dependem de
+              deslocamento interestadual (Tratamento Fora de Domicílio — TFD).
+            </p>
+          </Card>
+        </section>
+      )}
+
+      {/* Regional distribution with per-capita rates (Censo 2022). */}
+      {regionMatrix.size > 0 && (
+        <section>
+          <Card title="Distribuição regional">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left py-2 px-2">Região</th>
+                    {verticalKeys.map((vertical) => {
+                      const v = VERTICAL_BY_DB_KEY[vertical];
+                      return (
+                        <th key={vertical} className="text-right py-2 px-2">
+                          {v?.shortLabel ?? vertical}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {REGIONS.map((region) => {
+                    const perVertical = regionMatrix.get(region);
+                    const populationM = POPULATION_BY_REGION[region] / 1_000_000;
+                    return (
+                      <tr key={region} className="border-b border-slate-100">
+                        <td className="py-2 px-2 font-medium text-slate-700">{region}</td>
+                        {verticalKeys.map((vertical) => {
+                          const count = perVertical?.get(vertical) ?? 0;
+                          return (
+                            <td key={vertical} className="py-2 px-2 text-right tabular-nums">
+                              {count > 0 ? (
+                                <>
+                                  <span className="font-medium text-slate-800">
+                                    {count.toLocaleString('pt-BR')}
+                                  </span>
+                                  <span className="ml-1.5 text-xs text-slate-400">
+                                    {(count / populationM).toLocaleString('pt-BR', {
+                                      maximumFractionDigits: 1,
+                                      minimumFractionDigits: 1,
+                                    })}
+                                    /mi
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-red-600 font-medium">0</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-400 mt-4 leading-snug">
+              Unidades habilitadas por região e taxa por milhão de habitantes (população residente
+              do Censo 2022/IBGE).
+            </p>
+          </Card>
+        </section>
+      )}
+
+      {/* Municipal concentration + data quality */}
+      {(topCities.length > 0 || quality) && (
+        <section className="grid lg:grid-cols-2 gap-8">
+          <Card title="Municípios com mais unidades">
+            {topCities.length === 0 ? (
+              <p className="text-sm text-slate-400">Sem dados ainda.</p>
+            ) : (
+              <ul className="space-y-2">
+                {topCities.map((row) => (
+                  <li
+                    key={`${row.city}-${row.state_code}`}
+                    className="flex items-center gap-3 text-sm"
+                  >
+                    <span className="w-44 truncate text-slate-700" title={row.city}>
+                      {row.city}
+                      <span className="ml-1 text-xs text-slate-400 font-mono">
+                        {row.state_code}
+                      </span>
+                    </span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-sky-500 h-full"
+                        style={{ width: `${(row.hospitals_count / maxCity) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-10 text-right tabular-nums text-slate-600">
+                      {row.hospitals_count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card title="Qualidade dos dados">
+            {!quality ? (
+              <p className="text-sm text-slate-400">Sem dados ainda.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <MiniStat
+                    label="Geocodificados"
+                    value={
+                      quality.total_hospitals > 0
+                        ? `${Math.round((quality.geocoded / quality.total_hospitals) * 100)}%`
+                        : '—'
+                    }
+                    accent="emerald"
+                  />
+                  <MiniStat label="Geocoding pendente" value={quality.geocode_pending} />
+                  <MiniStat
+                    label="Geocoding falhou"
+                    value={quality.geocode_failed}
+                    accent={quality.geocode_failed > 0 ? 'red' : 'slate'}
+                  />
+                  <MiniStat
+                    label="Requer verificação"
+                    value={quality.requires_verification}
+                    accent={quality.requires_verification > 0 ? 'amber' : 'slate'}
+                  />
+                  <MiniStat
+                    label="Com CNES"
+                    value={
+                      quality.total_hospitals > 0
+                        ? `${Math.round((quality.with_cnes / quality.total_hospitals) * 100)}%`
+                        : '—'
+                    }
+                  />
+                  <MiniStat
+                    label="Com telefone"
+                    value={
+                      quality.total_hospitals > 0
+                        ? `${Math.round((quality.with_phones / quality.total_hospitals) * 100)}%`
+                        : '—'
+                    }
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-4 leading-snug">
+                  Completude dos {quality.total_hospitals.toLocaleString('pt-BR')} registros:
+                  cobertura de coordenadas, fila de geocodificação e linhas extraídas por OCR/LLM
+                  que aguardam verificação manual.
+                </p>
+              </>
+            )}
+          </Card>
+        </section>
+      )}
+
+      {/* Most-searched filter per area (30 days). One column per vertical so
+          all areas are represented — not just venomous serums (migration 022). */}
+      <section>
+        <Card title="Mais buscados por área (30 dias)">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {verticalKeys.map((vertical) => {
+              const v = VERTICAL_BY_DB_KEY[vertical];
+              if (!v) return null;
+              const rows = searchPopGrouped.get(vertical) ?? [];
+              const maxCount = Math.max(...rows.map((r) => r.searches), 1);
+              return (
+                <div key={vertical}>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-3">
+                    <span className={`w-2 h-2 rounded-full ${THEME_DOT_CLASS[v.theme]}`} />
+                    {v.label}
+                  </p>
+                  {rows.length === 0 ? (
+                    <p className="text-sm text-slate-400">Ainda sem buscas filtradas.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {rows.map((row) => (
+                        <li key={row.filter_value} className="flex items-center gap-3 text-sm">
+                          <span
+                            className="w-32 truncate text-slate-700"
+                            title={filterLabel(vertical, row.filter_value)}
+                          >
+                            {filterLabel(vertical, row.filter_value)}
+                          </span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-full ${THEME_DOT_CLASS[v.theme]}`}
+                              style={{ width: `${(row.searches / maxCount) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-10 text-right tabular-nums text-slate-600">
+                            {row.searches}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-400 mt-4 leading-snug">
+            Filtros mais buscados em cada área nos últimos 30 dias — tipo de soro (peçonhentos) ou
+            tipo de serviço/doença (raras, oncologia).
+          </p>
+        </Card>
+      </section>
+
       {/* Demand by user state */}
-      <section className="grid lg:grid-cols-2 gap-8">
+      <section>
         <Card title="Demanda por UF do usuário (30 dias)">
           {data.demand_by_user_state.length === 0 ? (
             <p className="text-sm text-slate-400">
               Ainda sem dados suficientes — a UF do usuário só é registrada em buscas por CEP.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2 sm:grid sm:grid-cols-2 sm:gap-x-8 sm:space-y-0 lg:grid-cols-3">
               {data.demand_by_user_state.map((row) => (
-                <li key={row.state_code} className="flex items-center gap-3 text-sm">
+                <li key={row.state_code} className="flex items-center gap-3 text-sm py-1">
                   <span className="w-10 font-mono font-semibold text-slate-700">
                     {row.state_code}
                   </span>
@@ -150,31 +533,6 @@ export default async function StatsPage() {
                     <div
                       className="bg-emerald-500 h-full"
                       style={{ width: `${(row.searches / maxDemand) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-12 text-right tabular-nums text-slate-600">
-                    {row.searches}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card title="Tipos de soro mais buscados (30 dias)">
-          {data.treatment_popularity_30d.length === 0 ? (
-            <p className="text-sm text-slate-400">Ainda sem buscas filtradas por tipo de soro.</p>
-          ) : (
-            <ul className="space-y-2">
-              {data.treatment_popularity_30d.map((row) => (
-                <li key={row.treatment} className="flex items-center gap-3 text-sm">
-                  <span className="w-32 font-medium text-slate-700">
-                    {TREATMENT_LABEL_BY_VALUE[row.treatment] ?? row.treatment}
-                  </span>
-                  <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-amber-500 h-full"
-                      style={{ width: `${(row.searches / maxTreatment) * 100}%` }}
                     />
                   </div>
                   <span className="w-12 text-right tabular-nums text-slate-600">

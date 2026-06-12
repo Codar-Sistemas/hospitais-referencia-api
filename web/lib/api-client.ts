@@ -201,6 +201,41 @@ export interface StatsResponse {
     ocr_records: number;
     llm_records: number;
   }[];
+  /** Domain analytics (migration 021). All optional so the page degrades
+   * gracefully against an older API build that predates them. */
+  specialties_by_vertical?: {
+    vertical: string;
+    specialty: string;
+    hospitals_count: number;
+  }[];
+  /** Hospitals/cities per (state, vertical). States absent for a vertical
+   * have zero coverage — the page derives the assistance-void chips and the
+   * regional distribution from this matrix. */
+  state_vertical_coverage?: {
+    state_code: string;
+    vertical: string;
+    hospitals_count: number;
+    cities_count: number;
+  }[];
+  top_cities?: { city: string; state_code: string; hospitals_count: number }[];
+  data_quality?: {
+    total_hospitals: number;
+    geocoded: number;
+    geocode_failed: number;
+    geocode_pending: number;
+    requires_verification: number;
+    with_cnes: number;
+    with_phones: number;
+    llm_extracted: number;
+    ocr_extracted: number;
+  } | null;
+  /** Most-searched filter per vertical over 30 days (migration 022):
+   * `filter_value` is a treatment for venomous, a disease area otherwise. */
+  search_popularity_by_vertical?: {
+    vertical: string;
+    filter_value: string;
+    searches: number;
+  }[];
 }
 
 export async function fetchStats(): Promise<StatsResponse> {

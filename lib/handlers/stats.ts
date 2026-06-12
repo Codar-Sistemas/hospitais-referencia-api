@@ -1,4 +1,4 @@
-// Queries the read-only views from sql/008_metrics_phase1.sql.
+// Queries the read-only stats views (sql/008, 014, 020 and 021).
 // No PII; safe for CDN caching.
 
 import { json } from '../core/http.js';
@@ -57,21 +57,85 @@ interface CoverageRow {
   ocr_records: number;
   llm_records: number;
 }
+interface SpecialtyRow {
+  vertical: string;
+  specialty: string;
+  hospitals_count: number;
+}
+interface StateVerticalCoverageRow {
+  state_code: string;
+  vertical: string;
+  hospitals_count: number;
+  cities_count: number;
+}
+interface TopCityRow {
+  city: string;
+  state_code: string;
+  hospitals_count: number;
+}
+interface DataQualityRow {
+  total_hospitals: number;
+  geocoded: number;
+  geocode_failed: number;
+  geocode_pending: number;
+  requires_verification: number;
+  with_cnes: number;
+  with_phones: number;
+  llm_extracted: number;
+  ocr_extracted: number;
+}
+interface SearchPopularityRow {
+  vertical: string;
+  filter_value: string;
+  searches: number;
+}
 
 export async function getStats(_req: Request, res: Response): Promise<void> {
-  const [overview, demand, treatments, timeline, resilience, coverage, byVertical, lastSyncs] =
-    await Promise.all([
-      sbService<OverviewRow>('v_search_stats_30d', { select: '*', limit: '1' }),
-      sbService<DemandRow>('v_demand_by_user_state', { select: '*' }),
-      sbService<TreatmentPopularityRow>('v_treatment_popularity_30d', { select: '*' }),
-      sbService<SearchTimelineRow>('v_search_timeline_30d', { select: '*' }),
-      sbService<SyncResilienceRow>('v_sync_resilience_90d', { select: '*', limit: '1' }),
-      sbService<CoverageRow>('v_coverage_by_state', { select: '*' }),
-      // Per-vertical views land with migration 020 — degrade to an empty
-      // section (not a 500) on databases that haven't applied it yet.
-      sbService<VerticalHospitalsRow>('v_hospitals_by_vertical', { select: '*' }).catch(() => []),
-      sbService<VerticalSyncRow>('v_last_sync_by_vertical', { select: '*' }).catch(() => []),
-    ]);
+  const [
+    overview,
+    demand,
+    treatments,
+    timeline,
+    resilience,
+    coverage,
+    byVertical,
+    lastSyncs,
+    specialties,
+    stateVerticalCoverage,
+    topCities,
+    dataQuality,
+    searchPopularity,
+  ] = await Promise.all([
+    sbService<OverviewRow>('v_search_stats_30d', { select: '*', limit: '1' }),
+    sbService<DemandRow>('v_demand_by_user_state', { select: '*' }),
+    sbService<TreatmentPopularityRow>('v_treatment_popularity_30d', { select: '*' }),
+    sbService<SearchTimelineRow>('v_search_timeline_30d', { select: '*' }),
+    sbService<SyncResilienceRow>('v_sync_resilience_90d', { select: '*', limit: '1' }),
+    sbService<CoverageRow>('v_coverage_by_state', { select: '*' }),
+    // Per-vertical views land with migration 020 — degrade to an empty
+    // section (not a 500) on databases that haven't applied it yet.
+    sbService<VerticalHospitalsRow>('v_hospitals_by_vertical', { select: '*' }).catch(() => []),
+    sbService<VerticalSyncRow>('v_last_sync_by_vertical', { select: '*' }).catch(() => []),
+    // Domain analytics views land with migration 021 — same degradation rule.
+    sbService<SpecialtyRow>('v_specialties_by_vertical', {
+      select: '*',
+      order: 'vertical.asc,hospitals_count.desc',
+    }).catch(() => []),
+    sbService<StateVerticalCoverageRow>('v_state_vertical_coverage', { select: '*' }).catch(
+      () => [],
+    ),
+    sbService<TopCityRow>('v_top_cities', {
+      select: '*',
+      order: 'hospitals_count.desc,city.asc',
+      limit: '15',
+    }).catch(() => []),
+    sbService<DataQualityRow>('v_data_quality', { select: '*', limit: '1' }).catch(() => []),
+    // Per-vertical search popularity lands with migration 022 — same rule.
+    sbService<SearchPopularityRow>('v_search_popularity_by_vertical_30d', {
+      select: '*',
+      order: 'vertical.asc,searches.desc',
+    }).catch(() => []),
+  ]);
 
   const lastSyncByVertical = new Map(lastSyncs.map((s) => [s.vertical, s]));
   const by_vertical = byVertical
@@ -98,5 +162,10 @@ export async function getStats(_req: Request, res: Response): Promise<void> {
     search_timeline_30d: timeline,
     sync_resilience_90d: resilience[0] ?? null,
     coverage_by_state: coverage,
+    specialties_by_vertical: specialties,
+    state_vertical_coverage: stateVerticalCoverage,
+    top_cities: topCities,
+    data_quality: dataQuality[0] ?? null,
+    search_popularity_by_vertical: searchPopularity,
   });
 }

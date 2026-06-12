@@ -12,7 +12,11 @@
 
 BEGIN;
 
+-- `vertical` is written by the metrics insert (lib/core/metrics.ts) but no
+-- prior migration ever added the column — add it here alongside the new
+-- `disease_searched`. Both IF NOT EXISTS so this stays idempotent.
 ALTER TABLE api_metrics
+    ADD COLUMN IF NOT EXISTS vertical         TEXT,
     ADD COLUMN IF NOT EXISTS disease_searched TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_api_metrics_disease_searched

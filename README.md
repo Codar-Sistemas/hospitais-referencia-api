@@ -9,7 +9,7 @@
 ![Licença dados](https://img.shields.io/badge/dados-Ministério%20da%20Saúde-blue)
 ![Rate limit](https://img.shields.io/badge/rate%20limit-15%20req%2Fmin-orange)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0007--7751--0526-A6CE39?logo=orcid&logoColor=white)](https://orcid.org/0009-0007-7751-0526)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20633644.svg)](https://doi.org/10.5281/zenodo.20633644)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20633644-1682D4?logo=zenodo&logoColor=white)](https://doi.org/10.5281/zenodo.20633644)
 
 ---
 

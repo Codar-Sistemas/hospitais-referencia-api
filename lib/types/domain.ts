@@ -54,7 +54,18 @@ export type StateCode =
   | 'SP'
   | 'TO';
 
-export type SyncStatus = 'ok' | 'ok_ocr' | 'failed' | 'pending' | null;
+// Mirrors the states.status CHECK (sql/007 + sql/026). 'source_unpublished'
+// = the Ministry took the source page down (July 2026 incident) — the row
+// keeps serving the last-synced data while the daily probe waits for
+// republication.
+export type SyncStatus =
+  | 'ok'
+  | 'ok_ocr'
+  | 'error'
+  | 'unsupported'
+  | 'pending'
+  | 'source_unpublished'
+  | null;
 
 export type ExtractionSource = 'pdf_text' | 'pdf_ocr' | 'xlsx' | 'legacy_backfill';
 

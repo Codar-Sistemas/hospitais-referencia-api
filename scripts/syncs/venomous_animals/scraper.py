@@ -21,7 +21,18 @@ RE_UPDATED = re.compile(
     re.IGNORECASE,
 )
 
+# Plone login wall — where gov.br redirects requests for unpublished content.
+# The wall answers 200, so only the final URL reveals what happened.
+LOGIN_REDIRECT_MARKER = "acl_users/credentials_cookie_auth/require_login"
+
 _session = build_session()
+
+
+class SourceUnpublishedError(RuntimeError):
+    """The state page now redirects to the Plone login wall — the Ministry
+    unpublished the source (July 2026 incident, see docs/internal). Distinct
+    from a transient fetch error: the runner records it as
+    'source_unpublished' and the daily probe keeps running quietly."""
 
 
 def fetch_page_metadata(page_url: str) -> tuple[datetime | None, str | None]:
@@ -37,6 +48,10 @@ def fetch_page_metadata(page_url: str) -> tuple[datetime | None, str | None]:
         headers={"User-Agent": USER_AGENT},
         timeout=REQUEST_TIMEOUT,
     )
+    if LOGIN_REDIRECT_MARKER in str(response.url):
+        raise SourceUnpublishedError(
+            f"Source page redirects to the Plone login wall: {response.url}"
+        )
     response.raise_for_status()
 
     content_type = response.headers.get("Content-Type", "").lower()

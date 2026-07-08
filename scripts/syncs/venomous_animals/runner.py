@@ -43,6 +43,7 @@ from scripts.shared.config import (
     STATE_STATUS_ERROR,
     STATE_STATUS_OK,
     STATE_STATUS_OK_OCR,
+    STATE_STATUS_SOURCE_UNPUBLISHED,
     STATE_STATUS_UNSUPPORTED,
 )
 from scripts.shared.db import SupabaseClient
@@ -50,6 +51,7 @@ from scripts.shared.logger import log
 from scripts.shared.types import HospitalRecord, StateRow, SyncResult
 from scripts.syncs.venomous_animals.change_detector import needs_update, pdf_hash_changed
 from scripts.syncs.venomous_animals.scraper import (
+    SourceUnpublishedError,
     download_pdf,
     fetch_page_metadata,
     is_image_based_pdf,
@@ -139,7 +141,17 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
     state_row: StateRow = rows[0]  # type: ignore[assignment]
 
     log(f"Checking {state_row['page_url']} ...", state_code=state_code)
-    site_updated_at, pdf_url = fetch_page_metadata(state_row["page_url"])
+    try:
+        site_updated_at, pdf_url = fetch_page_metadata(state_row["page_url"])
+    except SourceUnpublishedError as e:
+        # The Ministry took the page down (July 2026 incident). Keep the
+        # last-synced hospitals untouched and let the daily probe detect
+        # the republication on its own.
+        return {
+            "state_code": state_code,
+            "status": STATE_STATUS_SOURCE_UNPUBLISHED,
+            "reason": str(e),
+        }
     if not pdf_url:
         return {
             "state_code": state_code,
@@ -271,6 +283,20 @@ def sync_state_safe(
             pass  # never let the logging branch break the sync
         result = {"state_code": state_code, "status": "error", "reason": message}
 
+    if result["status"] == STATE_STATUS_SOURCE_UNPUBLISHED:
+        try:
+            client.update(
+                "states",
+                {"state_code": state_code},
+                {
+                    "synced_at": datetime.now(UTC).isoformat(),
+                    "status": STATE_STATUS_SOURCE_UNPUBLISHED,
+                    "last_error": (result.get("reason") or "")[:500],
+                },
+            )
+        except Exception:
+            pass  # pre-026 DBs reject the status value — keep probing anyway
+
     write_sync_log(
         client,
         state_code=state_code,
@@ -347,10 +373,12 @@ def main() -> None:
     unchanged = sum(1 for r in results if r["status"] == "unchanged")
     unsupported = sum(1 for r in results if r["status"] == STATE_STATUS_UNSUPPORTED)
     errors = sum(1 for r in results if r["status"] == "error")
+    unpublished = sum(1 for r in results if r["status"] == STATE_STATUS_SOURCE_UNPUBLISHED)
 
     print(
         f"\nSummary: {updated} updated, {unchanged} unchanged, "
-        f"{unsupported} unsupported, {errors} errors, {len(results)} total"
+        f"{unsupported} unsupported, {unpublished} source-unpublished, "
+        f"{errors} errors, {len(results)} total"
     )
 
     states_via_ocr = [r for r in results if r.get("extraction_source") == EXTRACTION_SOURCE_PDF_OCR]
@@ -369,13 +397,52 @@ def main() -> None:
         for r in error_states:
             print(f"  - [{r['state_code']}] {r.get('reason', 'unknown error')}")
 
-    # Fail only when NO state was processed successfully. Partial
-    # failures stay recorded in states.status / states.last_error.
+    unpublished_states = [r for r in results if r["status"] == STATE_STATUS_SOURCE_UNPUBLISHED]
+    if unpublished_states:
+        codes = ", ".join(r["state_code"] for r in unpublished_states)
+        print(f"States with source unpublished by the Ministry: {codes}")
+        _emit_unpublished_warning(unpublished_states, total=len(results))
+
+    # Fail only when NO state was processed successfully AND at least one
+    # had a REAL failure. "Source unpublished" is not a failure: the run did
+    # its job by probing — when the Ministry republishes, the next daily run
+    # resumes syncing on its own. Mixed outcomes sync whatever is available.
     successes = updated + unchanged
     if successes == 0 and (errors > 0 or unsupported > 0):
         print("\nNo state processed successfully — failing the job.")
         sys.exit(1)
+    if successes == 0 and unpublished > 0:
+        print("\nEvery reachable state is unpublished at the source — exiting with a warning.")
     sys.exit(0)
+
+
+def _emit_unpublished_warning(unpublished_states: list[SyncResult], total: int) -> None:
+    """GitHub Actions annotation + step summary so an all-unpublished run is
+    visible on the workflow page without turning it red."""
+    count = len(unpublished_states)
+    scope = "ALL" if count == total else f"{count}/{total}"
+    print(
+        f"::warning title=Venomous source unpublished::{scope} state pages redirect to the "
+        f"gov.br login wall (require_login). Last-synced hospitals remain served; the daily "
+        f"probe keeps checking for republication."
+    )
+
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+    try:
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write(
+                f"### Fonte despublicada pelo Ministério da Saúde\n\n"
+                f"{scope} páginas estaduais redirecionam para a tela de login do Plone "
+                f"(`acl_users/credentials_cookie_auth/require_login`).\n\n"
+                f"- Os hospitais da última sincronização continuam sendo servidos pela API.\n"
+                f"- A sondagem diária segue ativa e volta a sincronizar sozinha quando o MS "
+                f"republicar.\n\n"
+                f"Estados: {', '.join(r['state_code'] for r in unpublished_states)}\n"
+            )
+    except OSError:
+        pass  # the summary is cosmetic — never fail the run over it
 
 
 if __name__ == "__main__":

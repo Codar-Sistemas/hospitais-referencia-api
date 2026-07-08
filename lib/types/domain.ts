@@ -165,6 +165,21 @@ export interface StateSummaryWithVerification extends StateSummary {
   requires_verification: boolean;
 }
 
+/** Row shape returned by PostgREST for the `ciatox_centers` table (sql/025).
+ * One row per toxicology CENTER — a state can have several (SP has 9). */
+export interface CiatoxCenter {
+  id: number;
+  state_code: StateCode;
+  name: string;
+  /** Primary emergency number, display format ("0800-280-3661"). */
+  emergency_phone: string | null;
+  /** Additional numbers, order as published; annotations ("Ramal",
+   * "whatsapp") preserved. */
+  phones: string[];
+  source_url: string;
+  synced_at: string | null;
+}
+
 export interface CepRecord {
   cep: string;
   state_code: StateCode | null;

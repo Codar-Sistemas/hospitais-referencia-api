@@ -17,6 +17,8 @@ const METADATA = {
   endpoints: [
     'GET /v1/states',
     'GET /v1/states/:state_code',
+    'GET /v1/ciatox',
+    'GET /v1/ciatox/:state_code',
     'GET /v1/{vertical}/hospitals?state_code=SP&treatment=crotalic',
     'GET /v1/oncology/hospitals?state_code=SP&disease=cacon',
     'GET /v1/hospitals/:id',

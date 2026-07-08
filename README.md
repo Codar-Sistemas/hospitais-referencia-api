@@ -218,6 +218,38 @@ curl https://hospitais-referencia-api.vercel.app/v1/states
 
 Detalhes de uma UF específica.
 
+### CIATOX — Centros de toxicologia
+
+#### `GET /v1/ciatox` · `GET /v1/ciatox/:state_code`
+
+Centros de Informação e Assistência Toxicológica (CIATOX) com telefone de
+emergência — a orientação oficial em acidente com animal peçonhento é **ligar
+antes de se deslocar**. Um registro por centro (SP tem 9); nem toda UF possui
+centro listado na fonte.
+
+```bash
+curl https://hospitais-referencia-api.vercel.app/v1/ciatox/PI
+```
+
+```json
+{
+  "state_code": "PI",
+  "state_name": "Piauí",
+  "total_returned": 1,
+  "centers": [
+    {
+      "id": 17,
+      "state_code": "PI",
+      "name": "Centro de Informações Toxicológicas – CITOX do Piauí",
+      "emergency_phone": "0800-280-3661",
+      "phones": ["(86) 981788257"],
+      "source_url": "https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/ciatox",
+      "synced_at": "2026-07-08T06:30:00Z"
+    }
+  ]
+}
+```
+
 ### Hospitais
 
 #### `GET /v1/hospitals` · `GET /v1/{vertical}/hospitals`

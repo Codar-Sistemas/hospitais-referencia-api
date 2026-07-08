@@ -36,6 +36,10 @@ STATE_STATUS_OK_OCR: Final[Literal["ok_ocr"]] = "ok_ocr"
 STATE_STATUS_ERROR: Final[Literal["error"]] = "error"
 STATE_STATUS_UNSUPPORTED: Final[Literal["unsupported"]] = "unsupported"
 STATE_STATUS_PENDING: Final[Literal["pending"]] = "pending"
+# The source page was taken down by the Ministry (redirects to the Plone
+# login wall) — distinct from a fetch/parse failure so the daily probe can
+# keep running without alarming anyone. See sql/026.
+STATE_STATUS_SOURCE_UNPUBLISHED: Final[Literal["source_unpublished"]] = "source_unpublished"
 
 # -------------------------------------------------------------------------
 # Extraction source (column `hospitals.extraction_source`)
@@ -45,6 +49,7 @@ EXTRACTION_SOURCE_PDF_OCR: Final[Literal["pdf_ocr"]] = "pdf_ocr"
 EXTRACTION_SOURCE_LLM_GEMINI: Final[Literal["llm_gemini"]] = "llm_gemini"
 EXTRACTION_SOURCE_LLM_GROQ: Final[Literal["llm_groq"]] = "llm_groq"
 EXTRACTION_SOURCE_XLSX: Final[Literal["xlsx"]] = "xlsx"
+EXTRACTION_SOURCE_HTML: Final[Literal["html"]] = "html"
 
 # -------------------------------------------------------------------------
 # Vertical keys (column `hospitals.verticals`, `sync_logs.vertical`).
@@ -54,6 +59,44 @@ EXTRACTION_SOURCE_XLSX: Final[Literal["xlsx"]] = "xlsx"
 VERTICAL_VENOMOUS_ANIMALS: Final[Literal["venomous_animals"]] = "venomous_animals"
 VERTICAL_RARE_DISEASES: Final[Literal["rare_diseases"]] = "rare_diseases"
 VERTICAL_ONCOLOGY: Final[Literal["oncology"]] = "oncology"
+# Data-only vertical: ciatox_centers is its own table (not hospitals), so it
+# does NOT join the backend `Vertical` union / KNOWN_VERTICALS — it exists
+# here only as the vertical_sources / sync_logs discriminator.
+VERTICAL_CIATOX: Final[Literal["ciatox"]] = "ciatox"
+
+# The 27 UF codes (ISO 3166-2:BR). Parsers validate scraped state codes
+# against this set before trusting them.
+BRAZIL_STATE_CODES: Final[frozenset[str]] = frozenset(
+    [
+        "AC",
+        "AL",
+        "AM",
+        "AP",
+        "BA",
+        "CE",
+        "DF",
+        "ES",
+        "GO",
+        "MA",
+        "MG",
+        "MS",
+        "MT",
+        "PA",
+        "PB",
+        "PE",
+        "PI",
+        "PR",
+        "RJ",
+        "RN",
+        "RO",
+        "RR",
+        "RS",
+        "SC",
+        "SE",
+        "SP",
+        "TO",
+    ]
+)
 
 # -------------------------------------------------------------------------
 # Geocoding status (column `hospitals.geocoding_status`)

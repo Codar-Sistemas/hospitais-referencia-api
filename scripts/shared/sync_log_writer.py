@@ -65,8 +65,10 @@ def write_sync_log(
 
 
 def _normalize_status(raw: str | None) -> str:
-    # The runner uses 'updated'/'unchanged'/'error'/'unsupported'/'skipped'.
-    # The schema accepts: success/unchanged/unsupported/failed.
+    # The runner uses 'updated'/'unchanged'/'error'/'unsupported'/'skipped'/
+    # 'source_unpublished'. The schema accepts: success/unchanged/unsupported/
+    # failed/source_unpublished (the last one requires sql/026; on older DBs
+    # the insert is rejected and skipped — this writer is best-effort).
     if raw == "updated":
         return "success"
     if raw == "unchanged":
@@ -75,6 +77,8 @@ def _normalize_status(raw: str | None) -> str:
         return "unsupported"
     if raw == "skipped":
         return "unsupported"
+    if raw == "source_unpublished":
+        return "source_unpublished"
     return "failed"
 
 

@@ -63,6 +63,9 @@ SyncStatus = Literal[
     "skipped",
     "unsupported",
     "pending",
+    # The Ministry unpublished the source page (login-wall redirect) —
+    # distinct from "error" so the daily probe can keep running quietly.
+    "source_unpublished",
 ]
 
 

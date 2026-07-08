@@ -617,6 +617,30 @@ export default function Docs() {
           />
 
           <Endpoint
+            id="ciatox"
+            method="GET"
+            path="/v1/ciatox/:state_code"
+            description="Centros de Informação e Assistência Toxicológica (CIATOX) da UF, com telefone de emergência — em acidente com animal peçonhento, a orientação oficial é ligar antes de se deslocar. Um registro por centro (SP tem 9); nem toda UF possui centro listado. Sem o :state_code, lista todos os centros do país."
+            examples={[{ code: `curl "${BASE}/v1/ciatox/PI"` }]}
+            response={`{
+  "state_code": "PI",
+  "state_name": "Piauí",
+  "total_returned": 1,
+  "centers": [
+    {
+      "id": 17,
+      "state_code": "PI",
+      "name": "Centro de Informações Toxicológicas – CITOX do Piauí",
+      "emergency_phone": "0800-280-3661",
+      "phones": ["(86) 981788257"],
+      "source_url": "https://www.gov.br/saude/...",
+      "synced_at": "2026-07-08T06:30:00Z"
+    }
+  ]
+}`}
+          />
+
+          <Endpoint
             id="hospitals-list"
             method="GET"
             path="/v1/{vertical}/hospitals"

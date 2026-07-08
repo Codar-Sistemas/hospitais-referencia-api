@@ -26,6 +26,35 @@ export interface HospitalSpecialty {
   qualification_codes: string[];
 }
 
+// One toxicology center from /v1/ciatox/:state_code — the "call first"
+// directory shown above venomous-vertical results.
+export interface CiatoxCenter {
+  id: number;
+  state_code: string;
+  name: string;
+  emergency_phone: string | null;
+  phones: string[];
+  source_url: string;
+  synced_at: string | null;
+}
+
+export interface CiatoxStateResponse {
+  state_code: string;
+  state_name: string;
+  total_returned: number;
+  centers: CiatoxCenter[];
+}
+
+// Subset of /v1/states/:state_code consumed by the freshness badge.
+export interface StateSummary {
+  state_code: string;
+  name: string;
+  updated_at: string | null;
+  synced_at: string | null;
+  total_hospitals: number;
+  status: string | null;
+}
+
 // Row from the cross-vertical /v1/search (v_hospitals_all view): one hospital
 // annotated with every SUS programme it is habilitado in.
 export interface CrossVerticalHospital {

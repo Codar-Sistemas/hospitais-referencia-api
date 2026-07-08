@@ -1,0 +1,41 @@
+# CIATOX vertical sync — runs in its own staggered slot (06:30 UTC, after
+# venomous @ 03:00, rare-diseases @ 04:30 and oncology @ 05:30) so gov.br
+# never serves two verticals at once and a failure here never blocks the
+# others. No geocode job: the CIATOX page publishes phones only, no addresses.
+name: sync-ciatox
+
+on:
+  schedule:
+    - cron: '30 6 * * *' # daily 06:30 UTC = 03:30 Brasília
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force reprocessing (ignore snapshot-hash short-circuit)'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: sync-ciatox
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Sync CIATOX toxicology centers (national HTML page)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS="sync"
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
+          python -m scripts.syncs.ciatox $ARGS

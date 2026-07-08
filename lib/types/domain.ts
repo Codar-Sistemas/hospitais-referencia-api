@@ -54,7 +54,18 @@ export type StateCode =
   | 'SP'
   | 'TO';
 
-export type SyncStatus = 'ok' | 'ok_ocr' | 'failed' | 'pending' | null;
+// Mirrors the states.status CHECK (sql/007 + sql/026). 'source_unpublished'
+// = the Ministry took the source page down (July 2026 incident) — the row
+// keeps serving the last-synced data while the daily probe waits for
+// republication.
+export type SyncStatus =
+  | 'ok'
+  | 'ok_ocr'
+  | 'error'
+  | 'unsupported'
+  | 'pending'
+  | 'source_unpublished'
+  | null;
 
 export type ExtractionSource = 'pdf_text' | 'pdf_ocr' | 'xlsx' | 'legacy_backfill';
 
@@ -163,6 +174,21 @@ export interface StateSummary {
 /** Annotated by the service layer with a derived `requires_verification`. */
 export interface StateSummaryWithVerification extends StateSummary {
   requires_verification: boolean;
+}
+
+/** Row shape returned by PostgREST for the `ciatox_centers` table (sql/025).
+ * One row per toxicology CENTER — a state can have several (SP has 9). */
+export interface CiatoxCenter {
+  id: number;
+  state_code: StateCode;
+  name: string;
+  /** Primary emergency number, display format ("0800-280-3661"). */
+  emergency_phone: string | null;
+  /** Additional numbers, order as published; annotations ("Ramal",
+   * "whatsapp") preserved. */
+  phones: string[];
+  source_url: string;
+  synced_at: string | null;
 }
 
 export interface CepRecord {

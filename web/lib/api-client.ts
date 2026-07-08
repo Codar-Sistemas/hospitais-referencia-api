@@ -1,9 +1,11 @@
 import type {
+  CiatoxStateResponse,
   CrossVerticalHospital,
   CrossVerticalSearchResponse,
   Hospital,
   HospitalSearchResponse,
   NearbyHospitalsResponse,
+  StateSummary,
 } from './types';
 
 import { API_URL } from './site';
@@ -128,6 +130,25 @@ export async function searchNearby(
     limit: params.limit,
   });
   return request<NearbyHospitalsResponse>(url, { cache: 'no-store' });
+}
+
+// ---------------------------------------------------------------------------
+// CIATOX toxicology centers + per-state sync freshness.
+// ---------------------------------------------------------------------------
+
+// The directory changes at most once a day — cache aggressively.
+export async function fetchCiatoxByState(stateCode: string): Promise<CiatoxStateResponse> {
+  return request<CiatoxStateResponse>(
+    `${API_BASE}/v1/ciatox/${encodeURIComponent(stateCode.toUpperCase())}`,
+    { next: { revalidate: 3600 } },
+  );
+}
+
+export async function fetchState(stateCode: string): Promise<StateSummary> {
+  return request<StateSummary>(
+    `${API_BASE}/v1/states/${encodeURIComponent(stateCode.toUpperCase())}`,
+    { next: { revalidate: 600 } },
+  );
 }
 
 // ---------------------------------------------------------------------------

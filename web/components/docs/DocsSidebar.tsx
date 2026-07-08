@@ -34,6 +34,7 @@ const NAV: NavGroup[] = [
     items: [
       { id: 'states-list', label: '/v1/states', method: 'GET' },
       { id: 'states-detail', label: '/v1/states/:uf', method: 'GET' },
+      { id: 'ciatox', label: '/v1/ciatox/:uf', method: 'GET' },
     ],
   },
   {

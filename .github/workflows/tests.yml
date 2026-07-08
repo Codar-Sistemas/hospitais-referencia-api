@@ -53,3 +53,6 @@ jobs:
 
       - name: Testar montagem e upsert do snapshot (oncologia)
         run: python -m tests.test_oncology_sync
+
+      - name: Testar parser da página CIATOX
+        run: python -m tests.test_ciatox_parser

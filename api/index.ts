@@ -4,6 +4,7 @@
 
 import { ApiError } from '../lib/core/errors.js';
 import { error } from '../lib/core/http.js';
+import * as ciatox from '../lib/handlers/ciatox.js';
 import * as hospitals from '../lib/handlers/hospitals.js';
 import * as metadata from '../lib/handlers/metadata.js';
 import * as states from '../lib/handlers/states.js';
@@ -22,6 +23,7 @@ import type { Request, RequestContext, ResponseWithMetrics } from '../lib/types/
 
 const STATE_PATH = /^\/v1\/states\/([A-Za-z]{2})$/;
 const HOSPITAL_PATH = /^\/v1\/hospitals\/(\d+)$/;
+const CIATOX_PATH = /^\/v1\/ciatox\/([A-Za-z]{2})$/;
 
 // Multi-vertical routing. `/v1/{vertical}/...` paths are rewritten
 // internally to the flat `/v1/...` dispatch table with `ctx.vertical`
@@ -72,12 +74,16 @@ async function dispatch(
   if (path === '' || path === '/' || path === '/v1') return metadata.getMetadata(req, res);
   if (path === '/v1/stats') return stats.getStats(req, res);
   if (path === '/v1/states') return states.listStates(req, res);
+  if (path === '/v1/ciatox') return ciatox.listCenters(req, res);
   if (path === '/v1/search') return hospitals.searchAcrossVerticals(req, res, url);
   if (path === '/v1/hospitals') return hospitals.listHospitals(req, res, url, ctx);
   if (path === '/v1/hospitals/nearby') return hospitals.listNearbyHospitals(req, res, url, ctx);
 
   const stateMatch = STATE_PATH.exec(path);
   if (stateMatch?.[1]) return states.getState(req, res, stateMatch[1].toUpperCase());
+
+  const ciatoxMatch = CIATOX_PATH.exec(path);
+  if (ciatoxMatch?.[1]) return ciatox.getCentersByState(req, res, ciatoxMatch[1]);
 
   const hospitalMatch = HOSPITAL_PATH.exec(path);
   if (hospitalMatch?.[1]) return hospitals.getHospital(req, res, hospitalMatch[1], ctx);
@@ -112,7 +118,7 @@ export default async function handler(req: Request, res: ResponseWithMetrics): P
   // Strip the vertical prefix so the telemetry STATE_PATH regex matches
   // /v1/venomous-animals/states/SP the same as /v1/states/SP.
   const { path } = normalizePath(rawPath);
-  const stateMatch = STATE_PATH.exec(path);
+  const stateMatch = STATE_PATH.exec(path) ?? CIATOX_PATH.exec(path);
   const capturedStateCode =
     stateMatch?.[1]?.toUpperCase() ??
     url.searchParams.get('state_code') ??

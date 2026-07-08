@@ -1,7 +1,9 @@
 'use client';
 import { use, useState } from 'react';
 import Link from 'next/link';
+import CiatoxEmergencyCard from '@/components/CiatoxEmergencyCard';
 import EmergencyNotice from '@/components/EmergencyNotice';
+import SourceFreshnessBadge from '@/components/SourceFreshnessBadge';
 import SearchTabs from '@/components/search/SearchTabs';
 import SearchByAnimal from '@/components/search/SearchByAnimal';
 import SearchByPostalCode from '@/components/search/SearchByPostalCode';
@@ -31,6 +33,13 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
   const [cep, setCep] = useState('');
 
   const { hospitals, error, searched, isPending, search } = useHospitalSearch(v.apiSlug);
+
+  // CIATOX card + freshness badge are venomous-only concerns (the vertical
+  // whose source pages the Ministry unpublished in July 2026). The UF comes
+  // from the form when given, else from the results themselves (city/CEP
+  // searches without a state filter).
+  const isVenomous = v.dbKey === 'venomous_animals';
+  const resultStateCode = stateCode || hospitals[0]?.state_code || '';
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -169,6 +178,12 @@ export default function VerticalHome({ params }: { params: Promise<{ vertical: s
           </form>
         </div>
 
+        {searched && isVenomous && resultStateCode && (
+          <CiatoxEmergencyCard stateCode={resultStateCode} />
+        )}
+        {searched && isVenomous && resultStateCode && hospitals.length > 0 && (
+          <SourceFreshnessBadge stateCode={resultStateCode} />
+        )}
         {searched && <HospitalList hospitals={hospitals} showTreatments={hasTreatments} />}
       </div>
 

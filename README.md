@@ -2,7 +2,10 @@
 
 > Plataforma pública e gratuita que organiza, normaliza e republica dados oficiais do **Ministério da Saúde** sobre os hospitais habilitados pelo SUS. Três verticais em produção — **animais peçonhentos**, **doenças raras** e **oncologia** (CACON/UNACON) — com busca cross-vertical no hub. Próximas: transplantes, Farmácia Popular, CER.
 
-[![Sync diário](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml)
+[![Sync peçonhentos](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync.yml)
+[![Sync raras](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync-rare-diseases.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync-rare-diseases.yml)
+[![Sync oncologia](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync-oncology.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync-oncology.yml)
+[![Sync CIATOX](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync-ciatox.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/sync-ciatox.yml)
 [![Lint](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/lint.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/lint.yml)
 [![Tests](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/tests.yml/badge.svg)](https://github.com/Codar-Sistemas/hospitais-referencia-api/actions/workflows/tests.yml)
 ![Custo](https://img.shields.io/badge/custo-R%240%2Fmês-brightgreen)
@@ -15,9 +18,12 @@
 
 ### 🔗 Acesso rápido
 
-- **🌐 Site:** https://hospitais-referencia-web.vercel.app
-- **📡 API:** https://hospitais-referencia-api.vercel.app
-- **📊 Estatísticas públicas:** https://hospitais-referencia-web.vercel.app/stats
+- **🌐 Site:** https://mapasus.com.br
+- **📡 API:** https://api.mapasus.com.br
+- **📖 Documentação da API:** https://mapasus.com.br/docs
+- **📊 Estatísticas públicas:** https://mapasus.com.br/estatisticas
+
+Cada vertical também responde no seu subdomínio: [peconhentos.mapasus.com.br](https://peconhentos.mapasus.com.br), [raras.mapasus.com.br](https://raras.mapasus.com.br), [oncologia.mapasus.com.br](https://oncologia.mapasus.com.br).
 
 ---
 
@@ -45,7 +51,11 @@ O Ministério da Saúde publica em `gov.br/saude` listas de hospitais habilitado
 | **Oncologia** (CACON/UNACON)           | ✅ Em produção | 3 XLSX nacionais em `gov.br/saude/.../cgcan`                |
 | Transplantes, Farmácia Popular, CER, … | 🗺️ Roadmap     | gov.br + sites estaduais                                    |
 
+> ⚠️ **Fonte de peçonhentos em reestruturação (jul/2026):** o Ministério da Saúde despublicou as 27 páginas estaduais de "Hospitais de Referência" (passaram a redirecionar para a tela de login do Plone). A API continua servindo o **último snapshot sincronizado** — o sync classifica a remoção como `source_unpublished` (não como falha) e a sondagem diária volta a sincronizar sozinha quando o MS republicar. No lugar, a seção oficial passou a apontar para a página **CIATOX**, capturada como dataset companheiro (ver abaixo). Detalhes em [`docs/internal/INCIDENT-2026-07-VENOMOUS-SOURCE-UNPUBLISHED.md`](docs/internal/INCIDENT-2026-07-VENOMOUS-SOURCE-UNPUBLISHED.md).
+
 Cada vertical é independente: tem seu próprio sync (em workflow e horário próprios, escalonados para não competir por rate-limit), parser, rotas namespaced (`/v1/{vertical}/hospitals`) e habilitações no banco. Todas compartilham infraestrutura (DB, geocoding, enriquecimento CNES, rate-limit). O hub em `/` oferece busca **cross-vertical**: uma cidade, todas as áreas de uma vez.
+
+**Dataset companheiro — CIATOX:** além das verticais de hospitais, a base guarda os **Centros de Informação e Assistência Toxicológica** (tabela própria `ciatox_centers`, sync diário às 06:30 UTC). São o telefone de emergência para quem sofre um acidente com animal peçonhento — a orientação oficial é _ligar antes de se deslocar_. Expostos em `GET /v1/ciatox[/:uf]` e destacados no site acima dos resultados de peçonhentos.
 
 | Vertical            | URL slug           | Hospitais\* | Filtro especializado                                   |
 | ------------------- | ------------------ | ----------- | ------------------------------------------------------ |
@@ -65,7 +75,7 @@ graph TB
         MS["🏛️ Ministério da Saúde<br/>gov.br/saude<br/>PDFs + XLSX por programa"]
     end
 
-    subgraph "Atualização automática (GitHub Actions, 03:00 UTC)"
+    subgraph "Atualização automática (GitHub Actions, syncs escalonados 03:00–06:30 UTC)"
         SYNC["🐍 scripts/syncs/&lt;vertical&gt;/<br/>Detecta mudança (timestamp + SHA-256)"]
         TEXT["📄 scripts/parsing/text_parser<br/>pdfplumber (fast path)"]
         LLM["🧠 scripts/shared/llm_extractor/<br/>Gemini 2.5 → Groq → Tesseract"]
@@ -85,7 +95,7 @@ graph TB
     subgraph "Interfaces"
         WEB["🌐 Next.js 16 + React 19<br/>Busca · Mapa Leaflet · IBGE dropdown"]
         DEV["👨‍💻 Desenvolvedores<br/>curl / fetch / SDK"]
-        STATS["📊 /stats público<br/>OCR vs LLM, demanda, resiliência"]
+        STATS["📊 /estatisticas público<br/>OCR vs LLM, demanda, resiliência"]
     end
 
     MS -->|"scraping diário"| SYNC
@@ -155,7 +165,7 @@ Implementação em [`scripts/shared/llm_extractor/metrics.py`](scripts/shared/ll
 
 ## Endpoints
 
-**Base URL:** `https://hospitais-referencia-api.vercel.app`
+**Base URL:** `https://api.mapasus.com.br`
 
 |                  |                                         |
 | ---------------- | --------------------------------------- |
@@ -195,7 +205,7 @@ Convenção: URLs usam **kebab-case** (`/v1/venomous-animals`), DB e Python modu
 Lista as 27 UFs com data de atualização e total de hospitais (vertical default = animais peçonhentos).
 
 ```bash
-curl https://hospitais-referencia-api.vercel.app/v1/states
+curl https://api.mapasus.com.br/v1/states
 ```
 
 ```json
@@ -214,6 +224,8 @@ curl https://hospitais-referencia-api.vercel.app/v1/states
 }
 ```
 
+O campo `status` pode ser `ok`, `ok_ocr`, `error`, `unsupported`, `pending` ou `source_unpublished` (fonte despublicada pelo MS — o último snapshot segue sendo servido).
+
 #### `GET /v1/states/:state_code`
 
 Detalhes de uma UF específica.
@@ -228,7 +240,7 @@ antes de se deslocar**. Um registro por centro (SP tem 9); nem toda UF possui
 centro listado na fonte.
 
 ```bash
-curl https://hospitais-referencia-api.vercel.app/v1/ciatox/PI
+curl https://api.mapasus.com.br/v1/ciatox/PI
 ```
 
 ```json
@@ -281,22 +293,22 @@ Busca de hospitais com filtros combinados.
 
 ```bash
 # Hospitais com soro antibotrópico em SP — rota legada
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=SP&treatment=Bothropic"
+curl "https://api.mapasus.com.br/v1/hospitals?state_code=SP&treatment=Bothropic"
 
 # Mesma busca via rota namespaced
-curl "https://hospitais-referencia-api.vercel.app/v1/venomous-animals/hospitals?state_code=SP&treatment=Bothropic"
+curl "https://api.mapasus.com.br/v1/venomous-animals/hospitals?state_code=SP&treatment=Bothropic"
 
 # Aceita também alias PT
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=SP&treatment=jararaca"
+curl "https://api.mapasus.com.br/v1/hospitals?state_code=SP&treatment=jararaca"
 
 # Busca por município (sem acento)
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?city=jundiai"
+curl "https://api.mapasus.com.br/v1/hospitals?city=jundiai"
 
 # Full-text em nome do hospital
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?q=santa+casa&state_code=SP"
+curl "https://api.mapasus.com.br/v1/hospitals?q=santa+casa&state_code=SP"
 
 # Paginação
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals?state_code=MG&limit=20&offset=40"
+curl "https://api.mapasus.com.br/v1/hospitals?state_code=MG&limit=20&offset=40"
 ```
 
 **Resposta:**
@@ -355,13 +367,13 @@ Hospitais ordenados por distância a partir de um ponto de origem.
 
 ```bash
 # Por CEP — retorna com distância calculada
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?cep=18618970&radius_m=50000&treatment=Lachetic"
+curl "https://api.mapasus.com.br/v1/hospitals/nearby?cep=18618970&radius_m=50000&treatment=Lachetic"
 
 # Por coordenadas
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?lat=-23.55&lng=-46.63&radius_m=100000"
+curl "https://api.mapasus.com.br/v1/hospitals/nearby?lat=-23.55&lng=-46.63&radius_m=100000"
 
 # Por nome de cidade (fallback sem distância)
-curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?city=Campinas&state_code=SP"
+curl "https://api.mapasus.com.br/v1/hospitals/nearby?city=Campinas&state_code=SP"
 ```
 
 > **Geocoding em duas camadas**: a primeira consulta por CEP chama a BrasilAPI. Se ela não retornar lat/lng (caso comum), a API automaticamente geocodifica o endereço estruturado via Nominatim, com fallback progressivo (rua → bairro → cidade). O resultado completo é salvo em `cep_cache`.
@@ -373,7 +385,7 @@ curl "https://hospitais-referencia-api.vercel.app/v1/hospitals/nearby?city=Campi
 Busca em **todas as verticais simultaneamente**, retornando hospitais com a lista completa de programas SUS em que estão habilitados.
 
 ```bash
-curl "https://hospitais-referencia-api.vercel.app/v1/search?city=curitiba"
+curl "https://api.mapasus.com.br/v1/search?city=curitiba"
 ```
 
 ```json
@@ -408,14 +420,14 @@ Retorna:
 - `sync_resilience_90d` — sucesso/falha + **breakdown por método** (`ocr_fallback_runs`, `llm_gemini_runs`, `llm_groq_runs`, `llm_fallback_runs`)
 - `coverage_by_state` — total de hospitais, geocoded e contagens por método (`ocr_records`, `llm_records`)
 
-A página pública [`/stats`](https://hospitais-referencia-web.vercel.app/stats) visualiza esses dados.
+A página pública [`/estatisticas`](https://mapasus.com.br/estatisticas) visualiza esses dados.
 
 #### `POST /v1/track`
 
 Endpoint para telemetria do frontend (`search_executed`, `hospital_clicked`, `phone_clicked`, etc.). Body JSON, máx 4KB.
 
 ```bash
-curl -X POST https://hospitais-referencia-api.vercel.app/v1/track \
+curl -X POST https://api.mapasus.com.br/v1/track \
   -H "Content-Type: application/json" \
   -d '{"event_type":"search_executed","state_code":"SP","treatment":"Bothropic","session_id":"anon-uuid"}'
 ```
@@ -459,7 +471,8 @@ hospitais-referencia-api/
 │   ├── syncs/                   # Uma pasta por vertical do MapaSUS
 │   │   ├── venomous_animals/    # 27 PDFs estaduais (ativo)
 │   │   ├── rare_diseases/       # 2 XLSX nacionais (ativo)
-│   │   └── oncology/            # 3 planilhas CGCAN, incl. .xls legado (ativo)
+│   │   ├── oncology/            # 3 planilhas CGCAN, incl. .xls legado (ativo)
+│   │   └── ciatox/              # Centros de toxicologia (HTML nacional, ativo)
 │   ├── shared/
 │   │   ├── llm_extractor/       # Provider chain: Gemini → Groq + schema + score
 │   │   │   ├── providers/       # base.py, gemini.py, groq.py
@@ -490,14 +503,18 @@ hospitais-referencia-api/
 │   ├── 013_extraction_confidence.sql        # requires_verification baseado em confidence
 │   ├── 014_stats_by_extraction_method.sql   # views quebram OCR vs LLM
 │   ├── 015_rare_diseases_sources.sql        # vertical_sources + sync_logs.vertical
-│   └── 016_oncology_sources.sql             # seed das 3 fontes nacionais de oncologia
+│   ├── 016_oncology_sources.sql             # seed das 3 fontes nacionais de oncologia
+│   ├── 017 → 019                # Hardening de segurança (RLS, security_invoker, extensões)
+│   ├── 020 → 024                # Stats por vertical, analytics de domínio, rollup de métricas
+│   ├── 025_ciatox_centers.sql               # tabela ciatox_centers + seed da fonte
+│   └── 026_source_unpublished_status.sql    # status 'source_unpublished' nos CHECKs
 │
 ├── web/                         # Frontend Next.js 16 + Tailwind 4 + React 19 (multi-tenant)
 │   ├── proxy.ts                 # roteamento por host (subdomínio → vertical)
 │   ├── app/
 │   │   ├── page.tsx             # hub MapaSUS + busca cross-vertical
 │   │   ├── [vertical]/          # busca + profissionais (chrome temático via data-theme)
-│   │   └── (platform)/          # /stats, /docs, /termos (plataforma)
+│   │   └── (platform)/          # /estatisticas, /docs, /termos (plataforma)
 │   ├── components/              # hub/HubSearch, ui/Combobox, hospital/HospitalMap, search/…
 │   ├── hooks/useHospitalSearch.ts
 │   └── lib/                     # verticals (registry), specialties, api-client, telemetry
@@ -508,6 +525,7 @@ hospitais-referencia-api/
 │   ├── sync.yml                 # Cron 03:00 UTC: peçonhentos (scrape PDF + LLM + geocode)
 │   ├── sync-rare-diseases.yml   # Cron 04:30 UTC: doenças raras (XLSX + CNES)
 │   ├── sync-oncology.yml        # Cron 05:30 UTC: oncologia (planilhas CGCAN + CNES)
+│   ├── sync-ciatox.yml          # Cron 06:30 UTC: centros de toxicologia (HTML)
 │   ├── lint.yml                 # tsc + ESLint + Prettier + Ruff + mypy
 │   └── tests.yml                # testes em mudanças de scripts/ ou tests/
 │
@@ -544,7 +562,7 @@ uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt mypy types-requests ruff
 
 # 3. Aplicar todas as migrations
-for f in sql/00*.sql sql/01*.sql; do
+for f in sql/[0-9][0-9][0-9]_*.sql; do
   PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f "$f"
 done
 
@@ -583,7 +601,7 @@ cd web && npm install && npm run dev   # Frontend em :3000
 
 ```mermaid
 graph LR
-    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 016"]
+    A["1️⃣ Criar projeto<br/>Supabase (Free)"] --> B["2️⃣ Aplicar migrations<br/>001 → 026"]
     B --> C["3️⃣ Copiar credenciais"]
     C --> D["4️⃣ Sync inicial<br/>via Actions ou local"]
     D --> E["5️⃣ Deploy Vercel<br/>vercel --prod"]
@@ -597,8 +615,8 @@ graph LR
 # Linkar o projeto
 supabase link --project-ref <PROJECT_REF>
 
-# Aplicar migrations em ordem
-for f in sql/00*.sql sql/01*.sql; do
+# Aplicar migrations em ordem (001 → 026; local_999 é só para dev local)
+for f in sql/[0-9][0-9][0-9]_*.sql; do
   supabase db query --linked --file "$f"
 done
 ```
@@ -653,14 +671,15 @@ Você pode disparar manualmente em _Actions → sync-hospitals → Run workflow_
 
 O sync lida automaticamente com inconsistências nas publicações do Ministério da Saúde:
 
-| Variação                                         | Como é tratada                                                                    |
-| ------------------------------------------------ | --------------------------------------------------------------------------------- |
-| URL do PDF como `.pdf` direto                    | Detectado pelo scraper (padrão)                                                   |
-| URL no formato Plone `/@@download/file` (ex: MG) | Detectado pelo scraper                                                            |
-| **Pernambuco publica XLSX** em vez de PDF        | `status='unsupported'` — segue sem erro                                           |
-| **PDF escaneado** (ex: Piauí)                    | Pipeline LLM (Gemini → Groq); fallback Tesseract com `requires_verification=true` |
-| `"Botrópico-Crotálico"` composto (ex: MG)        | Expandido para ambos individualmente                                              |
-| Número de colunas diferente entre estados        | Parser usa linhas verticais do PDF, não posições fixas                            |
+| Variação                                          | Como é tratada                                                                          |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| URL do PDF como `.pdf` direto                     | Detectado pelo scraper (padrão)                                                         |
+| URL no formato Plone `/@@download/file` (ex: MG)  | Detectado pelo scraper                                                                  |
+| **Pernambuco publica XLSX** em vez de PDF         | `status='unsupported'` — segue sem erro                                                 |
+| **PDF escaneado** (ex: Piauí)                     | Pipeline LLM (Gemini → Groq); fallback Tesseract com `requires_verification=true`       |
+| `"Botrópico-Crotálico"` composto (ex: MG)         | Expandido para ambos individualmente                                                    |
+| Número de colunas diferente entre estados         | Parser usa linhas verticais do PDF, não posições fixas                                  |
+| **Página despublicada** (redirect p/ login Plone) | `status='source_unpublished'` — mantém o último snapshot e segue sondando (não é falha) |
 
 ---
 
@@ -675,7 +694,7 @@ Cada execução do sync (mesmo as que não fazem nada) é registrada em `sync_lo
 - "De quais UFs vêm as buscas?" → `v_demand_by_user_state`
 - "Quais animais são mais procurados?" → `v_treatment_popularity_30d`
 
-As views agregadoras alimentam a página pública [`/stats`](https://hospitais-referencia-web.vercel.app/stats).
+As views agregadoras alimentam a página pública [`/estatisticas`](https://mapasus.com.br/estatisticas).
 
 ---
 
@@ -742,8 +761,10 @@ Documentar **por quê**, não **o quê**. Comentário só quando:
 
 ## Fonte dos dados e disclaimer legal
 
-Os dados pertencem ao **Ministério da Saúde do Brasil**. Para a vertical de animais peçonhentos, são publicados em:  
-<https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/hospitais-de-referencia>
+Os dados pertencem ao **Ministério da Saúde do Brasil**. A vertical de animais peçonhentos era publicada em `gov.br/saude/.../animais-peconhentos/hospitais-de-referencia` (27 páginas estaduais); desde julho/2026 essas páginas foram despublicadas e a seção oficial passou a apontar para a página **CIATOX**:  
+<https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z/a/animais-peconhentos/ciatox>
+
+Enquanto a fonte de hospitais está em reestruturação, a API mantém o último snapshot oficial sincronizado (ver o aviso na seção _Verticais ativas_).
 
 Este projeto apenas redistribui em formato estruturado e de fácil acesso. Nenhum dado é inventado ou modificado — apenas normalizado (maiúsculas, acentos, tipagem de array, tradução de valores canônicos para inglês para padronização internacional da API).
 

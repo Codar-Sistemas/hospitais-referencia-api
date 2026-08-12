@@ -42,9 +42,12 @@ isso com honestidade.
       `scripts/providers/cnes_api.py` — paginação em passos de 20 (a API trava o
       `limit` silenciosamente), backoff, e erro em falha persistente em vez de
       truncar (lista truncada viraria "fechamento em massa" no diff)
-- [ ] Monitor de fontes: sonda diária (status/hash) das fontes de cada vertical, alertando
-      em mudança de formato, despublicação **e reativação** — se a página de peçonhentos
-      voltar, saber no mesmo dia
+- [x] Monitor de fontes: a sonda diária já existia nos syncs (status por UF, hash de PDF,
+      aviso de despublicação no step summary). O que faltava era o **alerta de
+      reativação**: agora, quando um estado que estava `source_unpublished` volta a
+      responder, o run emite `::notice` + step summary "Fonte REPUBLICADA" — se a página
+      de peçonhentos voltar, sabemos no mesmo dia. Fontes novas (API DEMAS) nascem
+      protegidas pelos guardrails do próprio coletor.
 
 ### Fase 1 — Enriquecimento CNES das verticais atuais
 

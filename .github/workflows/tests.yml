@@ -56,3 +56,6 @@ jobs:
 
       - name: Testar parser da página CIATOX
         run: python -m tests.test_ciatox_parser
+
+      - name: Testar listagem paginada da API CNES
+        run: python -m tests.test_cnes_list

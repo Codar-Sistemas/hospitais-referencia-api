@@ -68,6 +68,16 @@ export const SPECIALTY_LABEL_BY_KEY: Record<string, string> = {
   oncology_surgery: 'Cirurgia oncológica',
   synchronous_treatment: 'Tratamento sincrônico',
   breast_reconstruction: 'Reconstrução mamária',
+  // Saúde mental (CAPS): specialties key-based — não há código de portaria
+  // na fonte, então o badge vem sempre deste mapa. Manter em sincronia com
+  // scripts/syncs/mental_health/subtipos.py e lib/services/disease-areas.ts.
+  caps_i: 'CAPS I',
+  caps_ii: 'CAPS II',
+  caps_iii: 'CAPS III (24h)',
+  caps_ij: 'CAPS Infantojuvenil',
+  caps_ad: 'CAPS AD (álcool e drogas)',
+  caps_ad_iii: 'CAPS AD III (24h)',
+  caps_ad_iv: 'CAPS AD IV',
 };
 
 // Matches "35.07" / "17.07", with optional dot/space ("3501", "17 07").
@@ -141,4 +151,14 @@ export const ONCOLOGY_FILTER_OPTIONS: ReadonlyArray<{ value: string; label: stri
   { value: 'oncology_surgery', label: 'Cirurgia oncológica' },
   { value: 'synchronous_treatment', label: 'Tratamento sincrônico' },
   { value: 'breast_reconstruction', label: 'Reconstrução mamária' },
+];
+
+export const CAPS_FILTER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'caps_i', label: 'CAPS I' },
+  { value: 'caps_ii', label: 'CAPS II' },
+  { value: 'caps_iii', label: 'CAPS III (24h)' },
+  { value: 'caps_ij', label: 'CAPS Infantojuvenil' },
+  { value: 'caps_ad', label: 'CAPS AD (álcool e outras drogas)' },
+  { value: 'caps_ad_iii', label: 'CAPS AD III (24h)' },
+  { value: 'caps_ad_iv', label: 'CAPS AD IV' },
 ];

@@ -100,7 +100,7 @@ class Geocoder:
     # Persistent cache (Supabase `geocoding_cache` table)
     # ------------------------------------------------------------------
 
-    def _db_get(self, query_key: str) -> GeocodingResult | None | object:
+    def _db_get(self, query_key: str) -> GeocodingResult | object | None:
         """
         Returns:
             _NOT_IN_CACHE  — no row for this key

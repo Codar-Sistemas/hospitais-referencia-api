@@ -49,7 +49,7 @@ jobs:
       # mypy --strict needs the real runtime packages installed —
       # otherwise pydantic.BaseModel resolves to Any and every
       # subclass fails the no-subclass-any check.
-      - run: pip install -r requirements.txt ruff mypy types-requests types-openpyxl
+      - run: pip install -r requirements.txt ruff==0.16.2 mypy==2.1.0 types-requests types-openpyxl
       - run: ruff check scripts/ tests/
       - run: ruff format --check scripts/ tests/
       - run: mypy scripts/ tests/

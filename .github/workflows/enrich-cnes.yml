@@ -1,0 +1,51 @@
+# Confirmação/enriquecimento contra o registro oficial do CNES (fase 1 do
+# roadmap CNES-first). Roda no domingo — fora dos slots diários dos syncs —
+# porque compara o dataset inteiro aos poucos (300 CNES/run com throttle de
+# 0.5s ≈ 3 min; a ordenação por cnes_checked_at faz os runs varrerem tudo
+# em ciclos).
+name: enrich-cnes
+
+on:
+  schedule:
+    - cron: '30 7 * * 0' # domingos 07:30 UTC = 04:30 Brasília
+  workflow_dispatch:
+    inputs:
+      vertical:
+        description: 'Restringir a uma vertical (vazio = todas)'
+        required: false
+        default: ''
+      limit:
+        description: 'Máximo de CNES a checar neste run'
+        required: false
+        default: '300'
+      dry_run:
+        description: 'Só relatar, sem gravar'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: enrich-cnes
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Confirmar hospitais contra o registro oficial (API DEMAS)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          ARGS="--limit ${{ github.event.inputs.limit || '300' }}"
+          if [ -n "${{ github.event.inputs.vertical }}" ]; then ARGS="$ARGS --vertical ${{ github.event.inputs.vertical }}"; fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          python -m scripts.enrichment $ARGS

@@ -59,3 +59,6 @@ jobs:
 
       - name: Testar listagem paginada da API CNES
         run: python -m tests.test_cnes_list
+
+      - name: Testar política de confirmação CNES e batch de enriquecimento
+        run: python -m tests.test_cnes_confirmation

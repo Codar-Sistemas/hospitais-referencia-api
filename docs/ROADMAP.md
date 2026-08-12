@@ -49,14 +49,23 @@ isso com honestidade.
       de peçonhentos voltar, sabemos no mesmo dia. Fontes novas (API DEMAS) nascem
       protegidas pelos guardrails do próprio coletor.
 
-### Fase 1 — Enriquecimento CNES das verticais atuais
+### Fase 1 — Enriquecimento CNES das verticais atuais _(esta branch)_
 
-- Join por CNES via DEMAS para os registros existentes: telefone, endereço, horário,
-  lat/lng oficiais
-- Política de conflito: oficial **confirma** o extraído → baixa `requires_verification`;
-  **diverge** → manter ambos com flag de divergência (nunca sobrescrever em silêncio)
-- `data_atualizacao` do CNES por registro (frescor granular)
-- Geocoding próprio vira fallback de quem não tem coordenada no CNES
+- [x] Batch de confirmação/enriquecimento: `scripts/enrichment` (CLI
+      `python -m scripts.enrichment [--vertical] [--limit] [--dry-run]`), workflow
+      semanal `enrich-cnes.yml`. Preenche address/phones/coords **apenas quando
+      vazios** — nunca sobrescreve valor extraído.
+- [x] Política de conflito (`scripts/enrichment/policy.py`, pura e testada): oficial
+      **confirma** o extraído (≥1 sinal forte — telefone ou coordenadas — e zero
+      contradições) → `cnes_confirmed` derruba `requires_verification` (sql/027);
+      **diverge** → `cnes_divergences` registra os campos, sem sobrescrever nada.
+      Ausência de contradição NÃO confirma.
+- [x] `cnes_checked_at` por registro (frescor granular da checagem)
+- [x] Coordenada oficial preenche quem estava `pending`; Nominatim segue como fallback
+      (raras/oncologia já enriqueciam no próprio sync via `enrich_with_cnes` — o batch
+      cobre principalmente peçonhentos, a vertical com OCR)
+- [ ] Aplicar `sql/027_cnes_confirmation.sql` em produção (migração revisada à mão,
+      como todas)
 
 ### Fase 2 — Verticais 4 e 5: CAPS + Hemorrede
 

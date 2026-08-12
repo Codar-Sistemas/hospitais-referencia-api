@@ -37,6 +37,7 @@ export const KNOWN_VERTICALS: ReadonlySet<Vertical> = new Set<Vertical>([
   'venomous_animals',
   'rare_diseases',
   'oncology',
+  'mental_health',
 ]);
 
 export function resolveVertical(vertical: string | null | undefined): VerticalOrAll {

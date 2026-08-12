@@ -76,10 +76,17 @@ isso com honestidade.
       necessários. Subtipos viram `hospital_specialties` (caps_i…caps_ad_iv),
       `extraction_source = cnes_api` (sql/028). Guardrail: aborta se >20% das unidades
       ficarem sem detalhe.
-- [ ] **Fase 2b — exposição pública do CAPS**: wiring do backend (`Vertical` em
-      `lib/types/domain.ts` + `KNOWN_VERTICALS` + `URL_TO_DB_VERTICAL`), registro no
-      web (`web/lib/verticals.ts`), vocabulário PT, aviso editorial (CVV 188 — texto
-      revisado por humano), workflow de sync agendado, espelho no BrasilAPI
+- [x] **Fase 2b (backend)**: trio `Vertical`/`KNOWN_VERTICALS`/`URL_TO_DB_VERTICAL`
+      atualizado; `?disease=` da mental_health casa por **chave** (caps_i…caps_ad_iv)
+      em vez de código de portaria (`disease-areas.ts`); 400 pedagógico lista os
+      valores aceitos. Workflow `sync-mental-health.yml` só por dispatch (cron
+      comentado até a vertical ir a 'live'). Validado E2E no stack local com os 17
+      CAPS do AC.
+- [ ] **Fase 2b (web)**: registro em `web/lib/verticals.ts` (tema novo, hero, FAQ,
+      SEO, filtros PT) + badges em `specialties.ts` + **aviso editorial com CVV 188
+      (texto revisado por humano)** — entra como 'coming-soon' até o primeiro sync
+- [ ] Primeiro sync em produção (aplicar sql/027+028 antes) e flip para 'live';
+      espelho no BrasilAPI
 - [ ] `blood_centers` (tipo 69) — mesmo coletor, código diferente; subtipos UCT/UC/
       núcleo separam "onde doar" de agência transfusional
 - `blood_centers` (tipo 69) — mesmo coletor, código diferente

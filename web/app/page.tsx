@@ -80,7 +80,7 @@ export default function Hub() {
             </a>{' '}
             e use o MapaSUS para localizar a unidade de referência mais próxima. Dentro de cada
             área, busque também por CEP e proximidade. Dados oficiais do Ministério da Saúde,
-            atualizados todos os dias.
+            verificados todos os dias.
           </p>
           <HubSearch />
         </div>

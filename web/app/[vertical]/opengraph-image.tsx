@@ -15,6 +15,7 @@ const GRADIENT: Record<VerticalTheme, [string, string]> = {
   venom: ['#047857', '#10b981'],
   rare: ['#6d28d9', '#8b5cf6'],
   oncology: ['#0369a1', '#0ea5e9'],
+  mental: ['#b45309', '#f59e0b'],
 };
 
 export default async function OpengraphImage({

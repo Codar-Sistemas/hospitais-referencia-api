@@ -20,7 +20,11 @@
 
 import type { TreatmentOption } from './constants';
 import { TREATMENTS } from './constants';
-import { ONCOLOGY_FILTER_OPTIONS, RARE_DISEASE_FILTER_OPTIONS } from './specialties';
+import {
+  CAPS_FILTER_OPTIONS,
+  ONCOLOGY_FILTER_OPTIONS,
+  RARE_DISEASE_FILTER_OPTIONS,
+} from './specialties';
 
 export interface Vertical {
   /** Public PT-BR URL slug, kebab-case, unaccented (SEO: the audience searches
@@ -71,7 +75,7 @@ export interface Vertical {
   sourceUrl: string;
 }
 
-export type VerticalTheme = 'venom' | 'rare' | 'oncology';
+export type VerticalTheme = 'venom' | 'rare' | 'oncology' | 'mental';
 
 // ---------------------------------------------------------------------------
 // Per-theme Tailwind classes. Everything visual that varies per vertical lives
@@ -86,6 +90,7 @@ export const THEME_BADGE_CLASS: Readonly<Record<VerticalTheme, string>> = {
   venom: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
   rare: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
   oncology: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+  mental: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
 };
 
 // Small colored dot (hub cards, vertical switcher in the navbar).
@@ -93,6 +98,7 @@ export const THEME_DOT_CLASS: Readonly<Record<VerticalTheme, string>> = {
   venom: 'bg-emerald-500',
   rare: 'bg-violet-500',
   oncology: 'bg-sky-500',
+  mental: 'bg-amber-500',
 };
 
 // Hub card accents (hover ring, CTA text, title hover).
@@ -116,6 +122,12 @@ export const THEME_CARD_ACCENT: Readonly<
     ring: 'hover:border-sky-300 hover:ring-sky-100',
     text: 'text-sky-700',
     hover: 'group-hover:text-sky-600',
+  },
+  mental: {
+    dot: THEME_DOT_CLASS.mental,
+    ring: 'hover:border-amber-300 hover:ring-amber-100',
+    text: 'text-amber-700',
+    hover: 'group-hover:text-amber-600',
   },
 };
 
@@ -368,6 +380,90 @@ export const VERTICALS: ReadonlyArray<Vertical> = [
     cardDescription:
       'Os hospitais habilitados pelo SUS em alta complexidade oncológica: CACON, UNACON, radioterapia, reconstrução mamária e tratamento sincrônico.',
     sourceUrl: 'https://www.gov.br/saude/pt-br/composicao/saes/cgcan/hospitais-habilitados',
+  },
+  {
+    slug: 'saude-mental',
+    apiSlug: 'mental-health',
+    dbKey: 'mental_health',
+    subdomain: 'caps.mapasus.com.br',
+    label: 'Saúde Mental',
+    shortLabel: 'CAPS',
+    // coming-soon até o primeiro sync em produção (ver docs/ROADMAP.md,
+    // fase 2b) — o card aparece no hub como "Em breve", sem link.
+    status: 'coming-soon',
+    theme: 'mental',
+    treatments: [],
+    diseaseFilterOptions: CAPS_FILTER_OPTIONS,
+    diseaseFilterLabel: 'Tipo de CAPS',
+    hero: {
+      eyebrow: 'Dados oficiais do CNES/Ministério da Saúde',
+      titleLead: 'Centros de Atenção Psicossocial',
+      titleAccent: '(CAPS) do SUS perto de você',
+      subtitle:
+        'Encontre o CAPS mais próximo por tipo de atendimento — adulto, infantojuvenil ou álcool e outras drogas. Atendimento gratuito pelo SUS, de porta aberta: não é preciso encaminhamento.',
+      emergencyNote:
+        'Em crise ou sofrimento intenso, ligue para o CVV: 188 (24h, gratuito). Em emergência, SAMU: 192',
+    },
+    howItWorks: [
+      {
+        title: '1. Registro oficial',
+        body: 'Os CAPS vêm diretamente do Cadastro Nacional de Estabelecimentos de Saúde (CNES), o registro oficial do Ministério da Saúde — sem extração de PDF, sem OCR. A base é conferida todos os dias.',
+      },
+      {
+        title: '2. Busca por tipo',
+        body: 'Filtre pelo tipo de CAPS: adulto (I, II, III), infantojuvenil ou álcool e outras drogas (AD). As unidades III e AD IV funcionam 24 horas, incluindo acolhimento noturno.',
+      },
+      {
+        title: '3. Perto de você',
+        body: 'Localize a unidade mais próxima por cidade ou CEP, com endereço, telefone e mapa. Resultados ordenados por distância quando há coordenadas.',
+      },
+    ],
+    faq: [
+      {
+        question: 'O que é um CAPS?',
+        answer:
+          'O Centro de Atenção Psicossocial é o serviço público de saúde mental do SUS para atendimento de pessoas em sofrimento psíquico ou com transtornos mentais, incluindo necessidades decorrentes do uso de álcool e outras drogas. O atendimento é gratuito, feito por equipe multiprofissional, e substitui o modelo de internação manicomial por cuidado em liberdade, no território.',
+      },
+      {
+        question: 'Preciso de encaminhamento para ir a um CAPS?',
+        answer:
+          'Não. O CAPS é um serviço de porta aberta: qualquer pessoa pode procurar a unidade diretamente, sem encaminhamento médico, e será acolhida. Também é possível chegar por indicação de uma UBS, hospital ou outro serviço.',
+      },
+      {
+        question: 'Qual a diferença entre os tipos de CAPS?',
+        answer:
+          'CAPS I, II e III atendem o público geral adulto e variam pelo porte do município e horário — o CAPS III funciona 24 horas, com acolhimento noturno. O CAPS Infantojuvenil (CAPSi) é dedicado a crianças e adolescentes. O CAPS AD atende pessoas com necessidades decorrentes do uso de álcool e outras drogas; as modalidades AD III e AD IV funcionam 24 horas, e o AD IV é voltado a cenas abertas de uso em grandes cidades.',
+      },
+      {
+        question: 'Estou em crise agora. O que faço?',
+        answer:
+          'Se você está em sofrimento intenso ou pensando em se machucar, ligue para o CVV no 188 — funciona 24 horas, todos os dias, e a ligação é gratuita. Em emergência com risco imediato, acione o SAMU no 192. O CAPS mais próximo também acolhe situações de crise durante o funcionamento, e as unidades tipo III atendem 24 horas.',
+      },
+      {
+        question: 'De onde vêm os dados?',
+        answer:
+          'Do Cadastro Nacional de Estabelecimentos de Saúde (CNES), o registro oficial do Ministério da Saúde, consultado por meio das APIs públicas de dados abertos. Endereço, telefone, coordenadas e o tipo de cada CAPS vêm do próprio registro. Nenhum dado é inventado — apenas normalizado.',
+      },
+    ],
+    metadata: {
+      title: 'CAPS — Centros de Atenção Psicossocial do SUS | Brasil',
+      description:
+        'Encontre o CAPS mais próximo: adulto, infantojuvenil ou álcool e outras drogas (AD). Endereço, telefone e mapa. Dados oficiais do CNES/Ministério da Saúde.',
+      keywords: [
+        'CAPS',
+        'saúde mental',
+        'SUS',
+        'centro de atenção psicossocial',
+        'CAPS AD',
+        'CAPSi',
+        'álcool e drogas',
+        'CVV',
+        'CNES',
+      ],
+    },
+    cardDescription:
+      'Os Centros de Atenção Psicossocial do SUS — adulto, infantojuvenil e álcool e outras drogas — direto do registro oficial.',
+    sourceUrl: 'https://cnes.datasus.gov.br/',
   },
 ];
 

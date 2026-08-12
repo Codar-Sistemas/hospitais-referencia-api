@@ -38,8 +38,10 @@ isso com honestidade.
 - [x] Baixar uma base mensal do CNES e inventariar tabelas de habilitação/subtipo
       (nomes reais, códigos de CAPS I/II/III/AD/i, TRS/diálise, queimados, cross-check
       de UNACON/CACON) → `docs/internal/CNES_INVENTORY.md`
-- [ ] Coletor DEMAS genérico (`scripts/providers/`?): endpoint + paginação + backoff +
-      guardrails de contagem, parametrizado por `codigo_tipo_unidade`
+- [x] Coletor DEMAS genérico: `CnesApiProvider.list_by_unit_type` em
+      `scripts/providers/cnes_api.py` — paginação em passos de 20 (a API trava o
+      `limit` silenciosamente), backoff, e erro em falha persistente em vez de
+      truncar (lista truncada viraria "fechamento em massa" no diff)
 - [ ] Monitor de fontes: sonda diária (status/hash) das fontes de cada vertical, alertando
       em mudança de formato, despublicação **e reativação** — se a página de peçonhentos
       voltar, saber no mesmo dia

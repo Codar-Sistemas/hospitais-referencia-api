@@ -109,6 +109,9 @@ class SyncResult(TypedDict, total=False):
     extraction_source: str
     ocr_confidence: int | None
     triggered_by: str
+    # The previous run saw this source behind the gov.br login wall and the
+    # page answered again — main() announces the republication loudly.
+    republished: bool
 
 
 class SpecialtyEntry(TypedDict):

@@ -152,11 +152,18 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
             "status": STATE_STATUS_SOURCE_UNPUBLISHED,
             "reason": str(e),
         }
+    # Reaching this line means the page answered — if the previous run had it
+    # behind the login wall, this is the republication transition the July
+    # 2026 incident taught us to announce out loud (it ends as silently as it
+    # starts). Carried on every outcome below.
+    republished = state_row.get("status") == STATE_STATUS_SOURCE_UNPUBLISHED
+
     if not pdf_url:
         return {
             "state_code": state_code,
             "status": "error",
             "reason": "PDF not found on page",
+            "republished": republished,
         }
 
     should_process = needs_update(state_row, site_updated_at, force=force)
@@ -172,7 +179,12 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
         content, pdf_hash = download_pdf(pdf_url)
 
     if not should_process:
-        return {"state_code": state_code, "status": "unchanged", "pdf_hash": pdf_hash}
+        return {
+            "state_code": state_code,
+            "status": "unchanged",
+            "pdf_hash": pdf_hash,
+            "republished": republished,
+        }
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(content)
@@ -200,7 +212,8 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
             else:
                 ocr_outcome = _try_ocr_extraction(tmp_path, state_code)
                 if isinstance(ocr_outcome, dict):
-                    return ocr_outcome  # short-circuit error / unsupported
+                    # short-circuit error / unsupported
+                    return {**ocr_outcome, "republished": republished}
                 records, mean_confidence = ocr_outcome
                 extraction_source = EXTRACTION_SOURCE_PDF_OCR
                 ocr_confidence = round(mean_confidence)
@@ -212,6 +225,7 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
             "state_code": state_code,
             "status": "error",
             "reason": "No records extracted",
+            "republished": republished,
         }
 
     log(f"{len(records)} records in PDF — syncing ...", state_code=state_code)
@@ -250,6 +264,7 @@ def sync_state(client: SupabaseClient, state_code: str, force: bool = False) -> 
         "removed": removed,
         "pdf_url": pdf_url,
         "pdf_hash": pdf_hash,
+        "republished": republished,
     }
 
 
@@ -403,6 +418,12 @@ def main() -> None:
         print(f"States with source unpublished by the Ministry: {codes}")
         _emit_unpublished_warning(unpublished_states, total=len(results))
 
+    republished_states = [r for r in results if r.get("republished")]
+    if republished_states:
+        codes = ", ".join(r["state_code"] for r in republished_states)
+        print(f"States republished by the Ministry (source is back): {codes}")
+        _emit_republished_notice(republished_states)
+
     # Fail only when NO state was processed successfully AND at least one
     # had a REAL failure. "Source unpublished" is not a failure: the run did
     # its job by probing — when the Ministry republishes, the next daily run
@@ -414,6 +435,31 @@ def main() -> None:
     if successes == 0 and unpublished > 0:
         print("\nEvery reachable state is unpublished at the source — exiting with a warning.")
     sys.exit(0)
+
+
+def _emit_republished_notice(republished_states: list[SyncResult]) -> None:
+    """Counterpart of `_emit_unpublished_warning`: the July 2026 incident
+    taught us the source comes back as silently as it vanishes — without this
+    notice, nobody would know the freeze ended."""
+    codes = ", ".join(r["state_code"] for r in republished_states)
+    print(
+        f"::notice title=Venomous source republished::{codes}: state pages are reachable "
+        f"again after the gov.br login wall. The sync resumed automatically on this run."
+    )
+
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+    try:
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write(
+                "### Fonte REPUBLICADA pelo Ministério da Saúde\n\n"
+                "As páginas estaduais de animais peçonhentos voltaram a responder e a "
+                "sincronização retomou automaticamente nesta execução.\n\n"
+                f"Estados: {codes}\n"
+            )
+    except OSError:
+        pass  # the summary is cosmetic — never fail the run over it
 
 
 def _emit_unpublished_warning(unpublished_states: list[SyncResult], total: int) -> None:

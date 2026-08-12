@@ -56,3 +56,12 @@ jobs:
 
       - name: Testar parser da página CIATOX
         run: python -m tests.test_ciatox_parser
+
+      - name: Testar listagem paginada da API CNES
+        run: python -m tests.test_cnes_list
+
+      - name: Testar política de confirmação CNES e batch de enriquecimento
+        run: python -m tests.test_cnes_confirmation
+
+      - name: Testar coleta da vertical de saúde mental (CAPS)
+        run: python -m tests.test_mental_health_sync

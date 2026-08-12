@@ -63,6 +63,7 @@ def upsert_qualification_hospitals(
     hospitals: dict[str, QualificationHospital],
     *,
     vertical: str,
+    extraction_source: str = EXTRACTION_SOURCE_XLSX,
 ) -> tuple[int, int, int]:
     """
     Returns (inserted, updated, removed). "Updated" counts both owned-row
@@ -104,7 +105,7 @@ def upsert_qualification_hospitals(
                 "name": hospital["name"],
                 "address": hospital["address"],
                 "phones": hospital["phones"],
-                "extraction_source": EXTRACTION_SOURCE_XLSX,
+                "extraction_source": extraction_source,
                 "updated_at": now,
             }
             payload.update(_geocoding_fields(hospital, existing=owned, now=now))
@@ -133,7 +134,7 @@ def upsert_qualification_hospitals(
             "cnes": cnes,
             "treatments": [],
             "treatments_raw": None,
-            "extraction_source": EXTRACTION_SOURCE_XLSX,
+            "extraction_source": extraction_source,
             "ocr_confidence": None,
             "verticals": [vertical],
         }

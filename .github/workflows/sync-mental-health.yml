@@ -1,0 +1,41 @@
+# Sync da vertical mental_health (CAPS) — 100% CNES-first (API DEMAS +
+# serviços do site do CNES; sem PDF/OCR).
+#
+# Por enquanto SÓ via dispatch manual: a vertical está 'coming-soon' no web e
+# o primeiro sync em produção deve ser deliberado (depois de aplicar
+# sql/027 + sql/028). Ao promover para 'live', descomentar o cron abaixo —
+# 07:30 UTC ocupa o slot seguinte ao ciatox (06:30), mantendo um sync por vez.
+name: sync-mental-health
+
+on:
+  # schedule:
+  #   - cron: '30 7 * * *' # diário 07:30 UTC = 04:30 Brasília
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'sync grava no banco; collect é dry-run (só relata)'
+        required: false
+        default: 'collect'
+
+concurrency:
+  group: sync-mental-health
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r requirements.txt
+
+      - name: Sync CAPS (DEMAS + site do CNES)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m scripts.syncs.mental_health ${{ github.event.inputs.command || 'collect' }}

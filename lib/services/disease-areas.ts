@@ -1,11 +1,16 @@
 // Per-vertical vocabulary for the `?disease=` filter on qualification-based
-// verticals. Each vertical's official source embeds stable numeric
-// habilitação codes in free text (rare diseases: 35.XX per the national
-// rare-diseases policy; oncology: 17.XX per the CACON/UNACON programme).
-// Filtering matches on the numeric code, never on the typo-prone text.
+// verticals. Two matching modes:
+//
+//   - code-matched (rare diseases: 35.XX; oncology: 17.XX): the official
+//     source embeds stable numeric habilitação codes in free text, and
+//     filtering matches on the code, never on the typo-prone text.
+//   - key-matched (mental health): the CAPS sync writes the canonical
+//     subtype straight into `specialty` (caps_i…caps_ad_iv) — there is no
+//     habilitação code in the source, so the key IS the match.
 //
 // Keys are the canonical EN identifiers the API accepts; PT display labels
-// live in the web registry (web/lib/specialties.ts) — keep both in lockstep.
+// live in the web registry (web/lib/specialties.ts) — keep both in lockstep
+// (and, for mental health, with scripts/syncs/mental_health/subtipos.py).
 
 import { ValidationError } from '../core/errors.js';
 import type { HospitalSpecialtySummary, Vertical } from '../types/domain.js';
@@ -39,15 +44,29 @@ const ONCOLOGY_SERVICE_CODES: Readonly<Record<string, readonly string[]>> = {
   breast_reconstruction: ['23'],
 };
 
+// Key-matched: the value lists stay empty — kept in the same shape so
+// validation and error messages are uniform across verticals.
+const MENTAL_HEALTH_CAPS_TYPES: Readonly<Record<string, readonly string[]>> = {
+  caps_i: [],
+  caps_ii: [],
+  caps_iii: [],
+  caps_ij: [],
+  caps_ad: [],
+  caps_ad_iii: [],
+  caps_ad_iv: [],
+};
+
 export const DISEASE_AREA_CODES_BY_VERTICAL: Readonly<
   Record<QualificationVertical, Readonly<Record<string, readonly string[]>>>
 > = {
   rare_diseases: RARE_DISEASE_AREA_CODES,
   oncology: ONCOLOGY_SERVICE_CODES,
+  mental_health: MENTAL_HEALTH_CAPS_TYPES,
 };
 
-// Matches "35.07" / "3501" (rare) or "17.07" / "1707" (oncology).
-const CODE_RE_BY_VERTICAL: Readonly<Record<QualificationVertical, RegExp>> = {
+// Matches "35.07" / "3501" (rare) or "17.07" / "1707" (oncology). Verticals
+// absent here are key-matched (see specialtiesMatchArea).
+const CODE_RE_BY_VERTICAL: Readonly<Partial<Record<QualificationVertical, RegExp>>> = {
   rare_diseases: /35\.?\s?(\d{2})/g,
   oncology: /17\.?\s?(\d{2})/g,
 };
@@ -72,6 +91,10 @@ export function specialtiesMatchArea(
 ): boolean {
   const wanted = DISEASE_AREA_CODES_BY_VERTICAL[vertical][area] ?? [];
   const codeRe = CODE_RE_BY_VERTICAL[vertical];
+  if (!codeRe) {
+    // Key-matched vertical: the canonical key lives in `specialty` itself.
+    return (specialties ?? []).some((entry) => entry.specialty === area);
+  }
   for (const entry of specialties ?? []) {
     for (const raw of entry.qualification_codes) {
       for (const match of raw.matchAll(codeRe)) {

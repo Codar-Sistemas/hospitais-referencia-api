@@ -69,8 +69,19 @@ isso com honestidade.
 
 ### Fase 2 — Verticais 4 e 5: CAPS + Hemorrede
 
-- `mental_health` (tipo 70) com subtipo (CAPS I/II/III, AD, AD III/IV, infantojuvenil)
-  via `rlEstabSubTipo` da base mensal — o inventário dispensou o dataset RAPS
+- [x] **Fase 2a — pipeline de dados do CAPS** (`scripts/syncs/mental_health`): DEMAS
+      lista o tipo 70; o subtipo (CAPS I/II/III, AD, AD III/IV, infantojuvenil) vem do
+      serviço JSON do site do CNES (`/services/estabelecimentos/{CO_UNIDADE}`,
+      `dsStpUnidade`) — nem a base mensal de 615 MB nem o dataset RAPS foram
+      necessários. Subtipos viram `hospital_specialties` (caps_i…caps_ad_iv),
+      `extraction_source = cnes_api` (sql/028). Guardrail: aborta se >20% das unidades
+      ficarem sem detalhe.
+- [ ] **Fase 2b — exposição pública do CAPS**: wiring do backend (`Vertical` em
+      `lib/types/domain.ts` + `KNOWN_VERTICALS` + `URL_TO_DB_VERTICAL`), registro no
+      web (`web/lib/verticals.ts`), vocabulário PT, aviso editorial (CVV 188 — texto
+      revisado por humano), workflow de sync agendado, espelho no BrasilAPI
+- [ ] `blood_centers` (tipo 69) — mesmo coletor, código diferente; subtipos UCT/UC/
+      núcleo separam "onde doar" de agência transfusional
 - `blood_centers` (tipo 69) — mesmo coletor, código diferente
 - Vocabulário PT ("caps ad", "doar sangue") no padrão dos soros; avisos editoriais por
   vertical (CVV 188 em saúde mental; requisitos de doação em hemorrede) — texto revisado

@@ -62,3 +62,6 @@ jobs:
 
       - name: Testar política de confirmação CNES e batch de enriquecimento
         run: python -m tests.test_cnes_confirmation
+
+      - name: Testar coleta da vertical de saúde mental (CAPS)
+        run: python -m tests.test_mental_health_sync

@@ -50,6 +50,9 @@ EXTRACTION_SOURCE_LLM_GEMINI: Final[Literal["llm_gemini"]] = "llm_gemini"
 EXTRACTION_SOURCE_LLM_GROQ: Final[Literal["llm_groq"]] = "llm_groq"
 EXTRACTION_SOURCE_XLSX: Final[Literal["xlsx"]] = "xlsx"
 EXTRACTION_SOURCE_HTML: Final[Literal["html"]] = "html"
+# Registro oficial estruturado (API DEMAS + serviços do site do CNES) — a
+# única fonte que dispensa verificação humana por definição.
+EXTRACTION_SOURCE_CNES_API: Final[Literal["cnes_api"]] = "cnes_api"
 
 # -------------------------------------------------------------------------
 # Vertical keys (column `hospitals.verticals`, `sync_logs.vertical`).
@@ -59,6 +62,9 @@ EXTRACTION_SOURCE_HTML: Final[Literal["html"]] = "html"
 VERTICAL_VENOMOUS_ANIMALS: Final[Literal["venomous_animals"]] = "venomous_animals"
 VERTICAL_RARE_DISEASES: Final[Literal["rare_diseases"]] = "rare_diseases"
 VERTICAL_ONCOLOGY: Final[Literal["oncology"]] = "oncology"
+# Fase 2 do roadmap CNES-first. O sync Python já escreve as linhas; a
+# exposição pública espera o wiring do backend/web (fase 2b).
+VERTICAL_MENTAL_HEALTH: Final[Literal["mental_health"]] = "mental_health"
 # Data-only vertical: ciatox_centers is its own table (not hospitals), so it
 # does NOT join the backend `Vertical` union / KNOWN_VERTICALS — it exists
 # here only as the vertical_sources / sync_logs discriminator.

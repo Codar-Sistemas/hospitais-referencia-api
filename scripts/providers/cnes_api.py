@@ -63,6 +63,9 @@ class CnesListedEstablishment:
 
     cnes: str
     name: str | None
+    # 13-digit CO_UNIDADE (UF+municipality+CNES) — the key the cnes.datasus
+    # site services use (see scripts/providers/cnes_site.py).
+    unit_code: str | None
     uf_code: int | None
     municipality_code: int | None
     address: str | None
@@ -214,6 +217,7 @@ class CnesApiProvider:
         return CnesListedEstablishment(
             cnes=_clean_str(data.get("codigo_cnes")) or "",
             name=name,
+            unit_code=_clean_str(data.get("codigo_estabelecimento_saude")),
             uf_code=_as_int(data.get("codigo_uf")),
             municipality_code=_as_int(data.get("codigo_municipio")),
             address=_parse_address(data),

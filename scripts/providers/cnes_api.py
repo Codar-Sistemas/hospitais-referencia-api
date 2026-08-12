@@ -26,10 +26,14 @@ DEFAULT_TIMEOUT_S = 20
 # generous pause keeps the whole enrichment under a minute.
 DEFAULT_DELAY_S = 0.5
 
-# The API silently caps `limit` at 20 no matter what is sent (verified live
-# on 2026-08-12), so pagination must walk in steps of 20 until a short page.
-LIST_PAGE_SIZE = 20
-# Runaway guard: 2000 pages = 40k rows, far beyond any single unit type
+# The API silently caps `limit` (at 20 as of 2026-08-12, verified live). We
+# still ask for more: if the cap is ever raised the listing gets cheaper for
+# free, and the pagination below never assumes any particular page size —
+# it advances by the length actually received and only stops on an empty
+# page. Terminating on a "short" page would silently truncate the listing
+# the day the cap changes.
+LIST_REQUESTED_LIMIT = 100
+# Runaway guard: 2000 pages = 40k+ rows, far beyond any single unit type
 # (CAPS, the largest planned vertical, has ~3.7k establishments).
 LIST_MAX_PAGES = 2000
 
@@ -118,7 +122,7 @@ class CnesApiProvider:
         for _ in range(LIST_MAX_PAGES):
             params: dict[str, int] = {
                 "codigo_tipo_unidade": unit_type_code,
-                "limit": LIST_PAGE_SIZE,
+                "limit": LIST_REQUESTED_LIMIT,
                 "offset": offset,
             }
             if uf_code is not None:
@@ -138,11 +142,13 @@ class CnesApiProvider:
                     f"{offset} (unit type {unit_type_code})"
                 )
 
-            rows.extend(self._parse_listed(item) for item in page)
-
-            if len(page) < LIST_PAGE_SIZE:
+            if not page:
                 return rows
-            offset += LIST_PAGE_SIZE
+
+            rows.extend(self._parse_listed(item) for item in page)
+            # The server decides the real page size (it caps `limit`), so a
+            # "short" page proves nothing — only an empty one ends the walk.
+            offset += len(page)
 
         raise RuntimeError(
             f"CNES API listing exceeded {LIST_MAX_PAGES} pages "

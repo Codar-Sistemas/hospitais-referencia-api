@@ -16,10 +16,13 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.providers.cnes_api import (
-    LIST_PAGE_SIZE,
     CnesApiProvider,
     CnesListedEstablishment,
 )
+
+# Page size the server ACTUALLY returns today (it caps `limit` at 20); the
+# provider must never depend on this number — that's what the tests assert.
+SERVER_PAGE_SIZE = 20
 
 
 def _row(cnes: int, **overrides: Any) -> dict[str, Any]:
@@ -90,16 +93,45 @@ def _provider(responses: list[_FakeResponse]) -> tuple[CnesApiProvider, _FakeSes
     return provider, session
 
 
-def test_paginates_until_short_page() -> None:
-    full_page = {"estabelecimentos": [_row(i) for i in range(LIST_PAGE_SIZE)]}
+def test_paginates_by_received_length_until_empty_page() -> None:
+    full_page = {"estabelecimentos": [_row(i) for i in range(SERVER_PAGE_SIZE)]}
     short_page = {"estabelecimentos": [_row(100), _row(101)]}
-    provider, session = _provider([_FakeResponse(200, full_page), _FakeResponse(200, short_page)])
+    empty_page: dict[str, Any] = {"estabelecimentos": []}
+    provider, session = _provider(
+        [
+            _FakeResponse(200, full_page),
+            _FakeResponse(200, short_page),
+            _FakeResponse(200, empty_page),
+        ]
+    )
 
     rows = provider.list_by_unit_type(70)
 
-    assert len(rows) == LIST_PAGE_SIZE + 2
-    assert [c["offset"] for c in session.calls if c] == [0, LIST_PAGE_SIZE]
+    assert len(rows) == SERVER_PAGE_SIZE + 2
+    # offset advances by what was RECEIVED (20, then +2), and only the empty
+    # page ends the walk — a short page proves nothing about the server cap.
+    assert [c["offset"] for c in session.calls if c] == [
+        0,
+        SERVER_PAGE_SIZE,
+        SERVER_PAGE_SIZE + 2,
+    ]
     assert all(c["codigo_tipo_unidade"] == 70 for c in session.calls if c)
+
+
+def test_survives_server_changing_page_cap() -> None:
+    # If DEMAS lowers the cap (pages of 10 instead of 20), the listing must
+    # keep walking instead of mistaking the first page for the last one.
+    pages: list[dict[str, Any]] = [
+        {"estabelecimentos": [_row(i) for i in range(10)]},
+        {"estabelecimentos": [_row(i) for i in range(10, 20)]},
+        {"estabelecimentos": []},
+    ]
+    provider, session = _provider([_FakeResponse(200, p) for p in pages])
+
+    rows = provider.list_by_unit_type(70)
+
+    assert len(rows) == 20
+    assert [c["offset"] for c in session.calls if c] == [0, 10, 20]
 
 
 def test_empty_first_page_returns_empty_list() -> None:
@@ -144,7 +176,12 @@ def test_row_parsing_and_fallbacks() -> None:
             ),
         ]
     }
-    provider, _ = _provider([_FakeResponse(200, rows_payload)])
+    provider, _ = _provider(
+        [
+            _FakeResponse(200, rows_payload),
+            _FakeResponse(200, {"estabelecimentos": []}),
+        ]
+    )
 
     rows = provider.list_by_unit_type(70)
 
